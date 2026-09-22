@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "skills": {
+    "awwwards": {
+      "source": "Ga14ctic/awwwards-skill",
+      "sourceType": "github",
+      "skillPath": "awwwards/skills/awwwards/SKILL.md",
+      "computedHash": "ab8059f78377cd2072c6482d767c43a7433a6ae4e4226bb2a0876ea8a00624cc"
+    },
+    "awwwards-motion": {
+      "source": "adamperlis/awwwards-motion",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "06a499bb813320f67a08c6abc0c770c815dabc068fcdbd7c717e00a0514ec41c"
+    },
+    "babylonjs-engine": {
+      "source": "discover-dmc/motionstack",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/babylonjs-engine/SKILL.md",
+      "computedHash": "64bc2115d50105a3dba233ee7d2f5e545194862566c369a9fc6c4002b13133b5"
+    },
+    "fresh-web-architect": {
+      "source": "snarsnat/fresh-web-architect",
+      "sourceType": "github",
+      "skillPath": "skills/fresh-web-architect/SKILL.md",
+      "computedHash": "a89df778b3065dc489c9ea274145f53646ef934be5f589f18ba405aa2c0112e5"
+    },
+    "gsap-scrolltrigger": {
+      "source": "discover-dmc/motionstack",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/gsap-scrolltrigger/SKILL.md",
+      "computedHash": "2e63f4478bda8506fcabe96ccbecb37b37d94d2371bd87e5e7d4c288642de5b2"
+    },
+    "motion-framer": {
+      "source": "discover-dmc/motionstack",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/motion-framer/SKILL.md",
+      "computedHash": "cd0089aff2a182de130b62e2476a78ccca4b3c076d2fc1532d019beecbbccf0c"
+    },
+    "react-three-fiber": {
+      "source": "discover-dmc/motionstack",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/react-three-fiber/SKILL.md",
+      "computedHash": "722d15a0e397a64bc3c0db3e4ff1ef1d826ce350016eb76d74f5cdc59cf95288"
+    },
+    "threejs-webgl": {
+      "source": "discover-dmc/motionstack",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/threejs-webgl/SKILL.md",
+      "computedHash": "6ce5a4588386b0cfe9e51e97610a169d8f038a64434d7cdc253b538ce4be5645"
+    }
+  }
+}

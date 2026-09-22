@@ -1,0 +1,13 @@
+// Contact sheet of screenshots (3 per row) via headless Chrome.
+//   node scripts/qa/sheet.mjs <dir> <out.png> a.png b.png ...
+import puppeteer from 'puppeteer-core';
+import { readFileSync } from 'node:fs';
+const [, , dir, out, ...files] = process.argv;
+const imgs = files.map((f) => `<figure><img src="data:image/png;base64,${readFileSync(`${dir}/${f}`).toString('base64')}"><figcaption>${f}</figcaption></figure>`).join('');
+const html = `<html><body style="margin:0;background:#000;display:grid;grid-template-columns:repeat(3,427px);gap:2px;font:11px monospace;color:#ccc">${imgs}<style>figure{margin:0;position:relative}img{width:427px;display:block}figcaption{position:absolute;left:4px;top:2px;background:#000a;padding:1px 4px}</style></body></html>`;
+const browser = await puppeteer.launch({ executablePath: process.env.CHROME ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: 'new' });
+const page = await browser.newPage();
+await page.setViewport({ width: 1285, height: 800 });
+await page.setContent(html);
+await page.screenshot({ path: out, fullPage: true });
+await browser.close();

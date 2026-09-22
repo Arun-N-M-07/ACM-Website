@@ -1,0 +1,255 @@
+/**
+ * Events & programmes.
+ *
+ * Source: https://auceg.acm.org/events.html (cards + "Read More" descriptions),
+ * the home page flagship section, the FAQ, and prodigy.html.
+ *
+ * The ORDER of this array is the order of rooms in the underground corridor.
+ * Entries with `flagship: true` are placed as a facing pair ("the transept")
+ * at the end of the corridor, right before the door to the team.
+ *
+ * To add an event: append an object, pick an `artifact` (the physical centrepiece
+ * of its room — see scenes/events/artifacts), optionally add a photo to media.ts.
+ */
+import { MEDIA, type MediaAsset } from './media';
+import { PRODIGY_PROGRAMME } from './prodigy';
+
+export type RoomArtifact =
+  | 'blocks'
+  | 'leaderboard'
+  | 'interview'
+  | 'memory-stack'
+  | 'neural-net'
+  | 'locked-box'
+  | 'lectern'
+  | 'pinboard'
+  | 'puzzle-wall'
+  | 'hack-tables';
+
+export interface EventFact {
+  label: string;
+  value: string;
+}
+
+export interface EventLink {
+  label: string;
+  href: string;
+}
+
+export interface EventRecord {
+  slug: string;
+  title: string;
+  /** Tag shown on the source site's card, e.g. "Training". */
+  kind: string;
+  /** Second tag on the source card, e.g. "Semester Program". */
+  cadence: string;
+  flagship?: boolean;
+  /** One-line card summary from the source site. */
+  summary: string;
+  /** Full "Read More" description from the source site. */
+  description: string;
+  facts: EventFact[];
+  links: EventLink[];
+  image?: MediaAsset;
+  /** Room accent colour (used sparingly: floor inlay, light temperature, poster). */
+  accent: string;
+  artifact: RoomArtifact;
+  /** Optional list of sub-events shown inside the room. */
+  programme?: { title: string; text: string }[];
+}
+
+export const EVENTS: EventRecord[] = [
+  {
+    slug: 'head-first',
+    title: 'Head First',
+    kind: 'Workshop',
+    cadence: 'Beginner Program',
+    summary: 'A beginner-friendly program for first-year students to learn programming logic and data structures.',
+    description:
+      'Head First is a tailored event designed exclusively for first-year students. Similar to CodeX, this initiative prioritizes the unique needs of beginners, offering challenges and problem sets curated to align with their introductory programming and basic data structure understanding. Through Head First, first-year students are guided through a learning journey that familiarizes them with programming logic and essential data structures. Join us in laying the foundation for a successful coding journey and witness the transformative experience of diving into the world of programming at its very beginning.',
+    facts: [
+      { label: 'For', value: 'First-year students' },
+      { label: 'Focus', value: 'Programming logic · basic data structures' },
+      { label: 'Goal', value: 'Fundamentals of DSA for competitive programming' },
+    ],
+    links: [],
+    image: MEDIA.eventHeadfirst,
+    accent: '#9fb4c9',
+    artifact: 'blocks',
+  },
+  {
+    slug: 'codex',
+    title: 'CodeX',
+    kind: 'Competition',
+    cadence: 'Monthly Series',
+    summary: 'A series of competitive programming contests with editorials and sessions on algorithms and data structures.',
+    description:
+      "CodeX is our dedicated event tailored to enhance students' competitive programming skills. CodeX revolves around a series of challenging contests designed to assess participants' problem-solving abilities. Dive into the world of competitive programming with insightful editorials for each contest, offering valuable perspectives on optimal problem-solving approaches. CodeX goes beyond contests by hosting informative sessions covering the best algorithms, mathematical concepts, and data structures essential for mastering competitive programming. Additionally, gain valuable insights into the prestigious International Collegiate Programming Contest (ICPC) through exclusive information sessions. Join CodeX to sharpen your coding prowess and unlock the secrets to success in the dynamic realm of competitive programming.",
+    facts: [
+      { label: 'Format', value: 'Contest series with editorials' },
+      { label: 'Sessions', value: 'Algorithms · mathematics · data structures' },
+      { label: 'Also', value: 'ICPC information sessions' },
+    ],
+    links: [],
+    image: MEDIA.eventCodex,
+    accent: '#3d7be0',
+    artifact: 'leaderboard',
+  },
+  {
+    slug: 'code',
+    title: 'C.O.D.E',
+    kind: 'Training',
+    cadence: 'Semester Program',
+    summary: 'A transformative program with curated problem sheets and contests to prepare students for internship and placement interviews.',
+    description:
+      'Embark on a transformative journey with C.O.D.E, our premier event meticulously crafted to equip students for internship and placement interviews. C.O.D.E aims to empower participants by immersing them in carefully curated problem sheets, thoughtfully categorized by topics, fostering skill fortification across crucial areas. Engage in distinct contests tailored to each topic, providing a laser-focused mastery experience. The grand finale contest awaits to evaluate your comprehensive understanding and showcase your prowess. Access exclusive materials encompassing vital interview aspects such as OS, DBMS, Networks, and System Design. C.O.D.E aspires to guide you through this process with experienced mentors assigned throughout the event. Elevate your preparation through a mock interview experience, ensuring you emerge truly interview-ready.',
+    facts: [
+      { label: 'For', value: 'Pre-final and final year students' },
+      { label: 'Covers', value: 'OS · DBMS · Networks · System Design' },
+      { label: 'Ends with', value: 'Grand finale contest · mock interviews' },
+    ],
+    links: [],
+    image: MEDIA.eventCode,
+    accent: '#7f9c86',
+    artifact: 'interview',
+  },
+  {
+    slug: 'bell-labs',
+    title: 'Bell Labs',
+    kind: 'Workshop',
+    cadence: 'Advanced Series',
+    summary: 'In-depth sessions on operating systems, memory management, and architectures.',
+    description:
+      "Immerse yourself in the core of computing with \"Bell Labs,\" an event dedicated to exploring the fundamental aspects of operating systems, memory management, and the intricate logic behind them. Dive into detailed sessions led by experienced students, where you'll unravel the complexities of architectures, delve into the development of bootloaders, and gain a profound understanding of the essential components that power operating systems. Bell Labs is your gateway to a comprehensive exploration of the foundational elements that drive computing systems. Join us on this enlightening journey and deepen your knowledge of operating systems and their critical functionalities.",
+    facts: [
+      { label: 'Topics', value: 'Operating systems · memory management' },
+      { label: 'Deep dives', value: 'Architectures · bootloaders' },
+      { label: 'Led by', value: 'Experienced students' },
+    ],
+    links: [],
+    image: MEDIA.eventBellLabs,
+    accent: '#b8743f',
+    artifact: 'memory-stack',
+  },
+  {
+    slug: 'machine-learning-101',
+    title: 'Machine Learning 101',
+    kind: 'Workshop',
+    cadence: 'Sessions',
+    summary: 'Immersive sessions exploring machine learning and deep learning concepts.',
+    description:
+      'Dive into the realm of artificial intelligence with "Machine Learning 101," an immersive event focused on unraveling the intricacies of machine learning and deep learning. Delve into comprehensive sessions where experienced students guide you through various ML and deep learning concepts, providing a detailed understanding of this cutting-edge technology. Explore the foundations of machine learning, grasp the nuances of deep learning, and gain valuable insights into the practical applications of these concepts. Join us for a journey through the fascinating world of Machine Learning 101 and unlock the potential of these transformative technologies.',
+    facts: [
+      { label: 'Covers', value: 'Machine learning · deep learning' },
+      { label: 'Led by', value: 'Experienced students' },
+    ],
+    links: [],
+    image: MEDIA.eventMl,
+    accent: '#8c83c4',
+    artifact: 'neural-net',
+  },
+  {
+    slug: 'schr0ding3r5',
+    title: 'Schr0ding3r5',
+    kind: 'Cybersecurity',
+    cadence: 'Ongoing',
+    summary: 'A cybersecurity initiative to raise awareness and build skills among students.',
+    description:
+      "Step into the realm of cybersecurity with Schr0ding3r5, the cybersecurity wing of ACM-CEG. Our mission is to spread awareness about competitive security and enhance the overall perception of cybersecurity among students. Engage in events crafted to bring together cybersecurity enthusiasts in the college, fostering a community that actively contributes to the evolving landscape of digital security. Join us in exploring the fascinating world of Schr0ding3r5, where we strive to empower students with knowledge, skills, and a passion for competitive security. Together, let's fortify our understanding of cybersecurity and contribute to a safer digital future.",
+    facts: [
+      { label: 'What', value: 'The cybersecurity wing of ACM-CEG' },
+      { label: 'Focus', value: 'Competitive security awareness' },
+    ],
+    links: [],
+    image: MEDIA.eventSchrodinger,
+    accent: '#4f9d95',
+    artifact: 'locked-box',
+  },
+  {
+    slug: 'masterclass',
+    title: 'MasterClass',
+    kind: 'Talk',
+    cadence: 'Guest Sessions',
+    summary: 'Sessions with alumni sharing insights on higher studies and career paths.',
+    description:
+      "Elevate your academic aspirations with \"Masterclass,\" a unique event featuring insightful sessions led by students pursuing master's degrees in diverse fields. Explore firsthand experiences from individuals in Computer Science, AI, ECE and even MBA, gaining valuable insights on pursuing specific degrees and planning for the future. Beyond sharing experiences, Masterclass equips participants with GRE preparation materials, empowering them to navigate the graduate school application process. Access a wealth of resources, including GRE study materials and informative articles, to guide your path towards higher education. Join Masterclass to glean wisdom from those who have walked the master's journey and embark on your own educational odyssey with confidence.",
+    facts: [
+      { label: 'Speakers', value: "Alumni pursuing master's degrees" },
+      { label: 'Fields', value: 'Computer Science · AI · ECE · MBA' },
+      { label: 'Resources', value: 'GRE preparation material' },
+    ],
+    links: [],
+    image: MEDIA.eventMasterclass,
+    accent: '#c9b28f',
+    artifact: 'lectern',
+  },
+  {
+    slug: 'offcamp',
+    title: 'OffCamp',
+    kind: 'Program',
+    cadence: 'Ongoing',
+    summary: 'A dynamic program connecting students with scholarships, internships, and job opportunities.',
+    description:
+      'Unlock a world of opportunities with OffCamp, a dynamic program designed to actively connect students with a plethora of opportunities. Dive into a rich pool of scholarships, internships, job openings, and more by becoming a part of our OffCamp community. This initiative serves as your gateway to easily access a diverse range of opportunities tailored to your academic and professional journey. Join OffCamp and stay ahead in your pursuit of success, as we strive to empower you with the latest and most relevant openings in the realms of scholarships, internships, and job opportunities. Seize the chance to enhance your academic and professional growth with OffCamp.',
+    facts: [
+      { label: 'Shares', value: 'Scholarships · internships · jobs' },
+      { label: 'Where', value: 'Instagram and LinkedIn' },
+    ],
+    links: [
+      { label: 'Instagram', href: 'https://www.instagram.com/acmceg/' },
+      { label: 'LinkedIn', href: 'https://www.linkedin.com/in/acm-ceg/' },
+    ],
+    image: MEDIA.eventOffcamp,
+    accent: '#cf7a58',
+    artifact: 'pinboard',
+  },
+  {
+    slug: 'prodigy',
+    title: 'Prodigy',
+    kind: 'Competition',
+    cadence: 'Annual Event',
+    flagship: true,
+    summary: 'A state-level technical event for high school students to explore computing trends.',
+    description:
+      'Prodigy, an annual state-level technical event organized by the ACM-CEG chapter at Anna University, is a pioneering initiative designed exclusively for students in grades 9-12. Rooted in the ethos of promoting technological awareness and fostering a passion for computer science, Prodigy goes beyond traditional education, providing a dynamic platform for young minds to delve into the exciting realms of computing and technology. Over the span of more than 15 years, Prodigy has transcended its identity as a mere technical event; it has evolved into a transformative experience. By reaching out to schools and students across the state, Prodigy has become a beacon of inspiration, sparking a passion for technology that extends far beyond the duration of the event. The legacy of Prodigy is etched in the minds of those who have participated, fostering a community of young enthusiasts who are not just consumers but creators in the world of technology.',
+    facts: [
+      { label: 'For', value: 'School students, grades 9–12' },
+      { label: 'Scale', value: 'Annual · state-level' },
+      { label: 'Legacy', value: 'More than 15 years' },
+    ],
+    links: [
+      { label: 'School registration', href: 'https://forms.gle/B28ropzrbtBJhhu57' },
+      { label: 'Student registration', href: 'https://forms.gle/Wq9mtdzBJwwWNTB5A' },
+      { label: 'Prodigy page', href: 'https://auceg.acm.org/prodigy.html' },
+    ],
+    image: MEDIA.eventProdigy,
+    accent: '#b5452f',
+    artifact: 'puzzle-wall',
+    programme: PRODIGY_PROGRAMME,
+  },
+  {
+    slug: 'codher',
+    title: 'CodHer',
+    kind: 'Competition',
+    cadence: 'Annual Event',
+    flagship: true,
+    summary: 'CodHer is a women-only hackathon empowering female developers through innovation and collaboration.',
+    description:
+      'Empowerment takes center stage at CodHer, our exclusive women-only hackathon designed to inspire and motivate female developers to actively engage in the dynamic world of hackathons. Providing a dedicated platform for female talent, CodHer is a showcase of skills, innovation, and collaboration. With renowned sponsors like Motorq and GitHub, participants have the opportunity to compete for cash prizes exceeding 50k, along with the chance to secure coveted internships. Join CodHer and become a part of a supportive community, celebrating the prowess of women in the tech space and encouraging their active participation in the ever-evolving landscape of hackathons.',
+    facts: [
+      { label: 'Format', value: 'Women-only hackathon' },
+      { label: 'Prizes', value: 'Cash prizes exceeding 50k · internships' },
+      { label: 'Sponsors', value: 'Motorq · GitHub' },
+    ],
+    links: [
+      { label: 'Register', href: 'https://codher.in/' },
+      { label: 'Explore CodHer', href: 'https://aucodher.vercel.app/' },
+    ],
+    image: MEDIA.eventCodher,
+    accent: '#d4a24c',
+    artifact: 'hack-tables',
+  },
+];
+
+export const FLAGSHIPS = EVENTS.filter((e) => e.flagship);
+export const eventBySlug = (slug: string) => EVENTS.find((e) => e.slug === slug);
