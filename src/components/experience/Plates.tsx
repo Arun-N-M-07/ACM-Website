@@ -63,7 +63,7 @@ export function Plates() {
 
       <Plate id="facility" side="right" anchor="board" pin="DEPARTURES" range={ranges.facility}>
         <p className="plate-kicker">05 · The facility</p>
-        <h2 className="plate-title">Where the work happens.</h2>
+        <h2 className="plate-title">Follow the light.<br />Find your spark.</h2>
         <p className="plate-body">
           {EVENTS.length - FLAGSHIPS.length} programmes and {FLAGSHIPS.length} flagships, one room each — every one of them is on the board. Keep scrolling to walk the corridor.
         </p>

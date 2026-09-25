@@ -36,13 +36,14 @@ export function Sky() {
             gl_Position = p.xyww;
           }`,
         fragmentShader: /* glsl */ `
+          precision highp float;
           uniform vec3 zenith; uniform vec3 mid; uniform vec3 horizon; uniform vec3 sunColor; uniform vec3 sunDir;
           varying vec3 vDir;
           void main() {
             float h = clamp(vDir.y, -0.2, 1.0);
-            vec3 col = mix(horizon, mid, smoothstep(0.0, 0.18, h));
-            col = mix(col, zenith, smoothstep(0.16, 0.75, h));
-            col = mix(col, horizon * 0.55, smoothstep(0.0, -0.2, h));
+            vec3 col = mix(horizon, mid, smoothstep(0.0, 0.38, h));
+            col = mix(col, zenith, smoothstep(0.28, 0.95, h));
+            col = mix(col, horizon * 0.55, 1.0 - smoothstep(-0.2, 0.0, h));
             float s = max(dot(normalize(vDir), sunDir), 0.0);
             col += sunColor * (pow(s, 8.0) * 0.35 + pow(s, 180.0) * 1.2) * smoothstep(-0.05, 0.1, h + 0.05);
             gl_FragColor = vec4(col, 1.0);

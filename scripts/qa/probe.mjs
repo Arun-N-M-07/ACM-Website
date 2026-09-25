@@ -16,7 +16,7 @@ page.on('pageerror', (e) => errs.push(`[pageerror] ${e.message}`));
 page.on('console', (m) => m.type() === 'error' && errs.push(`[error] ${m.text()}`));
 await page.goto(url, { waitUntil: 'domcontentloaded' });
 await page.waitForSelector('.loader[data-state="ready"]', { timeout: 120000 });
-await page.evaluate(() => [...document.querySelectorAll('.loader-enter .btn')].find((b) => /silent/i.test(b.textContent))?.click());
+await page.click('.loader-enter button[aria-label="Enter silently"]');
 await new Promise((r) => setTimeout(r, 1500));
 await page.evaluate((p) => window.__acm.jump(p), from);
 await new Promise((r) => setTimeout(r, 2500));

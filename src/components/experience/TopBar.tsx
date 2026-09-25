@@ -19,7 +19,7 @@ export function TopBar() {
   const set = useExperience((s) => s.set);
   const current = CHAPTERS.find((c) => c.id === (phase === 'impact' ? 'team' : chapter));
 
-  if (phase === 'loading') return null;
+  if (phase === 'loading' || phase === 'ready') return null;
 
   return (
     <header className="topbar">
@@ -37,7 +37,7 @@ export function TopBar() {
           className={`ctl ctl-music ${musicOn ? 'on' : ''}`}
           aria-pressed={musicOn}
           disabled={!hasTrack}
-          title={hasTrack ? `${MUSIC.title} — ${MUSIC.artist}` : `Add the soundtrack at public${MUSIC.src} to enable music`}
+          title={hasTrack ? `${MUSIC.title} — ${MUSIC.artist}` : 'This experience is silent'}
           onClick={(e) => {
             const next = !musicOn;
             set({ musicOn: next });
@@ -68,7 +68,7 @@ export function TopBar() {
           Text version
         </button>
         <button className="ctl ctl-index" onClick={() => set({ menuOpen: true })} aria-haspopup="dialog">
-          Index
+          Explore <span className="index-symbol" aria-hidden="true">＋</span>
         </button>
       </nav>
     </header>

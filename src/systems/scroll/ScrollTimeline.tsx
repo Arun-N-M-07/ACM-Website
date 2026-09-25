@@ -21,7 +21,7 @@ function maxScroll() {
 /** Smoothly scroll the journey to progress `p`. */
 export function scrollToProgress(p: number, duration = 2.4) {
   const y = p * maxScroll();
-  if (lenis) lenis.scrollTo(y, { duration, easing: (t: number) => 1 - Math.pow(1 - t, 3) });
+  if (lenis) lenis.scrollTo(y, { duration, force: true, easing: (t: number) => 1 - Math.pow(1 - t, 3) });
   else window.scrollTo({ top: y, behavior: 'auto' });
 }
 
@@ -59,6 +59,7 @@ export function ScrollTimeline() {
   const track = useRef<HTMLDivElement>(null);
   const reducedMotion = useExperience((s) => s.reducedMotion);
   const phase = useExperience((s) => s.phase);
+  const overlay = useExperience((s) => s.menuOpen || !!s.dossier || s.textVersionOpen);
 
   useEffect(() => {
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
@@ -95,11 +96,11 @@ export function ScrollTimeline() {
 
   // Scrolling only drives the journey in cinematic mode.
   useEffect(() => {
-    const locked = phase !== 'cinematic';
+    const locked = phase !== 'cinematic' || overlay;
     document.documentElement.classList.toggle('scroll-locked', locked);
     if (locked) lenis?.stop();
     else lenis?.start();
-  }, [phase]);
+  }, [phase, overlay, reducedMotion]);
 
   return <div ref={track} className="scroll-track" style={{ height: `${SCROLL_LENGTH_VH}vh` }} aria-hidden="true" />;
 }

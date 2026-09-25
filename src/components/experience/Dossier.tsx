@@ -4,17 +4,18 @@ import { useEffect, useRef } from 'react';
 import { eventBySlug } from '@/content/events';
 import { isAvailable } from '@/content/media';
 import { useExperience } from '@/store/experience';
+import { useModalFocus } from './useModalFocus';
 
 export function Dossier() {
   const slug = useExperience((s) => s.dossier);
   const set = useExperience((s) => s.set);
   const ev = slug ? eventBySlug(slug) : undefined;
   const closeRef = useRef<HTMLButtonElement>(null);
-  const lastFocus = useRef<HTMLElement | null>(null);
+  const root = useRef<HTMLElement>(null);
+  useModalFocus(!!ev, root);
 
   useEffect(() => {
     if (!ev) return;
-    lastFocus.current = document.activeElement as HTMLElement | null;
     closeRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') set({ dossier: null });
@@ -22,7 +23,6 @@ export function Dossier() {
     window.addEventListener('keydown', onKey);
     return () => {
       window.removeEventListener('keydown', onKey);
-      lastFocus.current?.focus?.();
     };
   }, [ev, set]);
 
@@ -30,6 +30,7 @@ export function Dossier() {
   return (
     <div className="dossier-backdrop" onClick={() => set({ dossier: null })}>
       <aside
+        ref={root}
         className="dossier"
         role="dialog"
         aria-modal="true"

@@ -33,7 +33,9 @@ page.on('response', (r) => r.status() >= 400 && logs.push(`[${r.status()}] ${r.u
 
 await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 });
 await page.waitForSelector('.loader[data-state="ready"]', { timeout: 120000 });
-await page.evaluate(() => [...document.querySelectorAll('.loader-enter .btn')].find((b) => /silent/i.test(b.textContent))?.click());
+await new Promise((r) => setTimeout(r, 1200));
+await page.screenshot({ path: `${out}/entrance.png` });
+await page.click('.loader-enter button[aria-label="Enter silently"]');
 await new Promise((r) => setTimeout(r, 2000));
 
 const jump = (p) => page.evaluate((v) => window.__acm.jump(v), p);

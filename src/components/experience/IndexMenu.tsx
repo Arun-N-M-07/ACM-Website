@@ -10,12 +10,16 @@ import { CHAPTER } from '@/content/chapter';
 import { DOMAINS } from '@/content/domains';
 import { useExperience } from '@/store/experience';
 import { goToChapter, goToDomain, goToRoom } from './navigation';
+import { useModalFocus } from './useModalFocus';
 
 export function IndexMenu() {
   const open = useExperience((s) => s.menuOpen);
   const set = useExperience((s) => s.set);
   const chapter = useExperience((s) => s.chapter);
+  const reduced = useExperience((s) => s.reducedMotion);
+  const root = useRef<HTMLDivElement>(null);
   const closeRef = useRef<HTMLButtonElement>(null);
+  useModalFocus(open, root);
 
   useEffect(() => {
     if (!open) return;
@@ -29,13 +33,14 @@ export function IndexMenu() {
 
   if (!open) return null;
   return (
-    <div className="index" role="dialog" aria-modal="true" aria-label="Index" data-lenis-prevent>
+    <div ref={root} className="index" role="dialog" aria-modal="true" aria-label="Explore the chapter" data-lenis-prevent>
       <div className="index-head">
-        <p className="kicker">Index</p>
+        <p className="kicker">ACM–CEG / Field guide</p>
         <button ref={closeRef} className="btn" onClick={() => set({ menuOpen: false })}>
           Close ✕
         </button>
       </div>
+      <div className="index-intro"><h2>Follow your <em>curiosity.</em></h2><p>Travel the world at your own pace.<br />Every room has a story. Every domain has a place.</p></div>
       <div className="index-grid">
         <nav aria-label="Chapters">
           <p className="kicker">The journey</p>
@@ -91,7 +96,7 @@ export function IndexMenu() {
             </li>
             <li>
               <a className="text-link" href="/archive">
-                Printed edition (/archive)
+                Open the printed edition ↗
               </a>
             </li>
             <li>
@@ -114,6 +119,7 @@ export function IndexMenu() {
               (ODbL)
             </li>
           </ul>
+          <button className="btn index-motion" aria-pressed={reduced} onClick={() => set({ reducedMotion: !reduced })}>{reduced ? 'Reduced motion on' : 'Enable reduced motion'}</button>
           <p className="kicker">Keys</p>
           <ul className="index-keys">
             <li>

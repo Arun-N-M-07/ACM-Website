@@ -60,8 +60,8 @@ export function CanvasPanel({
     const texture = toTexture(canvas);
     const material =
       shading === 'glow'
-        ? new MeshBasicMaterial({ map: texture, transparent, color: new Color(1, 1, 1).multiplyScalar(glowStrength) })
-        : new MeshStandardMaterial({ map: texture, emissiveMap: texture, emissive: new Color('#ffffff'), emissiveIntensity: 0.32 * glowStrength, roughness: 0.85, transparent });
+        ? new MeshBasicMaterial({ map: texture, transparent, depthWrite: !transparent, color: new Color(1, 1, 1).multiplyScalar(glowStrength) })
+        : new MeshStandardMaterial({ map: texture, emissiveMap: texture, emissive: new Color('#ffffff'), emissiveIntensity: 0.32 * glowStrength, roughness: 0.85, transparent, depthWrite: !transparent });
     return { canvas, ctx, texture, material };
   }, [pw, ph, shading, transparent, glowStrength]);
 

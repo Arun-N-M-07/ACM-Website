@@ -14,6 +14,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useRef } from 'react';
 import { type PerspectiveCamera, Vector3 } from 'three';
 import { CAMERA_RESPONSE, IMPACT } from '@/config/camera';
+import { FLOOR_Y, TEAM_HALL, TEAM_ORIGIN } from '@/config/world';
 import { chapterForSegment, IMPACT_TRIGGER, SEGMENTS, segmentAt } from '@/config/timeline';
 import { experience } from '@/store/experience';
 import { cameraFocus, tour } from '@/systems/characters/cues';
@@ -22,7 +23,7 @@ import { progress } from '@/systems/scroll/progress';
 import { placeScroll } from '@/systems/scroll/ScrollTimeline';
 import { fx } from './effects';
 import { evaluateImpact } from './impact';
-import { aim, copyPose, emptyPose, lerp, lerpAngle } from './pose';
+import { aim, copyPose, emptyPose, lerp, lerpAngle, smoothstep } from './pose';
 import { eventStationAt, evaluateCinematic, nearestStop } from './shots';
 import { TOUR_STOPS, tourAt } from './tour';
 
@@ -185,6 +186,21 @@ const e = evaluateImpact(t, impactFrom.current, shot.current, st.reducedMotion);
       const back = Math.min(2, (1 / camera.aspect - 1) * 1.6);
       p.x += Math.sin(p.yaw) * back;
       p.z += Math.cos(p.yaw) * back;
+      // In portrait, frame the final model above its bottom sheet. The general
+      // interior wide angle would reduce the entire hologram to a small dot.
+      if (tour.index === TOUR_STOPS.length - 1) {
+        const w = smoothstep(.62, 1, tour.walk);
+        const x = TEAM_ORIGIN[0] + .2;
+        const y = FLOOR_Y + 3.6;
+        const z = TEAM_ORIGIN[2] + TEAM_HALL.core.z + 5.8;
+        const a = aim([x, y, z], [TEAM_ORIGIN[0], FLOOR_Y + .1, TEAM_ORIGIN[2] + TEAM_HALL.core.z]);
+        p.x = lerp(p.x, x, w);
+        p.y = lerp(p.y, y, w);
+        p.z = lerp(p.z, z, w);
+        p.yaw = lerpAngle(p.yaw, a.yaw, w);
+        p.pitch = lerp(p.pitch, a.pitch, w);
+        fov = lerp(fov, 70, w);
+      }
     }
     // Depth precision: the near plane scales with altitude above ground so the
     // campus's flat layers (lawns, paving, roads) never z-fight from the drone,

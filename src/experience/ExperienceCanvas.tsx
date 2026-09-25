@@ -76,10 +76,12 @@ export default function ExperienceCanvas() {
       shadows={q.shadows ? 'soft' : false}
       gl={{ antialias: q.antialias, powerPreference: 'high-performance', alpha: false, stencil: false }}
       camera={{ fov: start.fov, near: 0.25, far: 3200, position: start.pos }}
-      onCreated={({ gl }) => {
+      onCreated={({ gl, scene }) => {
         gl.toneMapping = ACESFilmicToneMapping;
         gl.toneMappingExposure = 1.05;
         gl.outputColorSpace = SRGBColorSpace;
+        const debug = (window as unknown as { __acm?: Record<string, unknown> }).__acm;
+        if (debug) { debug.scene = scene; debug.renderInfo = () => gl.info.render; }
         gl.domElement.addEventListener('webglcontextlost', (e) => {
           e.preventDefault();
           experience().set({ webgl: 'failed' });

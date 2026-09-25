@@ -14,6 +14,8 @@ import { music } from '@/systems/audio/music';
 import { DOMAINS } from '@/content/domains';
 import { goToChapter, goToDomain, goToRoom, skipToCore } from './navigation';
 import { jumpToProgress } from '@/systems/scroll/ScrollTimeline';
+import { CHAPTER } from '@/content/chapter';
+import { WorldMap } from './WorldMap';
 
 function applyDeepLink() {
   const hash = window.location.hash.replace('#', '');
@@ -71,46 +73,37 @@ export function LoadingScreen() {
   const leaving = phase !== 'loading' && phase !== 'ready';
   return (
     <div className="loader" data-state={leaving ? 'leaving' : ready ? 'ready' : 'loading'} role="dialog" aria-modal="true" aria-label="Loading the ACM-CEG experience">
+      <div className="loader-masthead"><span>ACM <i /> CEG</span><span>{CHAPTER.city}, India <span className="loader-edition">/ Student Chapter</span></span></div>
+      <div className="loader-atlas"><WorldMap /></div>
       <div className="loader-inner">
-        <p className="kicker">College of Engineering Guindy · Anna University</p>
-        <p className="loader-title" aria-hidden="true">
-          <span>ACM</span>
-          <span>CEG</span>
-        </p>
+        <p className="kicker">Welcome to the world of ACM–CEG</p>
+        <h2 className="loader-title"><span>A world of</span><span><em>curious</em> minds.</span></h2>
+        <p className="loader-intro">Begin at the red building. Discover the programmes.<br className="desktop-break" /> Meet the people who bring it all to life.</p>
         <div className="loader-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(loadProgress * 100)}>
           <span style={{ transform: `scaleX(${loadProgress})` }} />
         </div>
         <p className="loader-label">
-          <span>{ready ? 'Ready' : label}</span>
+          <span>{ready ? 'Your journey is ready' : label}</span>
           <span>{String(Math.round(loadProgress * 100)).padStart(3, '0')}</span>
         </p>
         <div className="loader-enter" aria-hidden={!ready}>
-          <button ref={hasTrack ? enterRef : undefined} className="btn btn-primary" disabled={!ready || !hasTrack} onClick={() => enter(true)}>
+          {hasTrack && <button ref={enterRef} className="btn btn-primary" disabled={!ready} onClick={() => enter(true)}>
             Enter with music
+          </button>}
+          <button ref={hasTrack ? undefined : enterRef} className={`btn ${hasTrack ? '' : 'btn-primary'}`} aria-label="Enter silently" disabled={!ready} onClick={() => enter(false)}>
+            {hasTrack ? 'Enter silently' : 'Enter the world'} <span aria-hidden="true">↗</span>
           </button>
-          <button ref={hasTrack ? undefined : enterRef} className={`btn ${hasTrack ? '' : 'btn-primary'}`} disabled={!ready} onClick={() => enter(false)}>
-            Enter silently
-          </button>
-          <p className="loader-track">
-            {hasTrack ? (
-              <>
-                ♪ {MUSIC.title} <span>— {MUSIC.artist}</span>
-              </>
-            ) : (
-              <>
-                No soundtrack installed — add <code>public{MUSIC.src}</code>
-              </>
-            )}
-          </p>
+          {hasTrack && <p className="loader-track">♪ {MUSIC.title} <span>— {MUSIC.artist}</span></p>}
         </div>
         <p className="loader-foot">
-          Scroll to travel · best with headphones ·{' '}
+          Scroll to explore ·{' '}
           <button className="text-link" onClick={() => set({ textVersionOpen: true })}>
-            read the text version
+            Read the chapter
           </button>
           {slow && !ready ? ' — this is taking longer than usual.' : ''}
         </p>
       </div>
+      <div className="loader-colophon"><span>{CHAPTER.institution}<br />{CHAPTER.university}</span><span>Learn. Build. Connect.<br />Since {CHAPTER.established}</span></div>
     </div>
   );
 }

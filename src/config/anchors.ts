@@ -27,6 +27,7 @@ export const ANCHOR = {
   corridorSign: new Vector3(0, FLOOR_Y + C.height + 1.6, H.north + 0.1),
   door: new Vector3(0, FLOOR_Y + DOOR.height + 0.9, DOOR.z + 0.2),
   commons: new Vector3(TEAM_ORIGIN[0], FLOOR_Y + 3.4, TEAM_ORIGIN[2] + TEAM_HALL.commons.z - 3.4),
+  core: new Vector3(TEAM_ORIGIN[0], FLOOR_Y + 1.6, TEAM_ORIGIN[2] + TEAM_HALL.core.z),
 };
 
 /** Called once when the canvas mounts. */

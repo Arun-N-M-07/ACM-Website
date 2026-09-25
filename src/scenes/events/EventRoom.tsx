@@ -67,7 +67,7 @@ function ExhibitLight({ accent, height, level }: { accent: string; height: numbe
     };
   }, [height, accent]);
   useFrame(() => {
-    res.coneMat.opacity = 0.045 * level.current;
+    res.coneMat.opacity = 0.018 * level.current;
     res.poolMat.opacity = 0.32 * level.current;
   });
   return (
@@ -111,6 +111,8 @@ export function EventRoom({ layout, total }: Props) {
   }, [W, D, H, header]);
 
   const accentMat = useDisposable(() => new MeshBasicMaterial({ color: new Color(event.accent).multiplyScalar(1.5), toneMapped: false }), [event.accent]);
+  const signalBlue = useMemo(() => new Color('#83bbff'), []);
+  const roomColor = useMemo(() => new Color(event.accent), [event.accent]);
 
   // Light: brightens while you're inside; a room that "boots" stays dark until it does.
   const anchorPos = useMemo(() => toWorld(layout, rotY, 0, H - 0.7, -D * 0.1), [layout, rotY, H, D]);
@@ -118,6 +120,8 @@ export function EventRoom({ layout, total }: Props) {
   const level = useRef(0.5);
   useFrame((_, dt) => {
     const c = clock.current;
+    // The shared blue signal takes on this installation's colour as it performs.
+    accentMat.color.copy(signalBlue).lerp(roomColor, sstep(c.u, 0, .85)).multiplyScalar(1.25);
     let target = c.here ? 1.3 : c.near ? 0.7 : 0.45;
     if (exhibit.darkUntil !== undefined) target *= 0.12 + 0.88 * sstep(c.u, 0.04, exhibit.darkUntil);
     level.current += (target - level.current) * (1 - Math.exp(-dt * 4));

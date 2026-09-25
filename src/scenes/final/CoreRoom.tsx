@@ -60,6 +60,8 @@ import { fitSize, text } from '@/systems/textures/typeset';
 import { CEG_INNER, CEG_OUTER } from '@/scenes/campus/cegModel';
 import { type CampusData, loadCampus } from '@/scenes/campus/campusData';
 import { CanvasPanel } from '@/scenes/shared/CanvasPanel';
+import { SIGNAL_KEYS } from '@/scenes/shared/SignalThread';
+import { useExperience } from '@/store/experience';
 import { useKit } from '@/scenes/underground/kit';
 
 const R = TEAM_HALL.core.radius;
@@ -85,19 +87,7 @@ const WARM = new Color('#ffb86b');
 
 /** Every stop of the journey in world space, for the route line. */
 function routePoints(): Vector3[] {
-  const W = CAMPUS.well;
-  // From above the lawn, down the light-well…
-  const pts: [number, number, number][] = [
-    [W.x, 26, W.z + 8],
-    [W.x, 12, W.z + 2],
-    [W.x, 0, W.z],
-    [W.x, FLOOR_Y + 1, W.z],
-    [0, FLOOR_Y + 1, UNDERGROUND.hall.north + 2],
-  ];
-  for (const r of CORRIDOR.rooms) pts.push([r.viewpoint[0] * 1.6, FLOOR_Y + 1, r.viewpoint[2]]);
-  pts.push([0, FLOOR_Y + 1, DOOR.z + 3], [0, FLOOR_Y + 1, DOOR.z - 3]);
-  for (const s of TOUR_STOPS) pts.push([s.view[0], FLOOR_Y + 1, s.view[2]]);
-  return pts.map(([x, y, z]) => new Vector3(x, y, z));
+  return SIGNAL_KEYS.map((k) => k.at.clone());
 }
 
 /** Plans of the underground spaces, as line segments in world space. */
@@ -182,6 +172,7 @@ function ringTexture(line: string, height: number, font: 'serif' | 'mono', color
 }
 
 function Hologram() {
+  const reduced = useExperience((s) => s.reducedMotion);
   const [campus, setCampus] = useState<CampusData | null>(null);
   useEffect(() => {
     let alive = true;
@@ -193,6 +184,7 @@ function Hologram() {
     };
   }, []);
   const spin = useRef<Group>(null);
+  const projection = useRef<Group>(null);
   const comet = useRef<Mesh>(null);
   const here = useRef<Mesh>(null);
   const res = useDisposable(() => {
@@ -202,12 +194,12 @@ function Hologram() {
     return {
       curve,
       route: new TubeGeometry(curve, 700, 0.75, 6, false),
-      routeMat: new MeshBasicMaterial({ color: WARM.clone().multiplyScalar(1.6), transparent: true, opacity: 0.9, blending: AdditiveBlending, depthWrite: false, toneMapped: false }),
+      routeMat: new MeshBasicMaterial({ color: COOL.clone().multiplyScalar(1.3), transparent: true, opacity: 0.9, blending: AdditiveBlending, depthWrite: false, toneMapped: false }),
       plan,
       planMat: new LineBasicMaterial({ color: WARM.clone().multiplyScalar(1.5), transparent: true, opacity: 0.9, blending: AdditiveBlending, depthWrite: false }),
       edgeMat: new LineBasicMaterial({ color: COOL.clone().multiplyScalar(1.3), transparent: true, opacity: 0.55, blending: AdditiveBlending, depthWrite: false }),
       main: mainBuilding(),
-      mainMat: new MeshBasicMaterial({ color: new Color(PALETTE.cegRed).multiplyScalar(1.3), transparent: true, opacity: 0.55, blending: AdditiveBlending, depthWrite: false, side: DoubleSide, toneMapped: false }),
+      mainMat: new MeshBasicMaterial({ color: new Color('#d66c53'), transparent: true, opacity: 0.4, depthWrite: false, side: DoubleSide, toneMapped: false }),
       ground: new RingGeometry(0, REACH, 96).rotateX(-Math.PI / 2),
       groundMat: new MeshBasicMaterial({ color: COOL, transparent: true, opacity: 0.045, blending: AdditiveBlending, depthWrite: false, side: DoubleSide, toneMapped: false }),
       edge: new RingGeometry(REACH - 1.2, REACH, 96).rotateX(-Math.PI / 2),
@@ -228,22 +220,25 @@ function Hologram() {
   useEffect(() => () => edges?.dispose(), [edges]);
   const tmp = useMemo(() => new Vector3(), []);
 
-  useFrame(({ clock }, dt) => {
-    if (spin.current) spin.current.rotation.y += dt * 0.05;
-    const t = (clock.elapsedTime * 0.06) % 1;
+  useFrame(() => {
+    const meet = tour.index === TOUR_STOPS.length - 1 ? tour.meet : 0;
+    const assemble = reduced ? 1 : smoothstep(.03, .42, meet);
+    const t = reduced ? 1 : smoothstep(.18, .64, meet);
+    if (projection.current) projection.current.scale.y = .12 + .88 * assemble;
+    if (spin.current) spin.current.rotation.y = -.38 + (reduced ? .3 : smoothstep(0, .65, meet) * .3);
+    res.route.setDrawRange(0, Math.floor(t * 700) * 36);
     if (comet.current) comet.current.position.copy(res.curve.getPointAt(t, tmp));
     if (here.current) {
-      const k = (clock.elapsedTime * 0.8) % 1;
-      here.current.scale.setScalar(1 + k * 2.2);
-      res.hereMat.opacity = 1 - k;
+      here.current.scale.setScalar(1 + (1 - t) * 2);
+      res.hereMat.opacity = smoothstep(.7, 1, t);
     }
-    // A faint flicker, like a projection.
-    res.edgeMat.opacity = 0.5 + Math.sin(clock.elapsedTime * 13) * 0.03;
+    res.edgeMat.opacity = .55 * assemble;
+    res.mainMat.opacity = .38 * assemble;
   });
 
   return (
     <group position={[0, TABLE_Y + 0.02, 0]}>
-      <group ref={spin}>
+      <group ref={spin}><group ref={projection}>
         {/* World space inside, shrunk and centred on the journey. */}
         <group scale={[SCALE, SCALE * DEPTH_X, SCALE]} position={[0, SURFACE_Y, 0]}>
           <group position={[0, 0, -CENTER_Z]}>
@@ -253,12 +248,18 @@ function Hologram() {
             {edges && <lineSegments geometry={edges} material={res.edgeMat} />}
             <mesh geometry={res.main} material={res.mainMat} />
             <lineSegments geometry={res.plan} material={res.planMat} />
-            <mesh geometry={res.route} material={res.routeMat} />
+            <mesh name="hologram-route" geometry={res.route} material={res.routeMat} />
             <mesh ref={comet} geometry={res.comet} material={res.cometMat} />
             <mesh ref={here} geometry={res.hereRing} material={res.hereMat} position={[CX, FLOOR_Y + 1, CZ]} />
           </group>
         </group>
-      </group>
+      </group></group>
+      <CanvasPanel width={1.5} height={.16} position={[-.5, 1.52, -.7]} shading="glow" transparent drawKey="holo-campus-label"
+        draw={(ctx, w, h) => text(ctx, '01 / CAMPUS', w / 2, h * .7, { family: 'mono', size: h * .65, color: '#b8ceea', align: 'center', tracking: .12 })} />
+      <CanvasPanel width={1.5} height={.16} position={[-.6, .55, .2]} shading="glow" transparent drawKey="holo-programmes-label"
+        draw={(ctx, w, h) => text(ctx, '02 / PROGRAMMES', w / 2, h * .7, { family: 'mono', size: h * .55, color: '#e4c5a2', align: 'center', tracking: .12 })} />
+      <CanvasPanel width={1.5} height={.16} position={[-.45, .22, 1.1]} shading="glow" transparent drawKey="holo-people-label"
+        draw={(ctx, w, h) => text(ctx, '03 / PEOPLE', w / 2, h * .7, { family: 'mono', size: h * .65, color: '#e4c5a2', align: 'center', tracking: .12 })} />
     </group>
   );
 }

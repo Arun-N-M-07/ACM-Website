@@ -13,6 +13,7 @@ import { CampusScene } from '@/scenes/campus/CampusScene';
 import { EventCorridor } from '@/scenes/events/EventCorridor';
 import { FinalDoor } from '@/scenes/events/FinalDoor';
 import { SafeBoundary } from '@/scenes/shared/SafeBoundary';
+import { SignalThread } from '@/scenes/shared/SignalThread';
 import { TeamWorkspace } from '@/scenes/team/TeamWorkspace';
 import { DescentShaft } from '@/scenes/underground/DescentShaft';
 import { FacilityHall } from '@/scenes/underground/FacilityHall';
@@ -85,6 +86,7 @@ export function SceneDirector() {
       )}
       {mounted.underground && (
         <UndergroundKit>
+          <SignalThread />
           {mounted.shaft && (
             <SafeBoundary name="shaft" fallback={null}>
               <DescentShaft />

@@ -254,6 +254,8 @@ function buildCampus(data: CampusData, treeCap: number, lowDetail: boolean): Bui
     if (trees.length >= treeCap) break;
     const { x, z } = c;
     if (inMain(x, z) || inGarden(x, z) || inBuilding(x, z) || near(x, z)) continue;
+    // Keep procedural crowns out of the opening camera's immediate flight envelope.
+    if (Math.abs(x) < 9 && z > GARDEN.z1 && z < GARDEN.z1 + 24) continue;
     if (areaBlockers.some((ring) => pointInRing(ring, x, z))) continue;
     // Keep the forecourt mostly open.
     if (x > -60 && x < 60 && z > 6 && z < 31 && r() > 0.12) continue;

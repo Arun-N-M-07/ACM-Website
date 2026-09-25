@@ -10,13 +10,15 @@ export function ChapterRail() {
   const chapter = useExperience((s) => s.chapter);
   const phase = useExperience((s) => s.phase);
   const fill = useRef<HTMLSpanElement>(null);
+  const counter = useRef<HTMLSpanElement>(null);
   const active = phase === 'impact' ? 'team' : chapter;
 
   useProgressFrame((p) => {
     if (fill.current) fill.current.style.transform = `scaleY(${p})`;
+    if (counter.current) counter.current.textContent = `${String(Math.round(p * 100)).padStart(2, '0')}%`;
   });
 
-  if (phase === 'loading') return null;
+  if (phase === 'loading' || phase === 'ready') return null;
   return (
     <nav className="rail" aria-label="Chapters">
       <span className="rail-line" aria-hidden="true">
@@ -42,6 +44,7 @@ export function ChapterRail() {
           </li>
         ))}
       </ol>
+      <span ref={counter} className="rail-percent" aria-hidden="true">00%</span>
     </nav>
   );
 }

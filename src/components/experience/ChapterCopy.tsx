@@ -39,7 +39,7 @@ export function ChapterCopy() {
       children: (
         <>
           <p className="kicker">
-            {CHAPTER.institution} · {CHAPTER.university} · {CHAPTER.city}
+            A student chapter. An entire world.
           </p>
           <h1 className="hero-title">
             <span>ACM</span>
@@ -48,8 +48,9 @@ export function ChapterCopy() {
           <p className="hero-sub">
             <em>Student Chapter</em> — since {CHAPTER.established}
           </p>
+          <p className="hero-place">{CHAPTER.institution}<br />{CHAPTER.university} · {CHAPTER.city}</p>
           <p className="scroll-cue" aria-hidden="true">
-            <span /> Scroll to rise
+            <span /> Scroll to discover
           </p>
           <button className="text-link skip-intro" onClick={() => jumpToProgress(SEGMENTS.events.start + 0.002)}>
             Skip to the events →

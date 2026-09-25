@@ -26,9 +26,9 @@ export const PALETTE = {
   road: '#4a4744',
   sand: '#cdbb9c',
 
-  skyZenith: '#1a2440',
-  skyMid: '#5d5f7d',
-  skyHorizon: '#e8a46e',
+  skyZenith: '#213750',
+  skyMid: '#677c8d',
+  skyHorizon: '#f3bf9c',
   sun: '#ffc58a',
 
   underground: '#07080a',

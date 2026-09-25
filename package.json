@@ -2,7 +2,7 @@
   "name": "acm-ceg-world",
   "version": "1.0.0",
   "private": true,
-  "description": "ACM-CEG Student Chapter \u2014 an immersive, scroll-driven 3D journey from the CEG red building to the heart of the chapter.",
+  "description": "ACM-CEG Student Chapter — an immersive, scroll-driven 3D journey from the CEG red building to the heart of the chapter.",
   "scripts": {
     "media:scan": "node scripts/scan-media.mjs",
     "campus:build": "node scripts/build-campus.mjs",
@@ -29,6 +29,7 @@
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
     "@types/three": "^0.180.0",
+    "puppeteer-core": "^25.11.0",
     "typescript": "^5.9.0"
   }
 }
