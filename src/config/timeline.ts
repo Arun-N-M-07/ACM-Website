@@ -6,7 +6,7 @@
  * scrolling a segment takes). Everything else — chapter ranges, the camera,
  * scene streaming, overlay copy — derives from these numbers.
  */
-import { CORRIDOR, TEAM_LAYOUT } from './world';
+import { CORRIDOR } from './world';
 
 export type SegmentId =
   | 'arrival'
@@ -16,19 +16,22 @@ export type SegmentId =
   | 'descent'
   | 'facility'
   | 'events'
-  | 'door'
-  | 'threshold'
-  | 'through'
-  | 'team'
-  | 'core';
+  | 'portal'
+  | 'teams';
 
 const EVENT_VH = { regular: 85, flagship: 125 };
 const eventsVh = CORRIDOR.rooms.reduce((sum, r) => sum + (r.event.flagship ? EVENT_VH.flagship : EVENT_VH.regular), 0);
 
-/** The team tour: the welcome at the commons, then one stop per domain bay. */
-const TEAM_VH = { welcome: 160, domain: 118 };
-const teamVh = TEAM_VH.welcome + TEAM_LAYOUT.bays.length * TEAM_VH.domain;
-const CORE_VH = 190;
+/**
+ * The portal: the walk from the last event room to stand before it, then a
+ * dwell where scrolling is walled until the visitor touches and holds.
+ */
+const PORTAL_VH = 150;
+/**
+ * The Teams world: one continuous orbit of the spine — an establishing view,
+ * the six domain cards, and the pull-back that closes the journey.
+ */
+const TEAMS_VH = 720;
 
 const SEGMENT_WEIGHTS: { id: SegmentId; vh: number }[] = [
   { id: 'arrival', vh: 110 },
@@ -38,11 +41,8 @@ const SEGMENT_WEIGHTS: { id: SegmentId; vh: number }[] = [
   { id: 'descent', vh: 210 },
   { id: 'facility', vh: 130 },
   { id: 'events', vh: eventsVh + 40 },
-  { id: 'door', vh: 150 },
-  { id: 'threshold', vh: 45 },
-  { id: 'through', vh: 55 },
-  { id: 'team', vh: teamVh },
-  { id: 'core', vh: CORE_VH },
+  { id: 'portal', vh: PORTAL_VH },
+  { id: 'teams', vh: TEAMS_VH },
 ];
 
 export const SCROLL_LENGTH_VH = SEGMENT_WEIGHTS.reduce((s, x) => s + x.vh, 0);
@@ -78,19 +78,20 @@ export function segmentProgress(p: number, id: SegmentId) {
 
 export function segmentAt(p: number): SegmentId {
   for (const s of SEGMENT_WEIGHTS) if (p <= SEGMENTS[s.id].end) return s.id;
-  return 'core';
+  return 'teams';
 }
 
-/** Scrolling forward past this point pushes the visitor through the door (the impact). */
-export const IMPACT_TRIGGER = SEGMENTS.through.start + 0.0005;
-
-/** Stop weights across the tour (team + core): welcome, each domain, then the core. */
-export const TOUR_WEIGHTS = [TEAM_VH.welcome, ...TEAM_LAYOUT.bays.map(() => TEAM_VH.domain), CORE_VH];
-export const TOUR_RANGE = { start: SEGMENTS.team.start, end: SEGMENTS.core.end };
+/** Fraction of the portal segment at which the visitor is standing before it (the hold zone begins). */
+export const PORTAL_DWELL = 0.7;
+/**
+ * The wall: until the portal has been entered, scroll progress can't pass
+ * this point. It is also where the Teams world's own progress begins.
+ */
+export const PORTAL_GATE = SEGMENTS.portal.end;
 
 // ─── User-facing chapters (the chapter rail + index menu) ──────────────────────
 
-export type ChapterId = 'arrival' | 'ascent' | 'campus' | 'descent' | 'facility' | 'events' | 'door' | 'team' | 'core';
+export type ChapterId = 'arrival' | 'ascent' | 'campus' | 'descent' | 'facility' | 'events' | 'portal' | 'teams';
 
 export interface ChapterDef {
   id: ChapterId;
@@ -108,9 +109,9 @@ export const CHAPTERS: ChapterDef[] = [
   { id: 'descent', number: '04', label: 'Descent', jumpTo: SEGMENTS.descent.start + 0.002, segments: ['descent'] },
   { id: 'facility', number: '05', label: 'Facility', jumpTo: SEGMENTS.facility.start + 0.002, segments: ['facility'] },
   { id: 'events', number: '06', label: 'Events', jumpTo: SEGMENTS.events.start + 0.002, segments: ['events'] },
-  { id: 'door', number: '07', label: 'The Door', jumpTo: SEGMENTS.door.start + 0.002, segments: ['door', 'threshold', 'through'] },
-  { id: 'team', number: '08', label: 'The Team', jumpTo: SEGMENTS.team.start + 0.0005, segments: ['team'] },
-  { id: 'core', number: '09', label: 'The Core', jumpTo: SEGMENTS.core.start + 0.002, segments: ['core'] },
+  { id: 'portal', number: '07', label: 'The Portal', jumpTo: SEGMENTS.portal.start + (SEGMENTS.portal.end - SEGMENTS.portal.start) * (PORTAL_DWELL + 0.08), segments: ['portal'] },
+  // Entered through the portal (navigation plays the travel), never jumped into.
+  { id: 'teams', number: '08', label: 'The Teams', jumpTo: null, segments: ['teams'] },
 ];
 
 export function chapterForSegment(seg: SegmentId): ChapterId {

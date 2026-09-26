@@ -5,14 +5,14 @@
  */
 import { ALUMNI } from '@/content/alumni';
 import { CHAPTER } from '@/content/chapter';
-import { DOMAINS } from '@/content/domains';
 import { EVENTS } from '@/content/events';
 import { FAQ } from '@/content/faq';
 import { GALLERY } from '@/content/gallery';
 import { isAvailable, type MediaAsset } from '@/content/media';
 import { NEWSLETTER } from '@/content/newsletter';
 import { PRODIGY_PROGRAMME } from '@/content/prodigy';
-import { DIRECTORS, FACULTY, membersOf } from '@/content/team';
+import { FACULTY } from '@/content/team';
+import { TEAM_DOMAINS } from '@/content/teams';
 
 function Photo({ media, className, label }: { media?: MediaAsset; className?: string; label?: string }) {
   if (media && isAvailable(media.src)) {
@@ -191,34 +191,21 @@ export function ArchiveDocument({ headingLevel = 1 }: { headingLevel?: 1 | 2 }) 
             </li>
           ))}
         </ul>
-        <h3>Directors · {DIRECTORS.length}</h3>
-        {DOMAINS.map((d) => {
-          const members = membersOf(d.id);
-          if (!members.length) return null;
-          return (
-            <div key={d.id} className="domain" style={{ ['--accent' as string]: d.accent }}>
-              <h4>
-                {d.name} <span>{d.tagline}</span>
-              </h4>
-              <ul className="people">
-                {members.map((m) => (
-                  <li key={m.id}>
-                    <Photo media={m.photo} className="portrait" label={m.name} />
-                    <div>
-                      <strong>{m.name}</strong>
-                      <span className="role">{m.role}</span>
-                      {m.linkedin && (
-                        <a href={m.linkedin} target="_blank" rel="noopener noreferrer">
-                          LinkedIn ↗
-                        </a>
-                      )}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          );
-        })}
+        <h3>The domains · {TEAM_DOMAINS.length}</h3>
+        {TEAM_DOMAINS.map((d) => (
+          <div key={d.slug} className="domain" id={d.slug} style={{ ['--accent' as string]: d.tone }}>
+            <h4>
+              <span className="domain-no">{String(d.number).padStart(2, '0')}</span> {d.name}
+            </h4>
+            <ul className="people names">
+              {d.members.map((m) => (
+                <li key={m}>
+                  <strong>{m}</strong>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
       </section>
 
       <section id="alumni" className="archive-section" aria-labelledby="alumni-h">

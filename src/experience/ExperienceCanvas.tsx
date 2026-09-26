@@ -16,13 +16,17 @@ import { UndergroundKit } from '@/scenes/underground/kit';
 import { ShaderWarmup } from './ShaderWarmup';
 import { experience, useExperience } from '@/store/experience';
 import { CameraRig } from '@/systems/camera/CameraRig';
+import { fx } from '@/systems/camera/effects';
 import { AnchorProjector } from './AnchorProjector';
+import { PostProcessing } from '@/teams/post/PostProcessing';
 import { SceneDirector } from './SceneDirector';
 
 /**
  * Boot sequence reported to the loader: first chapter rendered → every other
  * shader variant warmed → ready.
  */
+let lastContextLoss = -Infinity;
+
 function Boot() {
   const [stage, setStage] = useState<'frames' | 'warm' | 'done'>('frames');
   const frames = useRef(0);
@@ -81,10 +85,17 @@ export default function ExperienceCanvas() {
         gl.toneMappingExposure = 1.05;
         gl.outputColorSpace = SRGBColorSpace;
         const debug = (window as unknown as { __acm?: Record<string, unknown> }).__acm;
-        if (debug) { debug.scene = scene; debug.renderInfo = () => gl.info.render; }
+        if (debug) { debug.scene = scene; debug.renderInfo = () => gl.info.render; debug.memory = () => ({ ...gl.info.memory, programs: gl.info.programs?.length }); }
         gl.domElement.addEventListener('webglcontextlost', (e) => {
           e.preventDefault();
-          experience().set({ webgl: 'failed' });
+          // GPU pressure or a driver reset: recreate the canvas once (the
+          // journey's state lives outside it, so it picks up where it was);
+          // a second loss soon after hands over to the printed edition.
+          const now = performance.now();
+          const again = now - lastContextLoss < 30000;
+          lastContextLoss = now;
+          fx.fade = 1;
+          experience().set({ webgl: again ? 'failed' : 'lost' });
         });
         experience().setLoad(0.62, 'Laying brick');
       }}
@@ -118,6 +129,7 @@ export default function ExperienceCanvas() {
       <CameraRig />
       <AnchorProjector />
       <SceneDirector />
+      <PostProcessing />
       <Boot />
     </Canvas>
   );

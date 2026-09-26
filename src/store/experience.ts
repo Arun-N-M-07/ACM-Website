@@ -1,33 +1,25 @@
 /**
  * Discrete experience state (changes a few times per minute, not per frame).
- * Per-frame values — scroll progress, camera pose, NPC internals — live in
- * refs / the progress channel instead.
+ * Per-frame values — scroll progress, camera pose, the portal hold — live in
+ * refs / the progress channel instead. The Teams world's own states live in
+ * src/teams/state.ts.
  */
 import { create } from 'zustand';
 import type { QualityTier } from '@/config/quality';
 import type { ChapterId, SegmentId } from '@/config/timeline';
-import type { DomainId } from '@/content/domains';
 
 export type Phase =
   /** Building the world; the loader is on screen. */
   | 'loading'
   /** World ready, waiting for the visitor to enter. */
   | 'ready'
-  /** Scroll-driven journey — including the first-person walk through the team. */
+  /** Scroll-driven journey — including the orbit of the Teams world. */
   | 'cinematic'
-  /** The timed push through the door. */
-  | 'impact';
+  /** Timed travel through the portal (either direction); scroll is locked. */
+  | 'travel';
 
-export type WebGLStatus = 'unknown' | 'ok' | 'unsupported' | 'failed';
-
-export interface Speech {
-  memberId: string;
-  name: string;
-  role: string;
-  text: string;
-  /** performance.now() timestamp after which the line is hidden. */
-  until: number;
-}
+/** `lost`: the GPU context dropped; the canvas is being recreated once before giving up. */
+export type WebGLStatus = 'unknown' | 'ok' | 'unsupported' | 'lost' | 'failed';
 
 interface ExperienceState {
   phase: Phase;
@@ -51,15 +43,8 @@ interface ExperienceState {
   menuOpen: boolean;
   textVersionOpen: boolean;
 
-  /** Team tour stop the visitor is at (−1 outside the team): 0 welcome, then a domain each, then the core. */
-  tourStop: number;
-  /** The domain being met right now. */
-  tourDomain: DomainId | 'core' | null;
-  speech: Speech | null;
-
   set: (partial: Partial<ExperienceState>) => void;
   setLoad: (progress: number, label: string) => void;
-  say: (s: Omit<Speech, 'until'>, ms?: number) => void;
   toggleMotion: () => void;
 }
 
@@ -83,13 +68,8 @@ export const useExperience = create<ExperienceState>((set, get) => ({
   menuOpen: false,
   textVersionOpen: false,
 
-  tourStop: -1,
-  tourDomain: null,
-  speech: null,
-
   set: (partial) => set(partial),
   setLoad: (progress, label) => set({ loadProgress: Math.max(get().loadProgress, progress), loadLabel: label }),
-  say: (s, ms = 3200) => set({ speech: { ...s, until: performance.now() + ms } }),
   toggleMotion: () => set({ reducedMotion: !get().reducedMotion }),
 }));
 

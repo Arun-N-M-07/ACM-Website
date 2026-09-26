@@ -4,9 +4,8 @@
  * thing it describes.
  */
 import { Vector3 } from 'three';
-import { CAMPUS, CORRIDOR, DOOR, FLOOR_Y, hallZ, TEAM_HALL, TEAM_LAYOUT, TEAM_ORIGIN, UNDERGROUND, type RoomLayout } from './world';
+import { CAMPUS, CORRIDOR, FLOOR_Y, hallZ, PORTAL, UNDERGROUND, type RoomLayout } from './world';
 import { setAnchor } from '@/systems/anchors/anchors';
-import { bayToWorld } from '@/scenes/team/teamLayout';
 
 const H = UNDERGROUND.hall;
 const C = UNDERGROUND.corridor;
@@ -25,17 +24,14 @@ export const ANCHOR = {
   board: new Vector3(-H.width / 2 + 0.3, FLOOR_Y + 3.4, hallZ(9)),
   plaque: new Vector3(H.width / 2 - 0.3, FLOOR_Y + 3.6, hallZ(3.6)),
   corridorSign: new Vector3(0, FLOOR_Y + C.height + 1.6, H.north + 0.1),
-  door: new Vector3(0, FLOOR_Y + DOOR.height + 0.9, DOOR.z + 0.2),
-  commons: new Vector3(TEAM_ORIGIN[0], FLOOR_Y + 3.4, TEAM_ORIGIN[2] + TEAM_HALL.commons.z - 3.4),
-  core: new Vector3(TEAM_ORIGIN[0], FLOOR_Y + 1.6, TEAM_ORIGIN[2] + TEAM_HALL.core.z),
+  /** The portal: its centre, the top of the ring and just below it (the prompt). */
+  portal: new Vector3(0, PORTAL.y, PORTAL.z),
+  portalTop: new Vector3(0, PORTAL.y + PORTAL.radius + PORTAL.tube, PORTAL.z),
+  portalBase: new Vector3(0, PORTAL.y - PORTAL.radius - PORTAL.tube - 0.35, PORTAL.z + 0.2),
 };
 
 /** Called once when the canvas mounts. */
 export function registerWorldAnchors() {
   for (const [id, at] of Object.entries(ANCHOR)) setAnchor(id, at);
   for (const r of CORRIDOR.rooms) setAnchor(`room:${r.event.slug}`, roomAnchor(r));
-  for (const bay of TEAM_LAYOUT.bays) {
-    const [x, y, z] = bayToWorld(bay, 0, -bay.depth / 2 + 0.1, 4.6);
-    setAnchor(`bay:${bay.domain.id}`, new Vector3(x, y, z));
-  }
 }

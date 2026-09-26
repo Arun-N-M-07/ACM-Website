@@ -1,6 +1,8 @@
 # Handoff prompt — ACM-CEG World (paste this to Codex)
 
-You are taking over an in-progress, production-quality creative web project. Read this whole brief before touching code. Then read `README.md` and `docs/ARCHITECTURE.md`, `docs/CONTENT.md` and `docs/ASSETS.md` in the repo; they are up to date.
+You are taking over an in-progress, production-quality creative web project. Read this whole brief before touching code. Then read `README.md` and `docs/ARCHITECTURE.md`, `docs/TEAMS_WORLD.md`, `docs/CONTENT.md` and `docs/ASSETS.md` in the repo; they are up to date.
+
+> **Update (September 2026):** the old team workspace (NPC tour, meetings, the core hologram, the door and its impact) has been replaced by **the portal and the Teams world** — see `docs/TEAMS_WORLD.md` and `src/teams/`. Where this brief describes the old team section, the docs win.
 
 ---
 
@@ -14,9 +16,9 @@ CEG red building at golden hour (on the fountain-pool axis)
 → straight down a glass light-well into an underground facility
 → facility hall: split-flap "DEPARTURES" board of every programme + a 2004 monument wall
 → the events corridor: 10 walk-in rooms, one per programme, each a live installation
-→ "Beyond the events" door → a timed push through it (the impact)
-→ the team workspace: a scroll-driven first-person walk meeting every domain and its directors
-→ the core: a hologram of the entire journey + a ring of every chapter member's name + the ending
+→ the portal at the end of the corridor: TOUCH & HOLD (2 s; the world reacts as you hold)
+→ travel through a streak tunnel into the Teams world
+→ an orbit of six frosted-glass domain cards around an organic iridescent spine; open any card
 ```
 
 Everything is driven by **scroll only** (no WASD, no click-to-walk). Scrolling backwards rewinds everything. Every factual word comes from the current site https://auceg.acm.org and lives in typed modules under `src/content/`. The same content is also server-rendered as semantic HTML (the text version, `/archive`, `/events/[slug]`), so it is crawlable, accessible and works without WebGL.
@@ -31,10 +33,7 @@ The owner writes casually and fast (often from a phone, often with screenshots).
 1. **Content first, presented innovatively.** Content is the most important thing. Every page of content must be *extremely clear and readable*, but presented in inventive ways that belong to the 3D world, not as generic text boxes. "Innovative" must never mean "hard to read".
 2. **Professional, never crappy.** Creative and bold, but polished: clean typography, consistent design system, no gimmicks that look cheap, no clutter, no overlapping text, nothing half-finished. When in doubt, choose restraint and craft over more effects.
 3. **Highly creative, beyond the literal ask.** They explicitly give full creative freedom: "do something more creative and innovative than what I said". Propose and build ideas, but always in service of the content and always finished to a professional standard.
-4. **Scroll-only first person.** In the team section you *meet* each domain by scrolling. Each meeting must be unique and tied to what that domain does. They loved:
-   - the CP Wing: whiteboard of formulas, Striver's lecture on a laptop;
-   - the Web & App wall of screens rippling into one picture;
-   - the directors walking up to greet you.
+4. **The Teams world** (Active Theory–inspired, original code): portal hold → travel → spine + six domain cards; the six domain names and members are fixed by the chapter (`src/content/teams.ts`) — exact names, exact order, no roll numbers, no photos, no invented bios; unwritten areas are `[CONTENT PLACEHOLDER]`.
 5. **The red building must be a faithful replica of CEG**, and the opening drone shot must be smooth.
 6. **No glitching or twitching:** smooth 60 fps, no z-fighting, no jitter, no hitches.
 7. **Sound:** music mode plays *Pink + White* by Frank Ocean with **no other sound effects**; silent mode must remain. (The track is not bundled — see §8.)
@@ -69,7 +68,7 @@ npm run campus:build   # refresh public/data/campus.json from OpenStreetMap (net
   ```bash
   rsync -a --exclude .next --exclude node_modules ./ /tmp/b/ && ln -s "$PWD/node_modules" /tmp/b/node_modules && (cd /tmp/b && npx next build)
   ```
-- **Debug hook (dev, or `?debug` in production):** `window.__acm = { jump(p), scroll(p, seconds), store, progress, segments, tourProgress(stop, meet), roomProgress(room, visit), music }`.
+- **Debug hook (dev, or `?debug` in production):** `window.__acm = { jump(p), scroll(p, seconds), store, progress, segments, roomProgress(room, visit), music, teams: { snapshot(), enter(), exit(), at(c), domain(i), select(i), hop(i), close(), cardScreen(i) } }`.
 
 ## 5. Stack and architecture (short map — details in docs/ARCHITECTURE.md)
 
@@ -77,23 +76,20 @@ npm run campus:build   # refresh public/data/campus.json from OpenStreetMap (net
 - Next.js 15.5 (App Router), React 19.2, TypeScript.
 - three 0.180, @react-three/fiber 9.7, drei 10.7.
 - GSAP ScrollTrigger + Lenis, Zustand 5.
-- No post-processing library, no physics engine, and no audio besides the one music track.
+- No post-processing library (the portal / Teams world use three's own composer passes), no physics engine, and no audio besides the one music track.
 
 **Core ideas:**
 - **One timeline.** `src/config/timeline.ts` defines segments in viewport-heights:
   - arrival 110, ascent 150, campus 110, topdown 70, descent 210, facility 130;
   - events (per room: 85, flagships 125, +40);
-  - door 150, threshold 45, through 55;
-  - team (160 + 118 per domain), core 190.
+  - portal 150 (walled at `PORTAL_GATE` until held), teams 720.
 
   Scroll → `progress.target` → damped `progress.value` in `CameraRig`.
 - **Camera** (`src/systems/camera/`), with poses as yaw/pitch/roll (Euler YXZ):
   - `flight.ts` (drone flight): centripetal Catmull-Rom plus a Fritsch–Carlson time-warp.
   - `shots.ts`: per-segment shots. Event rooms: the camera walks from portal to portal on a Bézier through a corridor waypoint, then steps in during the visit.
-  - `impact.ts`: the timed push through the door.
-  - `tour.ts`: the team walk. Each stop = 40% walk + 60% meeting; `tourAt(p)` gives `{index, walk, meet}`.
-  - `CameraRig.tsx`: owns the camera. Handles the adaptive near plane (fixes z-fighting from the drone), meeting focus/eye blending with a smoothed target, portrait-phone widening underground, and the impact → tour handover via `placeScroll`.
-- **Streaming** (`src/experience/SceneDirector.tsx`): chapters mount and unmount by progress windows. The team hall mounts one domain set every couple of frames (no hitch). `useDisposable` disposes GPU resources.
+  - `CameraRig.tsx`: owns the camera. Handles the adaptive near plane (fixes z-fighting from the drone) and portrait-phone widening underground; for the portal hold, travel and the Teams world it calls `src/teams/controller.ts` (still the only camera writer).
+- **Streaming** (`src/experience/SceneDirector.tsx`): chapters mount and unmount by progress windows. The Teams world mounts and compiles during the walk down the vestibule (no hitch at the crossing). `useDisposable` disposes GPU resources.
 - **Lighting:** `WorldLights` mounts every light once (to avoid shader recompiles). `LightPool` moves a fixed set of point lights to nearby fixtures via `useLightAnchor`. Materials for underground come from `scenes/underground/kit.tsx`.
 - **Text in 3D:** `CanvasPanel` (Canvas-2D textures drawn with the page's own fonts via `systems/textures/typeset.ts`). Rule: **display type only in 3D** (titles, numbers, boards). No paragraphs painted into the world.
 - **Content presentation — "plates"** (`components/experience/Plate.tsx`, `Plates.tsx`):
@@ -118,25 +114,13 @@ npm run campus:build   # refresh public/data/campus.json from OpenStreetMap (net
   - OffCamp: cards pin up and paper planes fly out.
   - Prodigy: nine puzzle pieces assemble.
   - CodHer: a commit wall fills and the trophy rises.
-- **Team** (`scenes/team/`):
-  - `TeamWorkspace.tsx`: hall, commons, staged bays, NPCs, core.
-  - `sets/*`: one choreographed set per domain station kind:
-    - `Welcome.tsx`: the Chairperson's handshake.
-    - `Makers.tsx`: CP Wing whiteboard + Striver laptop (camera leans over shoulders), Web & App 15-screen video wall, VDM photo studio with a flash, Content newspaper.
-    - `Ops.tsx`: Events stage spotlight + confetti, HR badge on a lanyard, Sponsorship "take a seat" pitch, External Marketing phone, Internal Marketing roll-up banner + flying poster, Logistics conveyor + scan-in.
-  - Choreography flows through `systems/characters/cues.ts`: `cue()` per person per frame, `focusOn(stop, target, weight, zoom, eye?)`, the handshake state, and the `tour` state.
-  - `NPC.tsx` reads cues. People are procedural rigs (`systems/characters/rig.ts`, `poses.ts`), with GLB slots per member.
-  - `MeetingDirector.tsx` turns `content/meetings.ts` lines into subtitles. `TeamHud.tsx` shows the domain plate and a speaker line from the subtitle to whoever is talking.
-- **Core** (`scenes/final/CoreRoom.tsx`):
-  - A projection table with a hologram of the whole journey: campus outlines, the red building, and underground plans with the route tube, a travelling comet and "you are here".
-  - A rotating ring of every name: directors, faculty and alumni office bearers.
-  - `FinaleOverlay.tsx` holds the ending text.
+- **The portal and the Teams world** (`src/teams/`): `portal/` (ring, membrane, motes), `world/` (TeamsWorld, Spine, ParticleField, DomainCards, Tunnel, Backdrop), `post/` (composer, only near the portal and inside), `ui/` (PortalHold, TeamsHud, DomainDetail, TeamsInput, TypeIn — mounted by `TeamsExperience.tsx`), plus `state` (Zustand + per-frame channel), `layout`, `camera`, `travel` (GSAP clocks), `focus`, `controller`. Full description: `docs/TEAMS_WORLD.md`.
 - **Music:**
   - `config/music.ts`: title, artist, `src: /audio/pink-white.mp3`.
-  - `systems/audio/music.ts`: HTMLAudio + a Web Audio low-pass that muffles underground and ducks during the impact.
+  - `systems/audio/music.ts`: HTMLAudio + a Web Audio low-pass that muffles underground, ducks through the portal and opens up in the Teams world.
   - `MusicDirector.tsx` drives it.
   - The loader offers "Enter with music" / "Enter silently"; the top bar has a music toggle. Both are disabled with a hint when the file is missing.
-- **Store** (`src/store/experience.ts`): discrete state only (phase: loading | ready | cinematic | impact; segment; chapter; activeRoom; tourStop; tourDomain; speech; musicOn; …). Per-frame values never go through React.
+- **Store** (`src/store/experience.ts`): discrete state only (phase: loading | ready | cinematic | travel; segment; chapter; activeRoom; musicOn; …); the Teams world's states are in `src/teams/state.ts`. Per-frame values never go through React.
 
 ## 6. Conventions (follow them)
 
@@ -154,8 +138,9 @@ The QA scripts are in `scripts/qa/`. They need `npm i -D puppeteer-core` and Goo
 
 ```bash
 # screenshots at named points (see the header of shots.mjs for all notations)
-node scripts/qa/shots.mjs http://localhost:3100 /tmp/shots "0,0.085,gfacility:0.45,r1:0.6,t1:0.75,t11:0.6"
-MOBILE=1 W=390 H=844 node scripts/qa/shots.mjs http://localhost:3100 /tmp/shots-m "r4:0.5,t2:0.8"
+node scripts/qa/shots.mjs http://localhost:3100 /tmp/shots "0,0.085,gfacility:0.45,r1:0.6,c0,c3.5"
+MOBILE=1 W=390 H=844 node scripts/qa/shots.mjs http://localhost:3100 /tmp/shots-m "r4:0.5,c2"
+node scripts/qa/teams.mjs http://localhost:3100 /tmp/teams "portal:0.9,hold:2300,wait:6500,card:1,wait:2200,shot:open"   # the portal + Teams world, driven like a visitor
 node scripts/qa/sheet.mjs /tmp/shots /tmp/shots/sheet.png 0.png 0.085.png   # contact sheet
 node scripts/qa/probe.mjs http://localhost:3100 0 1 90                      # frame times while scrolling
 ```
@@ -165,8 +150,7 @@ node scripts/qa/probe.mjs http://localhost:3100 0 1 90                      # fr
   - `gSEG:f`: fraction of a segment.
   - `rN:f`: visit to event room N.
   - `xN:f`: walk into room N.
-  - `tN:m`: team stop N's meeting (0 = welcome, 11 = core).
-  - `wN:f`: walk into team stop N.
+  - `cN`: inside the Teams world at orbit coordinate N (0 = card 01 … 5 = card 06, 5.9 = the pull-back).
 - **Last measured** (headless Chrome, Apple M3 Max): a steady 60 fps across the whole journey (median 16.7 ms, max 33–50 ms). Also test on a weaker machine and a real phone if you can.
 - Look at every screenshot yourself. The owner judges visually: crooked framing, overlapping text, cropped titles or clutter count as bugs.
 
@@ -174,13 +158,9 @@ node scripts/qa/probe.mjs http://localhost:3100 0 1 90                      # fr
 
 1. **Photographs aren't installed.** The site's images (event posters, gallery, team photos, logo) couldn't be downloaded automatically; typographic fallbacks are used. `docs/ASSETS.md` lists every path to fill from auceg.acm.org's `assets/img/`. Photos would improve the team plates, event dossiers and archive.
 2. **The soundtrack isn't included.** The owner must add their own `public/audio/pink-white.mp3`. Publishing it publicly needs a licence; flag this before any deployment.
-3. **Avatars are stylised procedural rigs** (improved eyes; still simple bodies and clothing). They are the weakest visual element up close. Options: better procedural modelling (hands, clothing folds, hair), or consented GLB likenesses per member (slots exist; see `docs/ASSETS.md`). Never guess appearance from names.
+3. **The Teams world's content is names only** for now: each domain's detail shows `[CONTENT PLACEHOLDER]` areas until the chapter supplies copy. No photos until the chapter asks for them.
 4. **CEG building fidelity:** it's built from the real footprint and photos, but by eye. The owner wants an "insanely perfect replica". Compare against real front-elevation photos: porch proportions, window rhythm, tower stages, dome, colours.
-5. **The core** was just redesigned (hologram + name ring). Refine the composition:
-   - Hologram labels for its layers (Campus / Facility / Events / Team).
-   - Highlight the route by chapter.
-   - Improve the finale overlay layout.
-   - Improve phone framing (the hologram reads small in portrait).
+5. **The Teams world** was just built (portal → travel → spine + cards). Keep iterating on fidelity with the QA loop in `docs/TEAMS_WORLD.md`; test on a real phone (touch hold, swipe, tap) and a weaker GPU.
 6. **Event rooms** were just rebuilt as installations. Polish each one:
    - CodeX desks are empty (seated contestants?).
    - The MasterClass speaker is absent.

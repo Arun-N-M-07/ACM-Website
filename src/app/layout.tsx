@@ -3,6 +3,7 @@ import { Archivo, IBM_Plex_Mono, Instrument_Serif } from 'next/font/google';
 import type { ReactNode } from 'react';
 import { KEYWORDS, SITE_DESCRIPTION, SITE_TITLE, SITE_URL, organizationJsonLd } from '@/lib/seo';
 import './globals.css';
+import '@/teams/ui/teams.css';
 
 const serif = Instrument_Serif({ subsets: ['latin'], weight: '400', style: ['normal', 'italic'], variable: '--font-serif', display: 'swap' });
 const sans = Archivo({ subsets: ['latin'], variable: '--font-sans', axes: ['wdth'], display: 'swap' });

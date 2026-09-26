@@ -5,23 +5,27 @@
  * three.js recompiles every shader when the number of lights in the scene
  * changes, so chapters never add or remove lights — this rig keeps a constant
  * set and only moves intensities: golden-hour sun and sky above ground, a cool
- * light-well fill below, warmer fill in the team workspace, and the pooled
+ * light-well fill below (dimmed while the portal is held, off in the Teams
+ * world, which brings its own), and the pooled
  * point lights that follow the camera through the facility's fixtures.
  */
 import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useRef } from 'react';
-import { Color, type DirectionalLight, type HemisphereLight } from 'three';
+import { Color, type DirectionalLight, type HemisphereLight, Vector3 } from 'three';
 import { PALETTE } from '@/config/palette';
 import { QUALITY } from '@/config/quality';
-import { TEAM_ORIGIN } from '@/config/world';
+import { TEAMS_ORIGIN } from '@/config/world';
 import { useExperience } from '@/store/experience';
-import { lerp } from '@/systems/camera/pose';
+import { smoothstep } from '@/systems/camera/pose';
+import { teamsFrame } from '@/teams/state';
 import { LightPool } from '@/systems/lighting/lightPool';
 import { SUN_DIRECTION } from '../campus/Sky';
 import { world } from './blend';
 
 const COOL_SKY = new Color('#9fb4d6');
-const WARM_SKY = new Color('#ffe6c8');
+
+const SUN_POS = SUN_DIRECTION.clone().multiplyScalar(260).add(new Vector3(0, 0, 10));
+const _away = new Vector3();
 
 export function WorldLights() {
   const gl = useThree((s) => s.gl);
@@ -31,7 +35,6 @@ export function WorldLights() {
   const sky = useRef<HemisphereLight>(null);
   const below = useRef<HemisphereLight>(null);
   const top = useRef<DirectionalLight>(null);
-  const team = useRef(0);
 
   useEffect(() => {
     const s = sun.current;
@@ -50,30 +53,63 @@ export function WorldLights() {
     s.shadow.normalBias = 0.04;
   }, []);
 
-  useFrame(({ camera }, dt) => {
+  useFrame(({ camera }) => {
     const u = world.underground;
-    const inTeam = u > 0.5 && camera.position.z < TEAM_ORIGIN[2] + 2 ? 1 : 0;
-    team.current += (inTeam - team.current) * (1 - Math.exp(-dt * 2));
-    const t = team.current;
-    if (sun.current) sun.current.intensity = 3.1 * (1 - u);
-    if (sky.current) sky.current.intensity = 0.9 * (1 - u);
+    // Holding the portal draws the light out of the corridor and into the ring.
+    const pull = 1 - 0.45 * smoothstep(0.45, 1, teamsFrame.hold);
+    // The Teams world is lit by its own rig (teams/world); these stand down there.
+    const away = 1 - world.teams;
+    if (sun.current) sun.current.intensity = 3.1 * (1 - u) * away;
+    if (sky.current) sky.current.intensity = 0.9 * (1 - u) * away;
     if (below.current) {
-      below.current.intensity = u * lerp(0.42, 0.75, t);
-      below.current.color.copy(COOL_SKY).lerp(WARM_SKY, t);
+      below.current.intensity = u * 0.42 * pull * away;
+      below.current.color.copy(COOL_SKY);
     }
-    if (top.current) top.current.intensity = u * lerp(0.35, 0.55, t);
+    if (top.current) top.current.intensity = u * 0.35 * pull * away;
+
+    // In the Teams world the same lights become a studio rig: a cool key from
+    // high on one side, a rose rim from behind the spine (it follows the orbit,
+    // always opposite the camera), and a low blue fill.
+    const tw = world.teams;
+    if (tw > 0) {
+      if (top.current) {
+        top.current.position.set(-26, 44, 30);
+        top.current.color.set('#dfe7ff');
+        top.current.intensity = 0.9 * tw;
+      }
+      if (sun.current) {
+        _away.set(TEAMS_ORIGIN[0] - camera.position.x, 0, TEAMS_ORIGIN[2] - camera.position.z).normalize();
+        const t = sun.current.target.position;
+        sun.current.position.set(t.x + _away.x * 200, t.y + 90, t.z + _away.z * 200);
+        sun.current.color.set('#ffc3d2');
+        sun.current.intensity = 1.5 * tw;
+      }
+      if (below.current) {
+        below.current.color.set('#8ea3d6');
+        below.current.intensity = 0.3 * tw;
+      }
+    } else {
+      if (top.current) {
+        top.current.position.set(4, 40, 10);
+        top.current.color.set('#dfe6f2');
+      }
+      if (sun.current) {
+        sun.current.position.set(SUN_POS.x, SUN_POS.y, SUN_POS.z);
+        sun.current.color.set(PALETTE.sun);
+      }
+    }
     // No need to re-render the sun's shadow map once we're underground.
     gl.shadowMap.autoUpdate = u < 0.99;
   });
 
-  const d = SUN_DIRECTION.clone().multiplyScalar(260);
+  const d = SUN_POS;
   return (
     <>
       <hemisphereLight ref={sky} args={['#9db0d4', '#4a3426', 0.9]} />
       <directionalLight
         ref={sun}
         color={PALETTE.sun}
-        position={[d.x, d.y, d.z + 10]}
+        position={[d.x, d.y, d.z]}
         intensity={3.1}
         castShadow={q.shadows}
         shadow-mapSize-width={q.shadowMapSize}

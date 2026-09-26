@@ -66,27 +66,30 @@ try {
     const reversed = await signal(0, .6);
     assert.deepEqual(reversed, first, 'Light route rewinds exactly');
 
-    await page.evaluate(() => window.__acm.jump(window.__acm.tourProgress(11, .85)));
+    // The portal: walled until held; the Teams world's closing plate appears past the sixth card.
+    await page.evaluate(() => { const g = window.__acm.segments.portal; window.__acm.jump(g.start + (g.end - g.start) * .9); });
     await settle(3000);
-    assert.equal(await page.$eval('[data-plate="finale"]', (el) => el.getAttribute('aria-hidden')), 'false');
-    const fullRoute = await page.evaluate(() => window.__acm.scene.getObjectByName('hologram-route').geometry.drawRange.count);
-    await page.screenshot({ path: `${out}/${name}-finale.png` });
-    await page.evaluate(() => window.__acm.jump(window.__acm.tourProgress(11, .3)));
+    assert.equal(await page.evaluate(() => window.__acm.teams.snapshot().state), 'portalIdle');
+    await page.evaluate(() => window.__acm.jump(1));
     await settle();
-    const partialRoute = await page.evaluate(() => window.__acm.scene.getObjectByName('hologram-route').geometry.drawRange.count);
-    assert.ok(partialRoute < fullRoute, 'Hologram reconstruction rewinds');
-    assert.equal(await page.$eval('[data-plate="finale"]', (el) => el.getAttribute('aria-hidden')), 'true');
-    await page.evaluate(() => { window.__acm.store.getState().set({ reducedMotion: true }); window.__acm.jump(1); });
+    assert.equal(await page.evaluate(() => window.__acm.teams.snapshot().inside), false, 'The gate holds without the portal');
+    await page.evaluate(() => window.__acm.teams.at(5.9));
+    await settle(3000);
+    assert.ok(await page.$eval('.teams-outro', (el) => Number(getComputedStyle(el).opacity) > 0.8), 'Closing plate shows at the end of the ring');
+    await page.screenshot({ path: `${out}/${name}-finale.png` });
+    await page.evaluate(() => window.__acm.teams.at(3));
+    await settle();
+    assert.ok(await page.$eval('.teams-outro', (el) => Number(getComputedStyle(el).opacity) < 0.05), 'Closing plate rewinds');
+    await page.evaluate(() => { window.__acm.store.getState().set({ reducedMotion: true }); });
     await settle(2500);
     assert.equal(await page.evaluate(() => window.__acm.store.getState().reducedMotion), true);
-    assert.equal(await page.evaluate(() => window.__acm.scene.getObjectByName('hologram-route').geometry.drawRange.count), fullRoute);
     await page.screenshot({ path: `${out}/${name}-reduced.png` });
     await page.keyboard.press('t');
     await settle(700);
     assert.equal(await page.evaluate(() => document.documentElement.dataset.archive), 'open');
     assert.ok(await page.$eval('#archive', (el) => el.textContent.includes('Head First')));
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-    results.push(`${name}: entrance, navigation, focus, dossier, exact signal rewind, hologram rewind, reduced motion and archive passed`);
+    results.push(`${name}: entrance, navigation, focus, dossier, exact signal rewind, portal gate, Teams outro, reduced motion and archive passed`);
     await page.close();
   }
   const fallback = await browser.newPage();

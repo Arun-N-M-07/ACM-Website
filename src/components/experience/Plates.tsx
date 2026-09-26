@@ -1,11 +1,11 @@
 'use client';
 /**
  * Every content plate along the journey, in order: the chapter on the drone
- * flight, the facility, one per event room, and the door. (The team's plates
- * live in TeamHud; the finale is its own overlay.)
+ * flight, the facility, one per event room, and the portal. (The Teams
+ * world has its own interface: src/teams/ui.)
  */
 import { useMemo } from 'react';
-import { SEGMENTS, type SegmentId } from '@/config/timeline';
+import { PORTAL_DWELL, SEGMENTS, type SegmentId } from '@/config/timeline';
 import { CORRIDOR } from '@/config/world';
 import { CHAPTER, yearsActive } from '@/content/chapter';
 import { EVENTS, FLAGSHIPS } from '@/content/events';
@@ -26,7 +26,7 @@ export function Plates() {
       mission: [at('topdown', 0.1), at('descent', 0.05)] as [number, number],
       facility: [at('facility', 0.04), at('facility', 0.19)] as [number, number],
       legacy: [at('facility', 0.73), at('facility', 0.87)] as [number, number],
-      door: [at('door', 0.12), at('door', 0.7)] as [number, number],
+      portal: [at('portal', 0.2), at('portal', PORTAL_DWELL * 0.94)] as [number, number],
       rooms: CORRIDOR.rooms.map((r) => {
         const [a, b] = roomDwellRange(r.index);
         const len = b - a;
@@ -114,10 +114,10 @@ export function Plates() {
         );
       })}
 
-      <Plate id="door" side="left" anchor="door" pin="BEYOND THE EVENTS" range={ranges.door}>
+      <Plate id="portal" side="left" anchor="portalTop" pin="THE PORTAL" range={ranges.portal}>
         <p className="plate-kicker">07 · End of the corridor</p>
         <h2 className="plate-title">Beyond the events: the people.</h2>
-        <p className="plate-body">Keep scrolling and step through. Every domain of the team is inside — you’ll meet them one by one.</p>
+        <p className="plate-body">The corridor ends at a portal. Touch and hold it to cross into the Teams — six domains, and the people in them.</p>
       </Plate>
     </div>
   );

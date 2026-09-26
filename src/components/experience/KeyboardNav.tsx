@@ -2,6 +2,7 @@
 /** Global shortcuts: N / P step between framed stops, M opens the index, T the text version. */
 import { useEffect } from 'react';
 import { useExperience } from '@/store/experience';
+import { teams } from '@/teams/state';
 import { stepStop } from './navigation';
 
 export function KeyboardNav() {
@@ -14,7 +15,12 @@ export function KeyboardNav() {
       const k = e.key.toLowerCase();
       if (k === 'm') st.set({ menuOpen: !st.menuOpen });
       else if (k === 't') st.set({ textVersionOpen: true });
-      else if (st.phase === 'cinematic' && !st.menuOpen && (k === 'n' || k === 'p')) stepStop(k === 'n' ? 1 : -1);
+      else if (st.phase === 'cinematic' && !st.menuOpen && (k === 'n' || k === 'p')) {
+        // With a domain open, the arrow keys move between domains instead.
+        const ts = teams().state;
+        if (ts === 'cardFocused' || ts === 'domainDetail') return;
+        stepStop(k === 'n' ? 1 : -1);
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);

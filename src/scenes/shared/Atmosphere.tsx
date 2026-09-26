@@ -9,15 +9,20 @@ import { Color, FogExp2, PMREMGenerator } from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { PALETTE } from '@/config/palette';
 import { QUALITY } from '@/config/quality';
-import { TEAM_ORIGIN } from '@/config/world';
 import { lerp, smoothstep } from '@/systems/camera/pose';
 import { useExperience } from '@/store/experience';
+import { teamsFrame } from '@/teams/state';
 import { world } from './blend';
+
+const portalHaze = new Color('#1b2233');
 
 const campusFog = new Color('#b98a6c');
 const undergroundFog = new Color(PALETTE.undergroundFog);
 const campusBg = new Color(PALETTE.skyHorizon);
 const undergroundBg = new Color(PALETTE.underground);
+/** The Teams world: near-black, a breath of blue-violet. */
+const teamsFog = new Color('#07080d');
+const teamsBg = new Color('#040508');
 
 export function Atmosphere() {
   const scene = useThree((s) => s.scene);
@@ -54,12 +59,23 @@ export function Atmosphere() {
     world.time = clock.elapsedTime;
     const u = smoothstep(3, -16, camera.position.y);
     world.underground = u;
-    // Inside the team hall the air is a touch clearer so the whole room reads.
-    const inTeam = camera.position.z < TEAM_ORIGIN[2] + 1;
     fog.color.copy(campusFog).lerp(undergroundFog, u);
-    fog.density = lerp(0.0021, inTeam ? 0.017 : 0.028, u);
+    fog.density = lerp(0.0021, 0.028, u);
     bg.copy(campusBg).lerp(undergroundBg, u);
-    scene.environmentIntensity = lerp(0.35, inTeam ? 0.55 : 0.45, u);
+    scene.environmentIntensity = lerp(0.35, 0.45, u);
+    // Holding the portal thickens the air and cools it towards the ring's light.
+    const h = teamsFrame.hold;
+    if (h > 0 && world.teams < 0.5) {
+      fog.density += 0.02 * smoothstep(0.5, 1, h);
+      fog.color.lerp(portalHaze, 0.5 * smoothstep(0.5, 1, h));
+    }
+    // The Teams world has its own air (its materials carry their own reflections).
+    if (world.teams > 0) {
+      fog.color.lerp(teamsFog, world.teams);
+      fog.density = lerp(fog.density, 0.016, world.teams);
+      bg.lerp(teamsBg, world.teams);
+      scene.environmentIntensity = lerp(scene.environmentIntensity, 0.15, world.teams);
+    }
   });
 
   return null;

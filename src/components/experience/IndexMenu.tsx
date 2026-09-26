@@ -1,13 +1,13 @@
 'use client';
 /**
  * The index: fallback navigation for the whole journey — jump to any chapter,
- * any event room, the team or the core; open the text version; contact.
+ * any event room, any of the six domains; open the text version; contact.
  */
 import { useEffect, useRef } from 'react';
 import { CHAPTERS } from '@/config/timeline';
 import { CORRIDOR } from '@/config/world';
 import { CHAPTER } from '@/content/chapter';
-import { DOMAINS } from '@/content/domains';
+import { TEAM_DOMAINS } from '@/content/teams';
 import { useExperience } from '@/store/experience';
 import { goToChapter, goToDomain, goToRoom } from './navigation';
 import { useModalFocus } from './useModalFocus';
@@ -75,12 +75,12 @@ export function IndexMenu() {
         <nav aria-label="Meet the team">
           <p className="kicker">Meet the team</p>
           <ol className="index-rooms">
-            {DOMAINS.map((d) => (
-              <li key={d.id}>
-                <button onClick={() => goToDomain(d.id)}>
-                  <i style={{ background: d.accent }} aria-hidden="true" />
-                  <span>{d.id === 'office' ? 'The welcome' : d.name}</span>
-                  <em>{d.id === 'office' ? d.name : d.tagline.replace(/\.$/, '')}</em>
+            {TEAM_DOMAINS.map((d, i) => (
+              <li key={d.slug}>
+                <button onClick={() => goToDomain(i)}>
+                  <i style={{ background: d.tone }} aria-hidden="true" />
+                  <span>{d.name}</span>
+                  <em>{d.members.join(' · ')}</em>
                 </button>
               </li>
             ))}
@@ -123,7 +123,7 @@ export function IndexMenu() {
           <p className="kicker">Keys</p>
           <ul className="index-keys">
             <li>
-              <span className="kbd">Scroll</span> / <span className="kbd">Space</span> travel — and walk the team
+              <span className="kbd">Scroll</span> / <span className="kbd">Space</span> travel · hold the portal to enter the Teams
             </li>
             <li>
               <span className="kbd">N</span> / <span className="kbd">P</span> next / previous stop

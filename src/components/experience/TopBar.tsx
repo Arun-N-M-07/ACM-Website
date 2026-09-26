@@ -17,7 +17,7 @@ export function TopBar() {
   const hasTrack = isAvailable(MUSIC.src);
   const reduced = useExperience((s) => s.reducedMotion);
   const set = useExperience((s) => s.set);
-  const current = CHAPTERS.find((c) => c.id === (phase === 'impact' ? 'team' : chapter));
+  const current = CHAPTERS.find((c) => c.id === chapter);
 
   if (phase === 'loading' || phase === 'ready') return null;
 

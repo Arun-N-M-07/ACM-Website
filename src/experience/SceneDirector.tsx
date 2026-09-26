@@ -11,40 +11,48 @@ import { useRef, useState } from 'react';
 import { SEGMENTS, type SegmentId } from '@/config/timeline';
 import { CampusScene } from '@/scenes/campus/CampusScene';
 import { EventCorridor } from '@/scenes/events/EventCorridor';
-import { FinalDoor } from '@/scenes/events/FinalDoor';
 import { SafeBoundary } from '@/scenes/shared/SafeBoundary';
 import { SignalThread } from '@/scenes/shared/SignalThread';
-import { TeamWorkspace } from '@/scenes/team/TeamWorkspace';
 import { DescentShaft } from '@/scenes/underground/DescentShaft';
 import { FacilityHall } from '@/scenes/underground/FacilityHall';
 import { UndergroundKit } from '@/scenes/underground/kit';
 import { experience } from '@/store/experience';
 import { fx } from '@/systems/camera/effects';
 import { progress } from '@/systems/scroll/progress';
+import { teams, teamsFrame } from '@/teams/state';
+import { TeamsWorld } from '@/teams/world/TeamsWorld';
 
-type ChunkId = 'campus' | 'shaft' | 'hall' | 'corridor' | 'team' | 'underground';
+type ChunkId = 'campus' | 'shaft' | 'hall' | 'corridor' | 'teams' | 'underground';
 
 const at = (seg: SegmentId, t: number) => SEGMENTS[seg].start + (SEGMENTS[seg].end - SEGMENTS[seg].start) * t;
 
 /** Progress windows in which each chunk should exist. */
-const WINDOWS: Record<Exclude<ChunkId, 'team' | 'underground'>, [number, number]> = {
+const WINDOWS: Record<Exclude<ChunkId, 'teams' | 'underground'>, [number, number]> = {
   campus: [0, at('descent', 0.7)],
   shaft: [at('topdown', 0), at('facility', 0.3)],
   hall: [at('descent', 0.3), at('events', 0.3)],
-  corridor: [at('descent', 0.72), SEGMENTS.team.start + 0.002],
+  corridor: [at('descent', 0.72), SEGMENTS.portal.end],
 };
 
+/** The Teams world mounts (and compiles) while you walk down the vestibule. */
+const TEAMS_FROM = at('portal', 0.25);
+
 function wanted(p: number): Record<ChunkId, boolean> {
-  // Past the door (or being pushed through it) the corridor is behind you.
-  const inTeam = experience().phase === 'impact' || p >= SEGMENTS.team.start + 0.001;
-  const inside = (w: [number, number]) => p >= w[0] && p <= w[1];
+  // Through the portal, the facility is somewhere else entirely. Leaving,
+  // the corridor comes back before the crossing so it's there when you are.
+  const s = teams().state;
+  const inTeams = teamsFrame.inside;
+  const exiting = s === 'portalExiting';
+  const travelling = s === 'portalEntering' || exiting;
+  const within = (w: [number, number]) => p >= w[0] && p <= w[1];
+  const out = !inTeams;
   return {
-    campus: !inTeam && inside(WINDOWS.campus),
-    shaft: !inTeam && inside(WINDOWS.shaft),
-    hall: !inTeam && inside(WINDOWS.hall),
-    corridor: !inTeam && inside(WINDOWS.corridor),
-    team: inTeam || p >= at('door', 0),
-    underground: inTeam || p >= at('topdown', 0),
+    campus: out && within(WINDOWS.campus),
+    shaft: out && within(WINDOWS.shaft),
+    hall: out && within(WINDOWS.hall),
+    corridor: (out && within(WINDOWS.corridor)) || exiting,
+    teams: inTeams || travelling || (experience().phase !== 'loading' && p >= TEAMS_FROM),
+    underground: (out && p >= at('topdown', 0)) || exiting,
   };
 }
 
@@ -76,7 +84,6 @@ export function SceneDirector() {
     if (changed) setMounted(next);
   });
 
-  const inTeam = !mounted.corridor && mounted.team;
   return (
     <>
       {mounted.campus && (
@@ -102,13 +109,12 @@ export function SceneDirector() {
               <EventCorridor />
             </SafeBoundary>
           )}
-          {inTeam && <FinalDoor />}
-          {mounted.team && (
-            <SafeBoundary name="team" fallback={null}>
-              <TeamWorkspace />
-            </SafeBoundary>
-          )}
         </UndergroundKit>
+      )}
+      {mounted.teams && (
+        <SafeBoundary name="teams" fallback={null}>
+          <TeamsWorld />
+        </SafeBoundary>
       )}
     </>
   );

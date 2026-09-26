@@ -3,10 +3,10 @@
  * camera pose. Each segment's first pose equals the previous segment's last
  * pose, so the whole journey is one continuous move.
  */
-import { CAMERA_STATES as S, type CameraMode } from '@/config/camera';
+import { CAMERA_STATES as S } from '@/config/camera';
 import { evaluateFlight } from './flight';
-import { evaluateTour, TOUR_START_POSE, TOUR_STOPS, tourProgress } from './tour';
-import { EVENT_STATION_WEIGHTS, SEGMENTS, segmentAt, segmentProgress, progressForRoom, type SegmentId } from '@/config/timeline';
+import { EVENT_STATION_WEIGHTS, PORTAL_DWELL, PORTAL_GATE, SEGMENTS, segmentAt, segmentProgress, progressForRoom, type SegmentId } from '@/config/timeline';
+import { progressForDomain } from '@/teams/layout';
 import { CORRIDOR, EYE_Y } from '@/config/world';
 import {
   angleDelta,
@@ -57,11 +57,13 @@ const corridorEntry = makePose([0, EYE_Y, CORRIDOR.start + 1], 0, 0, 54);
 export const STATION_POSES: CameraPose[] = CORRIDOR.rooms.map((r) => lookPose(r.viewpoint, r.focus, r.event.flagship ? 66 : 62));
 const lastStation = STATION_POSES[STATION_POSES.length - 1] ?? corridorEntry;
 
-const doorKeys: PoseKey[] = [
+// Out of the last room, down the vestibule, and stand square on to the portal
+// (from PORTAL_DWELL on, the camera holds there: the hold zone).
+const portalKeys: PoseKey[] = [
   { t: 0, pose: lastStation },
-  { t: 0.42, pose: S.doorApproach },
-  { t: 0.64, pose: { ...S.doorApproach, pitch: 10 * DEG, fov: 48 } },
-  { t: 1, pose: S.doorThrough },
+  { t: PORTAL_DWELL * 0.55, pose: S.portalApproach, ease: easeInOutSine },
+  { t: PORTAL_DWELL, pose: S.portalStand, ease: easeInOutSine },
+  { t: 1, pose: S.portalStand },
 ];
 
 const at = (seg: SegmentId, t: number) => SEGMENTS[seg].start + (SEGMENTS[seg].end - SEGMENTS[seg].start) * t;
@@ -158,38 +160,12 @@ export function evaluateCinematic(p: number, out: CameraPose): CameraPose {
       return sampleTrack(facilityKeys, u, out);
     case 'events':
       return evaluateEvents(p, out);
-    case 'door':
-      return sampleTrack(doorKeys, u, out);
-    case 'threshold':
-      return lerpPose(S.doorThrough, S.doorLean, easeInOutSine(u), out);
-    case 'through':
-      // Walking back out through the door (going forward plays the impact instead).
-      return lerpPose(S.doorLean, TOUR_START_POSE, easeInOutSine(u), out);
-    case 'team':
-    case 'core':
-      return evaluateTour(p, out);
-  }
-}
-
-export function cameraModeFor(seg: SegmentId): CameraMode {
-  switch (seg) {
-    case 'arrival':
-      return 'ARRIVAL_CAMERA';
-    case 'ascent':
-      return 'DRONE_CAMERA';
-    case 'campus':
-    case 'topdown':
-      return 'CAMPUS_CAMERA';
-    case 'descent':
-    case 'facility':
-      return 'DESCENT_CAMERA';
-    case 'events':
-      return 'EVENT_CAMERA';
-    case 'team':
-    case 'core':
-      return 'FIRST_PERSON_CAMERA';
-    default:
-      return 'DOOR_CAMERA';
+    case 'portal':
+      return sampleTrack(portalKeys, u, out);
+    case 'teams':
+      // Only reachable through the portal (the Teams camera takes over there);
+      // outside it, the gate keeps you standing before the ring.
+      return copyPose(S.portalStand, out);
   }
 }
 
@@ -197,10 +173,6 @@ export function cameraModeFor(seg: SegmentId): CameraMode {
 
 /** 0 → 1 as the glass light-well opens during the descent. */
 export const wellOpenAmount = (p: number) => smoothstep(0.38, 0.52, segmentProgress(p, 'descent'));
-
-/** 0 → 1 as the door to the team opens. */
-export const doorOpenAmount = (p: number) =>
-  p >= SEGMENTS.threshold.start ? 1 : smoothstep(0.5, 0.9, segmentProgress(p, 'door'));
 
 /**
  * Reduced-motion "stills": the camera cuts between these instead of flying.
@@ -215,10 +187,9 @@ export const REDUCED_MOTION_STOPS: number[] = [
   at('facility', 0.45),
   at('facility', 0.8),
   ...CORRIDOR.rooms.map((_, i) => progressForRoom(i)),
-  at('door', 0.4),
-  SEGMENTS.threshold.start + 0.0001,
-  // The team tour: two framed moments per meeting.
-  ...TOUR_STOPS.flatMap((_, i) => (i === TOUR_STOPS.length - 1 ? [tourProgress(i, 0.5)] : [tourProgress(i, 0.3), tourProgress(i, 0.7)])),
+  PORTAL_GATE - 0.0002,
+  // Inside the Teams world (the gate keeps these out of reach until the portal is entered).
+  ...[0, 1, 2, 3, 4, 5].map((i) => progressForDomain(i)),
 ];
 
 export function nearestStop(p: number) {

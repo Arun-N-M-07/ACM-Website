@@ -35,7 +35,7 @@ export function readRoomClock(index: number, out: RoomClock) {
     out.here = false;
     out.u = p > SEGMENTS.events.end || (inEvents && st.index > index) ? 1 : -0.3;
   }
-  out.near = (inEvents && Math.abs(st.index - index) <= 1) || (p > SEGMENTS.events.end && p < SEGMENTS.door.end && index >= 8);
+  out.near = (inEvents && Math.abs(st.index - index) <= 1) || (p > SEGMENTS.events.end && p < SEGMENTS.portal.end && index >= 8);
   return out;
 }
 

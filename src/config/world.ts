@@ -6,14 +6,12 @@
  *   y = 0      campus ground. The red building sits north of the lawn.
  *   y = -60    underground facility floor. A glass light-well in the lawn
  *              drops straight into the facility hall; the events corridor runs
- *              north (−z) underneath the building, ending at the door to the
- *              team workspace.
+ *              north (−z) underneath the building, ending at the portal.
  *
- * Layouts that depend on content (event rooms, domain bays) are computed from
- * the content arrays, so adding an event or a domain re-flows the world.
+ * Layouts that depend on content (event rooms) are computed from the content
+ * arrays, so adding an event re-flows the world.
  */
 import { EVENTS, type EventRecord } from '@/content/events';
-import { DOMAINS, type Domain, type DomainId } from '@/content/domains';
 
 export type Vec3 = [number, number, number];
 
@@ -136,81 +134,17 @@ export function buildCorridorLayout(events: EventRecord[] = EVENTS) {
 export const CORRIDOR = buildCorridorLayout();
 export const DOOR = { z: CORRIDOR.doorZ, width: 4.4, height: 7 };
 
-// ─── Team workspace ───────────────────────────────────────────────────────────
-
-/** World-space origin of the team hall: centre of the entrance threshold. */
-export const TEAM_ORIGIN: Vec3 = [0, FLOOR_Y, DOOR.z - 0.6];
-
-export const TEAM_HALL = {
-  halfWidth: 22,
-  depth: 60,
-  height: 7.6,
-  core: { z: -34, radius: 7.2, doorWidth: 3.2 },
-  commons: { z: -8.5 },
-  spawnZ: -5.5,
-} as const;
-
-export interface BayLayout {
-  domain: Domain;
-  /** Bay centre in hall-local coordinates (x, z). */
-  x: number;
-  z: number;
-  /** Rotation so bay-local +z faces the aisle. */
-  rotationY: number;
-  width: number;
-  depth: number;
-  /** Hall-local point in the aisle in front of the bay. */
-  approach: [number, number];
-}
+// ─── The portal & the Teams world ─────────────────────────────────────────────
 
 /**
- * Perimeter bay slots in walking order: down the west aisle, across the back
- * wall, up the east aisle — the scroll tour visits domains in this loop, then
- * turns into the core.
+ * The portal stands in the vestibule's end wall, where the corridor runs out.
+ * Its ring is vertical, facing +z (back down the corridor).
  */
-const BAY_SLOTS: { x: number; z: number; rot: number }[] = [
-  { x: -16.5, z: -14, rot: Math.PI / 2 },
-  { x: -16.5, z: -25.5, rot: Math.PI / 2 },
-  { x: -16.5, z: -37, rot: Math.PI / 2 },
-  { x: -16.5, z: -48.5, rot: Math.PI / 2 },
-  { x: -6, z: -54.5, rot: 0 },
-  { x: 6, z: -54.5, rot: 0 },
-  { x: 16.5, z: -48.5, rot: -Math.PI / 2 },
-  { x: 16.5, z: -37, rot: -Math.PI / 2 },
-  { x: 16.5, z: -25.5, rot: -Math.PI / 2 },
-  { x: 16.5, z: -14, rot: -Math.PI / 2 },
-];
+export const PORTAL = { z: DOOR.z, y: FLOOR_Y + 3.4, radius: 2.55, tube: 0.2 } as const;
 
-export function buildTeamLayout(domains: Domain[] = DOMAINS) {
-  const bays: BayLayout[] = [];
-  const perimeter = domains.filter((d) => d.id !== 'office');
-  if (perimeter.length > BAY_SLOTS.length && typeof console !== 'undefined') {
-    console.warn(`[world] ${perimeter.length} domains but only ${BAY_SLOTS.length} bays; extra domains are listed in the archive only.`);
-  }
-  perimeter.slice(0, BAY_SLOTS.length).forEach((domain, i) => {
-    const s = BAY_SLOTS[i];
-    const fx = Math.sin(s.rot);
-    const fz = Math.cos(s.rot);
-    bays.push({
-      domain,
-      x: s.x,
-      z: s.z,
-      rotationY: s.rot,
-      width: 10,
-      depth: 10.5,
-      approach: [s.x + fx * 7.2, s.z + fz * 7.2],
-    });
-  });
-  return { bays };
-}
-
-export const TEAM_LAYOUT = buildTeamLayout();
-
-export function bayFor(domain: DomainId) {
-  return TEAM_LAYOUT.bays.find((b) => b.domain.id === domain);
-}
-
-/** Convert hall-local (x, z) to world space. */
-export function teamToWorld(x: number, z: number, y = 0): Vec3 {
-  return [TEAM_ORIGIN[0] + x, TEAM_ORIGIN[1] + y, TEAM_ORIGIN[2] + z];
-}
+/**
+ * The Teams world is somewhere else entirely: far below and beyond the
+ * facility, reached only through the portal. Everything in it is authored
+ * relative to this origin (see src/teams/layout.ts).
+ */
+export const TEAMS_ORIGIN: Vec3 = [0, -420, -1400];

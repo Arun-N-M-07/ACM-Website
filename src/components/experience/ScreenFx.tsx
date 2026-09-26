@@ -1,6 +1,6 @@
 'use client';
 /**
- * Screen-space effects: impact blur (CSS filter on the canvas), vignette and
+ * Screen-space effects: canvas blur (CSS filter), vignette and
  * fades for cuts, plus a fine film grain. Values come from the camera system
  * (systems/camera/effects) and are applied once per rendered frame.
  */

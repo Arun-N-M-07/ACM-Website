@@ -13,7 +13,6 @@ import { useExperience } from '@/store/experience';
 import { detectDevice, detectWebGL, prefersReducedMotion } from '@/systems/performance/quality';
 import { music } from '@/systems/audio/music';
 import { roomDwellRange } from '@/systems/camera/shots';
-import { tourProgress } from '@/systems/camera/tour';
 import { progress } from '@/systems/scroll/progress';
 import { jumpToProgress, ScrollTimeline, scrollToProgress } from '@/systems/scroll/ScrollTimeline';
 import { fontsReady } from '@/systems/textures/typeset';
@@ -22,13 +21,13 @@ import { ChapterCopy } from './ChapterCopy';
 import { ChapterRail } from './ChapterRail';
 import { DescentMeter } from './DescentMeter';
 import { Dossier } from './Dossier';
-import { FinaleOverlay } from './FinaleOverlay';
 import { IndexMenu } from './IndexMenu';
 import { KeyboardNav } from './KeyboardNav';
 import { LoadingScreen } from './LoadingScreen';
 import { Plates } from './Plates';
 import { ScreenFx } from './ScreenFx';
-import { TeamHud } from './TeamHud';
+import { TeamsExperience } from '@/teams/TeamsExperience';
+import { teamsDebug } from '@/teams/debug';
 import { TopBar } from './TopBar';
 
 const ExperienceCanvas = dynamic(() => import('@/experience/ExperienceCanvas'), { ssr: false });
@@ -72,7 +71,7 @@ export function Experience() {
     // Test hook (dev builds, or ?debug in production): lets the visual test
     // harness jump through the journey deterministically.
     if (process.env.NODE_ENV !== 'production' || new URLSearchParams(window.location.search).has('debug')) {
-      (window as unknown as { __acm: unknown }).__acm = { jump: jumpToProgress, scroll: scrollToProgress, store: useExperience, progress, tourProgress, segments: SEGMENTS, music, roomProgress: (i: number, d: number) => { const [a, b] = roomDwellRange(i); return a + (b - a) * d; } };
+      (window as unknown as { __acm: unknown }).__acm = { jump: jumpToProgress, scroll: scrollToProgress, store: useExperience, progress, segments: SEGMENTS, music, roomProgress: (i: number, d: number) => { const [a, b] = roomDwellRange(i); return a + (b - a) * d; }, teams: teamsDebug };
     }
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
     const onChange = () => useExperience.getState().set({ reducedMotion: mq.matches });
@@ -85,6 +84,17 @@ export function Experience() {
 
   // The printed edition lives in the server-rendered #archive layer; show it
   // when asked for, or when there is no WebGL.
+  // A lost GPU context: drop the canvas, and bring a fresh one up a moment later.
+  const [canvasKey, setCanvasKey] = useState(0);
+  useEffect(() => {
+    if (webgl !== 'lost') return;
+    const id = window.setTimeout(() => {
+      setCanvasKey((k) => k + 1);
+      useExperience.getState().set({ webgl: 'ok' });
+    }, 700);
+    return () => window.clearTimeout(id);
+  }, [webgl]);
+
   const archiveOpen = textOpen || webgl === 'unsupported' || webgl === 'failed';
   useEffect(() => {
     document.documentElement.dataset.archive = archiveOpen ? 'open' : 'closed';
@@ -113,7 +123,7 @@ export function Experience() {
       <div className="stage" tabIndex={-1}>
         {fontsOk && webgl === 'ok' && (
           <SafeBoundary name="canvas" fallback={null} onError={() => useExperience.getState().set({ webgl: 'failed' })}>
-            <ExperienceCanvas />
+            <ExperienceCanvas key={canvasKey} />
           </SafeBoundary>
         )}
       </div>
@@ -122,8 +132,7 @@ export function Experience() {
       <ChapterCopy />
       <DescentMeter />
       <Plates />
-      <TeamHud />
-      <FinaleOverlay />
+      <TeamsExperience />
       <ChapterRail />
       <TopBar />
       <IndexMenu />

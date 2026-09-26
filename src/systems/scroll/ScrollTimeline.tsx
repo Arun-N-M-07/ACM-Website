@@ -10,6 +10,7 @@ import Lenis from 'lenis';
 import { useEffect, useRef } from 'react';
 import { SCROLL_LENGTH_VH } from '@/config/timeline';
 import { useExperience } from '@/store/experience';
+import { useTeams, type TeamsState } from '@/teams/state';
 import { progress } from './progress';
 
 let lenis: Lenis | null = null;
@@ -27,7 +28,8 @@ export function scrollToProgress(p: number, duration = 2.4) {
 
 /** Jump to progress `p`: the camera cuts (behind a brief fade) instead of flying. */
 export function jumpToProgress(p: number) {
-  progress.target = Math.min(1, Math.max(0, p));
+  p = progress.clampToLock(p);
+  progress.target = p;
   progress.snap = true;
   const y = p * maxScroll();
   if (lenis) lenis.scrollTo(y, { immediate: true, force: true });
@@ -55,11 +57,31 @@ export function placeScroll(p: number) {
   requestAnimationFrame(place);
 }
 
+/**
+ * Input pushed past a wall (the portal): put the page's scroll position back
+ * on the wall so Lenis doesn't keep a runaway target. Once per frame at most.
+ */
+let pullQueued = false;
+function pullBack() {
+  if (pullQueued) return;
+  pullQueued = true;
+  requestAnimationFrame(() => {
+    pullQueued = false;
+    const y = progress.target * maxScroll();
+    if (lenis) lenis.scrollTo(y, { immediate: true, force: true });
+    else window.scrollTo({ top: y, behavior: 'auto' });
+  });
+}
+
+/** Teams states in which the page must not scroll (travel, arrival, a card opening or open). */
+const LOCKING: TeamsState[] = ['portalEntering', 'teamsEntering', 'cardFocused', 'domainDetail', 'portalExiting'];
+
 export function ScrollTimeline() {
   const track = useRef<HTMLDivElement>(null);
   const reducedMotion = useExperience((s) => s.reducedMotion);
   const phase = useExperience((s) => s.phase);
   const overlay = useExperience((s) => s.menuOpen || !!s.dossier || s.textVersionOpen);
+  const teamsLock = useTeams((s) => LOCKING.includes(s.state));
 
   useEffect(() => {
     if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
@@ -79,12 +101,31 @@ export function ScrollTimeline() {
       trigger: track.current,
       start: 'top top',
       end: 'bottom bottom',
-      onUpdate: (self) => progress.setTarget(self.progress),
+      onUpdate: (self) => {
+        if (progress.setTarget(self.progress)) pullBack();
+      },
     });
     progress.setTarget(st.progress);
+    // The track is sized in viewport heights, so a resize (rotation, window
+    // drag) would change what the current pixel offset means. Keep the
+    // journey where it was instead.
+    let kept = progress.target;
+    const beforeRefresh = () => {
+      kept = progress.target;
+    };
+    const afterRefresh = () => {
+      const y = kept * maxScroll();
+      if (instance) instance.scrollTo(y, { immediate: true, force: true });
+      else window.scrollTo({ top: y, behavior: 'auto' });
+      progress.target = kept;
+    };
+    ScrollTrigger.addEventListener('refreshInit', beforeRefresh);
+    ScrollTrigger.addEventListener('refresh', afterRefresh);
     const phaseNow = useExperience.getState().phase;
     if (instance && phaseNow !== 'cinematic') instance.stop();
     return () => {
+      ScrollTrigger.removeEventListener('refreshInit', beforeRefresh);
+      ScrollTrigger.removeEventListener('refresh', afterRefresh);
       st.kill();
       if (instance) {
         gsap.ticker.remove(tick);
@@ -96,11 +137,11 @@ export function ScrollTimeline() {
 
   // Scrolling only drives the journey in cinematic mode.
   useEffect(() => {
-    const locked = phase !== 'cinematic' || overlay;
+    const locked = phase !== 'cinematic' || overlay || teamsLock;
     document.documentElement.classList.toggle('scroll-locked', locked);
     if (locked) lenis?.stop();
     else lenis?.start();
-  }, [phase, overlay, reducedMotion]);
+  }, [phase, overlay, teamsLock, reducedMotion]);
 
   return <div ref={track} className="scroll-track" style={{ height: `${SCROLL_LENGTH_VH}vh` }} aria-hidden="true" />;
 }

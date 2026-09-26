@@ -1,0 +1,419 @@
+/* The portal and the Teams world — interface.
+   Restrained on purpose: mono labels, one display face, hairlines. The world
+   is the interface; these are its captions. */
+
+.sr-only {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Inside the world, the domain index replaces the chapter rail. */
+html[data-teams='inside'] .rail,
+html[data-teams='inside'] .plates {
+  display: none;
+}
+
+/* ── The portal ─────────────────────────────────────────────────────────── */
+.portal-hold {
+  position: fixed;
+  inset: 0;
+  z-index: 26;
+  pointer-events: none;
+}
+.portal-target {
+  position: absolute;
+  left: 0;
+  top: 0;
+  border-radius: 50%;
+  pointer-events: auto;
+  cursor: pointer;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  will-change: transform;
+}
+.portal-target:focus-visible {
+  outline: 1px solid rgba(239, 233, 223, 0.5);
+  outline-offset: 10px;
+}
+.portal-label {
+  position: absolute;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.32em;
+  color: var(--bone);
+  text-shadow: 0 0 18px rgba(11, 11, 12, 0.9);
+  white-space: nowrap;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+.portal-label-main {
+  padding-left: 0.32em;
+}
+.portal-label-bar {
+  position: relative;
+  width: 132px;
+  height: 1px;
+  background: rgba(239, 233, 223, 0.18);
+  overflow: hidden;
+}
+.portal-label-bar span {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, #9fb8ff, #ffd9e2);
+  transform-origin: left center;
+  transform: scaleX(0);
+}
+.portal-label-sub {
+  font-size: 9px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--bone-dim);
+}
+.portal-label[data-stage='idle'] .portal-label-main {
+  animation: portal-breathe 3.2s ease-in-out infinite;
+}
+.portal-label[data-stage='nudge'] .portal-label-main {
+  color: #cfdcff;
+  animation: portal-nudge 0.9s ease-in-out infinite;
+}
+.portal-label[data-stage='holding'] .portal-label-sub,
+.portal-label[data-stage='going'] .portal-label-sub {
+  opacity: 0;
+}
+@keyframes portal-breathe {
+  50% {
+    opacity: 0.62;
+  }
+}
+@keyframes portal-nudge {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* ── Teams HUD ──────────────────────────────────────────────────────────── */
+.teams-hud {
+  position: fixed;
+  inset: 0;
+  z-index: 25;
+  pointer-events: none;
+}
+.teams-hud button,
+.teams-hud a {
+  pointer-events: auto;
+}
+
+/* Over a card: the ordinary hand. */
+html[data-teams-hover='true'] body {
+  cursor: pointer;
+}
+
+/* The six domains — bottom-left, in the reference's interface voice. */
+.teams-nav {
+  position: fixed;
+  left: var(--gutter);
+  bottom: calc(var(--gutter) + env(safe-area-inset-bottom));
+  /* Wrap inside the strip left of the card rather than run across its pale
+     glass: the card is fitted to 53 % of the width or 81.45 % of the height,
+     whichever is smaller (layout.ts), so its left edge sits at
+     max(23.5vw, 50vw − 40.73vh). */
+  max-width: min(46ch, calc(max(23.5vw, 50vw - 40.73vh) - var(--gutter) - 16px));
+  font-family: var(--mono);
+  font-size: 11px;
+  line-height: 1.5;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: opacity 0.45s var(--ease);
+}
+.teams-nav-title {
+  margin: 0 0 10px;
+  color: var(--bone);
+}
+.teams-nav ol {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+.teams-nav button {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 3px 0;
+  text-align: left;
+  color: #a99cf0;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  transition: color 0.3s var(--ease);
+}
+.teams-nav .arrow {
+  flex: none;
+  opacity: 0.8;
+}
+.teams-nav .num {
+  display: none;
+}
+.teams-nav li[data-current='true'] button {
+  color: var(--bone);
+}
+.teams-nav li[data-current='true'] .arrow {
+  color: #cbbfff;
+}
+.teams-nav button:hover,
+.teams-nav button:focus-visible {
+  color: var(--bone);
+}
+.teams-hud[data-state='domainDetail'] .teams-nav,
+.teams-hud[data-state='cardFocused'] .teams-nav {
+  opacity: 0 !important;
+  visibility: hidden;
+}
+
+.type-caret {
+  display: inline-block;
+  width: 0.62em;
+  height: 1em;
+  margin-left: 1px;
+  vertical-align: -0.12em;
+  background: currentColor;
+  opacity: 0.85;
+}
+.type-rest {
+  visibility: hidden;
+}
+
+.teams-pull {
+  position: fixed;
+  top: calc(82px + env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--bone-2);
+  opacity: 0;
+  pointer-events: none;
+}
+.teams-pull p {
+  margin: 0;
+}
+.teams-pull-bar {
+  position: relative;
+  width: 160px;
+  height: 1px;
+  background: rgba(239, 233, 223, 0.2);
+  overflow: hidden;
+}
+.teams-pull-bar span {
+  position: absolute;
+  inset: 0;
+  background: #9fb8ff;
+  transform-origin: left;
+  transform: scaleX(0);
+}
+
+.teams-outro {
+  position: fixed;
+  left: var(--gutter);
+  top: 22vh;
+  width: min(420px, 38vw);
+  padding: 26px 28px 20px;
+  background: rgba(10, 12, 16, 0.86);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--line);
+  border-top: 2px solid #cbb7e8;
+  will-change: opacity, transform;
+}
+.teams-outro .kicker {
+  color: #cbb7e8;
+}
+.teams-outro .plate-body {
+  color: var(--bone);
+  font-size: 15px;
+  line-height: 1.6;
+}
+.teams-outro .plate-btn {
+  color: var(--ink);
+  background: var(--bone);
+  border-color: var(--bone);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  padding: 11px 13px;
+}
+.teams-outro .plate-btn.ghost {
+  color: var(--bone);
+  background: transparent;
+  border-color: var(--line);
+}
+.teams-outro .plate-btn:hover {
+  background: #cbb7e8;
+  color: var(--ink);
+}
+
+/* ── The open domain ────────────────────────────────────────────────────── */
+.domain-detail {
+  position: fixed;
+  inset: 0;
+  z-index: 27;
+  pointer-events: none;
+  font-family: var(--mono);
+  text-transform: uppercase;
+}
+.domain-scroll {
+  position: fixed;
+  top: calc(64px + env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--bone-2);
+  white-space: nowrap;
+}
+.domain-panel {
+  position: fixed;
+  left: var(--gutter);
+  bottom: calc(var(--gutter) + env(safe-area-inset-bottom));
+  width: min(34ch, 30vw);
+  font-size: 11px;
+  line-height: 1.55;
+  letter-spacing: 0.06em;
+  color: var(--bone);
+  pointer-events: none;
+}
+.domain-detail[data-open='true'] .domain-panel {
+  pointer-events: auto;
+}
+.domain-title {
+  margin: 0 0 12px;
+  font: 500 12px/1.4 var(--mono);
+  letter-spacing: 0.08em;
+  outline: none;
+}
+.domain-meta {
+  margin: 0 0 12px;
+  color: #8fb3e8;
+}
+.domain-members,
+.domain-placeholders {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+}
+.domain-members li {
+  color: var(--bone);
+}
+.domain-placeholders li {
+  color: var(--bone-2);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+.domain-step {
+  margin: 0 0 6px;
+  color: var(--bone-dim);
+}
+.domain-step button,
+.domain-close {
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: var(--bone);
+  padding: 4px 0;
+}
+.domain-step button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.domain-step button:not(:disabled):hover,
+.domain-close:hover {
+  color: #cbbfff;
+}
+
+/* ── Archive: names without portraits ───────────────────────────────────── */
+.archive .people.names {
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 6px 28px;
+}
+.archive .domain-no {
+  font-family: var(--mono);
+  font-size: 0.7em;
+  color: var(--paper-dim);
+  margin-right: 6px;
+}
+
+/* ── Small screens ──────────────────────────────────────────────────────── */
+@media (max-width: 760px), (max-aspect-ratio: 9/10) {
+  .teams-nav {
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+    max-width: calc(100vw - 2 * var(--gutter));
+    text-align: center;
+  }
+  .teams-nav-title {
+    margin-bottom: 6px;
+    font-size: 10px;
+  }
+  .teams-nav ol {
+    display: flex;
+    justify-content: center;
+    gap: 2px;
+  }
+  .teams-nav .arrow,
+  .teams-nav .name {
+    display: none;
+  }
+  .teams-nav .num {
+    display: inline;
+    padding: 8px 8px;
+  }
+  .teams-nav li[data-current='true'] .num {
+    border-bottom: 1px solid var(--bone);
+  }
+  .teams-outro {
+    left: 12px;
+    right: 12px;
+    top: auto;
+    bottom: calc(12px + env(safe-area-inset-bottom));
+    width: auto;
+    max-height: 58svh;
+    overflow-y: auto;
+    padding: 18px 20px 14px;
+  }
+  .teams-outro .finale-heading {
+    margin: 12px 0;
+  }
+  .domain-panel {
+    left: var(--gutter);
+    right: var(--gutter);
+    width: auto;
+    font-size: 11px;
+  }
+  .domain-scroll {
+    top: calc(58px + env(safe-area-inset-top));
+  }
+}

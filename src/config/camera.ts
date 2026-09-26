@@ -2,18 +2,8 @@
  * Named camera states. Every cinematic shot interpolates between these, so the
  * whole journey can be re-framed from this one file.
  */
-import { CAMPUS, CORRIDOR, DOOR, EYE_Y, FLOOR_Y, hallZ, TEAM_HALL, TEAM_ORIGIN, UNDERGROUND, type Vec3 } from './world';
+import { CAMPUS, EYE_Y, FLOOR_Y, hallZ, PORTAL, UNDERGROUND, type Vec3 } from './world';
 import { DEG, lookPose, makePose } from '@/systems/camera/pose';
-
-export type CameraMode =
-  | 'ARRIVAL_CAMERA'
-  | 'DRONE_CAMERA'
-  | 'CAMPUS_CAMERA'
-  | 'DESCENT_CAMERA'
-  | 'EVENT_CAMERA'
-  | 'DOOR_CAMERA'
-  | 'IMPACT_CAMERA'
-  | 'FIRST_PERSON_CAMERA';
 
 const W = CAMPUS.well;
 const T = CAMPUS.tower;
@@ -60,11 +50,9 @@ export const CAMERA_STATES = {
   facilityMonument: lookPose([-1.5, EYE_Y, hallZ(3.6)], [14, FLOOR_Y + 3.1, hallZ(1.4)], 50),
   facilityEnd: makePose([0, EYE_Y, UNDERGROUND.hall.north + 2.5], 0, 0, 54),
 
-  doorApproach: makePose([0, EYE_Y, DOOR.z + 7.5], 0, 7 * DEG, 50),
-  doorThrough: makePose([0, EYE_Y, DOOR.z + 1.6], 0, 1 * DEG, 56),
-  doorLean: makePose([0, EYE_Y - 0.05, DOOR.z + 0.6], 0, 0, 60),
-
-  teamSpawn: makePose([TEAM_ORIGIN[0], EYE_Y, TEAM_ORIGIN[2] + TEAM_HALL.spawnZ], 0, -3 * DEG, 62),
+  // Down the vestibule towards the portal, then standing square on to it.
+  portalApproach: lookPose([0, EYE_Y, PORTAL.z + 17], [0, PORTAL.y + 0.6, PORTAL.z], 54),
+  portalStand: lookPose([0, EYE_Y + 0.1, PORTAL.z + 8.8], [0, PORTAL.y - 0.15, PORTAL.z], 50),
 } as const;
 
 /** Tuning for the scroll → camera response. */
@@ -78,32 +66,3 @@ export const CAMERA_RESPONSE = {
   far: 2600,
 } as const;
 
-/** The physical push through the door. */
-export const IMPACT = {
-  duration: 1.9,
-  /** Fraction of the duration spent accelerating forward. */
-  rush: 0.36,
-  shakeAmplitude: 0.075,
-  shakeRoll: 5.5 * DEG,
-  pitchDip: -9 * DEG,
-  fovPunch: 16,
-  blurPx: 7,
-} as const;
-
-export const FIRST_PERSON = {
-  walkSpeed: 3.1,
-  runSpeed: 5.2,
-  acceleration: 14,
-  damping: 10,
-  radius: 0.34,
-  lookSensitivity: 0.0022,
-  dragSensitivity: 0.0042,
-  keyTurnSpeed: 1.8,
-  pitchLimit: 78 * DEG,
-  wheelStep: 0.9,
-  bobAmount: 0.028,
-  bobFrequency: 8.5,
-  fov: 62,
-} as const;
-
-export const ROOM_COUNT = CORRIDOR.rooms.length;

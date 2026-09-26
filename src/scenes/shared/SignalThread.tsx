@@ -1,13 +1,17 @@
 'use client';
-/** A light inlaid into the route. Its position and revealed length rewind with scroll. */
+/**
+ * A light inlaid into the route. Its position and revealed length rewind with
+ * scroll. It ends in the portal — and while the portal is held, it floods
+ * towards it.
+ */
 import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
 import { CatmullRomCurve3, Color, type Group, MeshBasicMaterial, SphereGeometry, TubeGeometry, Vector3 } from 'three';
-import { SEGMENTS } from '@/config/timeline';
-import { CAMPUS, CORRIDOR, DOOR, FLOOR_Y, UNDERGROUND } from '@/config/world';
+import { PORTAL_DWELL, SEGMENTS } from '@/config/timeline';
+import { CAMPUS, CORRIDOR, FLOOR_Y, PORTAL, UNDERGROUND } from '@/config/world';
 import { roomDwellRange } from '@/systems/camera/shots';
-import { TOUR_STOPS, tourProgress } from '@/systems/camera/tour';
 import { smoothstep } from '@/systems/camera/pose';
+import { teamsFrame } from '@/teams/state';
 import { useDisposable } from '@/systems/performance/useDisposable';
 import { progress } from '@/systems/scroll/progress';
 
@@ -15,7 +19,6 @@ const Y = FLOOR_Y + 0.045;
 const within = (segment: keyof typeof SEGMENTS, f: number) => SEGMENTS[segment].start + (SEGMENTS[segment].end - SEGMENTS[segment].start) * f;
 const key = (p: number, x: number, y: number, z: number) => ({ p, at: new Vector3(x, y, z) });
 
-/** The same route is reconstructed on the core's projection table. */
 export const SIGNAL_KEYS = (() => {
   const w = CAMPUS.well;
   const keys = [
@@ -34,13 +37,12 @@ export const SIGNAL_KEYS = (() => {
       key(b, r.side * (UNDERGROUND.corridor.halfWidth + .2), Y, r.z + 1.2),
     );
   }
-  keys.push(key(within('door', .15), 0, Y, DOOR.z + 4), key(SEGMENTS.team.start, 0, Y, DOOR.z - 2));
-  for (let i = 0; i < TOUR_STOPS.length; i++) {
-    const s = TOUR_STOPS[i];
-    // The final turn approaches the core through its south-facing door.
-    if (s.id === 'core') keys.push(key(SEGMENTS.core.start, 0, Y, s.view[2] + 9));
-    keys.push(key(tourProgress(i, .2), s.view[0], Y, s.view[2]));
-  }
+  // Down the vestibule, and up into the foot of the ring.
+  keys.push(
+    key(within('portal', 0.35), 0, Y, PORTAL.z + 6),
+    key(within('portal', PORTAL_DWELL), 0, Y, PORTAL.z + 0.9),
+    key(SEGMENTS.portal.end, 0, PORTAL.y - PORTAL.radius - PORTAL.tube, PORTAL.z + 0.3),
+  );
   return keys;
 })();
 
@@ -55,6 +57,8 @@ export function signalFraction(p: number) {
   }
   return 1;
 }
+
+const SIGNAL_BLUE = new Color('#83bbff');
 
 export function SignalThread() {
   const group = useRef<Group>(null);
@@ -75,10 +79,14 @@ export function SignalThread() {
   useFrame(() => {
     const p = progress.value;
     const t = signalFraction(p);
-    if (group.current) group.current.visible = p > SEGMENTS.descent.start && p < SEGMENTS.core.end;
-    res.tube.setDrawRange(0, Math.floor(t * 1200) * 24);
+    if (group.current) group.current.visible = p > SEGMENTS.descent.start && !teamsFrame.inside;
+    // The hold pulls the rest of the thread into the ring.
+    const h = smoothstep(0.45, 1, teamsFrame.hold);
+    const shown = t + (1 - t) * h;
+    res.tube.setDrawRange(0, Math.floor(shown * 1200) * 24);
     res.material.opacity = .85 * smoothstep(SEGMENTS.descent.start, SIGNAL_KEYS[0].p, p);
-    if (head.current) head.current.position.copy(res.curve.getPoint(t, point));
+    res.material.color.copy(SIGNAL_BLUE).multiplyScalar(1 + 2.2 * h);
+    if (head.current) head.current.position.copy(res.curve.getPoint(Math.min(1, shown), point));
   });
   return (
     <group ref={group} name="connected-signal">

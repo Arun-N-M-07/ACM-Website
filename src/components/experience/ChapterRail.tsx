@@ -11,7 +11,7 @@ export function ChapterRail() {
   const phase = useExperience((s) => s.phase);
   const fill = useRef<HTMLSpanElement>(null);
   const counter = useRef<HTMLSpanElement>(null);
-  const active = phase === 'impact' ? 'team' : chapter;
+  const active = chapter;
 
   useProgressFrame((p) => {
     if (fill.current) fill.current.style.transform = `scaleY(${p})`;

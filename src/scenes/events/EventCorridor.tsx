@@ -3,7 +3,7 @@
  * The events corridor: a long concrete spine running north under the red
  * building, with event rooms alternating left and right, the two flagships
  * facing each other in a taller transept, and a tall vestibule ending at the
- * door to the team.
+ * portal to the Teams world.
  *
  * Rooms stream: only those within `roomWindow` of the camera's current station
  * are mounted (their canvases and geometry are disposed when they leave).
@@ -25,7 +25,7 @@ import { CanvasPanel } from '../shared/CanvasPanel';
 import { ModelSlot } from '../shared/ModelSlot';
 import { useKit } from '../underground/kit';
 import { EventRoom } from './EventRoom';
-import { FinalDoor } from './FinalDoor';
+import { Portal } from '@/teams/portal/Portal';
 
 const hw = UNDERGROUND.corridor.halfWidth;
 const LOW = UNDERGROUND.corridor.height;
@@ -171,7 +171,7 @@ export function EventCorridor() {
           <EventRoom key={r.event.slug} layout={r} total={rooms.length} active={activeRoom === i} />
         ) : null,
       )}
-      <FinalDoor />
+      <Portal />
     </group>
   );
 }

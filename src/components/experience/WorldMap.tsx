@@ -1,5 +1,6 @@
 /** An architectural cutaway of the journey, drawn from the actual room layout. */
-import { CORRIDOR, TEAM_LAYOUT } from '@/config/world';
+import { CORRIDOR } from '@/config/world';
+import { TEAM_DOMAINS } from '@/content/teams';
 import { CHAPTER } from '@/content/chapter';
 
 export function WorldMap() {
@@ -43,11 +44,26 @@ export function WorldMap() {
       </g>
       <g className="map-layer map-team">
         <path className="map-plane" d="M80 388 300 292 520 388 300 484Z" />
-        <g transform="translate(300 342) matrix(1 .44 -1 .44 0 0)" stroke="#b6b3aa">
-          <rect x="-57" y="0" width="114" height="103" />
-          {TEAM_LAYOUT.bays.map((b) => <rect key={b.domain.id} x={b.x * 2.5 - 8} y={-b.z * 1.6 - 8} width="16" height="14" stroke={b.domain.accent} />)}
-          <circle cx="0" cy="53" r="17" stroke="#ffb86b" />
-          <circle cx="0" cy="53" r="10" stroke="#ffb86b" strokeOpacity=".4" />
+        {/* The Teams world: the spine, and the six domains on a ring around it. */}
+        <path d="M300 300V470" stroke="#cbc5d9" strokeWidth="2.2" strokeLinecap="round" />
+        <g transform="translate(300 388) matrix(1 .44 -1 .44 0 0)">
+          <circle r="44" stroke="#b6b3aa" strokeOpacity=".35" strokeDasharray="2 5" />
+          {TEAM_DOMAINS.map((d, i) => {
+            const a = (i / TEAM_DOMAINS.length) * Math.PI * 2;
+            return (
+              <rect
+                key={d.slug}
+                x={-9}
+                y={-2.5}
+                width="18"
+                height="5"
+                transform={`rotate(${(-a * 180) / Math.PI}) translate(0 44)`}
+                stroke={d.tone}
+                fill={d.tone}
+                fillOpacity=".15"
+              />
+            );
+          })}
         </g>
       </g>
       <g className="map-annotations" fill="currentColor">

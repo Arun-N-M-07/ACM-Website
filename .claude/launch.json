@@ -4,8 +4,18 @@
     {
       "name": "acm-ceg-world",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--", "--port", "3100"],
+      "runtimeArgs": [
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "3100"
+      ],
       "port": 3100
+    },
+    {
+      "name": "acm-ceg-world-running",
+      "url": "http://localhost:3100"
     }
   ]
 }

@@ -14,16 +14,11 @@ export interface ModelSlotDef {
   castShadow?: boolean;
 }
 
-export type ModelSlotId = 'cegBuilding' | 'cegCampus' | 'facilityHall' | 'corridor' | 'teamWorkspace' | 'core';
+export type ModelSlotId = 'cegBuilding' | 'cegCampus' | 'facilityHall' | 'corridor';
 
 export const MODEL_SLOTS: Record<ModelSlotId, ModelSlotDef> = {
   cegBuilding: { path: '/models/campus/ceg-building.glb', castShadow: true },
   cegCampus: { path: '/models/campus/ceg-campus.glb' },
   facilityHall: { path: '/models/underground/facility-hall.glb' },
   corridor: { path: '/models/underground/corridor.glb' },
-  teamWorkspace: { path: '/models/team/workspace.glb' },
-  core: { path: '/models/final/core.glb' },
 };
-
-/** Per-person avatar models: /public/models/team/<member id>.glb (see TeamMember.model). */
-export const avatarModelPath = (memberId: string) => `/models/team/${memberId}.glb`;
