@@ -1,0 +1,333 @@
+/* The opening cinematic's layer of the page: almost nothing, on purpose.
+   Sits above the stage and the journey's chrome, under the cut fade (60) and
+   the loader (80). */
+
+.intro-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 45;
+  pointer-events: none;
+}
+
+/* Skip: quiet, bottom right; arrives a moment after the threshold. */
+.intro-skip {
+  position: fixed;
+  right: var(--gutter);
+  bottom: calc(var(--gutter) + env(safe-area-inset-bottom));
+  pointer-events: auto;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--bone);
+  opacity: 0;
+  padding: 10px 0 10px 14px;
+  animation: intro-arrive 1.6s var(--ease) 3.2s forwards;
+  transition: color 0.3s var(--ease);
+}
+.intro-skip::before {
+  content: '';
+  display: inline-block;
+  width: 18px;
+  height: 1px;
+  margin: 0 10px 3px 0;
+  background: currentColor;
+  opacity: 0.5;
+  vertical-align: middle;
+}
+.intro-skip:hover,
+.intro-skip:focus-visible {
+  color: #fff;
+}
+/* The sound, opposite: the same quiet voice. */
+.intro-sound {
+  position: fixed;
+  left: var(--gutter);
+  bottom: calc(var(--gutter) + env(safe-area-inset-bottom));
+  pointer-events: auto;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--bone);
+  opacity: 0;
+  padding: 10px 14px 10px 0;
+  animation: intro-arrive 1.6s var(--ease) 3.2s forwards;
+  transition: color 0.3s var(--ease);
+}
+.intro-sound::before {
+  content: '';
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  margin: 0 10px 1px 0;
+  border: 1px solid currentColor;
+  border-radius: 50%;
+  vertical-align: middle;
+  opacity: 0.7;
+}
+.intro-sound[aria-pressed='true']::before {
+  background: currentColor;
+}
+.intro-sound:hover,
+.intro-sound:focus-visible {
+  color: #fff;
+}
+@keyframes intro-arrive {
+  to {
+    opacity: 0.42;
+  }
+}
+
+/* The rest cue: a breathing rule and a word, bottom centre. */
+.intro-cue {
+  position: fixed;
+  left: 50%;
+  bottom: calc(var(--gutter) + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  opacity: 0;
+  transition: opacity 1.2s var(--ease);
+  color: var(--bone);
+}
+.intro-cue[data-on='true'] {
+  opacity: 0.55;
+}
+.intro-cue-line {
+  width: 1px;
+  height: 34px;
+  background: linear-gradient(to bottom, transparent, currentColor);
+  transform-origin: top;
+  animation: intro-cue 2.4s ease-in-out infinite;
+}
+.intro-cue-word {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+}
+@keyframes intro-cue {
+  0% {
+    transform: scaleY(0.2);
+    opacity: 0;
+  }
+  45% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scaleY(1) translateY(12px);
+    opacity: 0;
+  }
+}
+
+/* At the corridor mouth: the pull back into the film. */
+.intro-pull {
+  position: fixed;
+  left: 50%;
+  top: calc(84px + env(safe-area-inset-top));
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: var(--bone);
+  transition: opacity 0.2s linear;
+}
+.intro-pull-bar {
+  display: block;
+  width: 120px;
+  height: 1px;
+  background: rgba(239, 233, 223, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+.intro-pull-bar::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--bone);
+  transform: scaleX(var(--k, 0));
+  transform-origin: center;
+}
+.intro-pull-word {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .intro-cue-line {
+    animation: none;
+  }
+  .intro-skip,
+  .intro-sound {
+    animation-duration: 0.01s;
+  }
+}
+
+/* ── The threshold (the loader) ────────────────────────────────────────────
+   A mark, a count, then one word. Crossing it lifts the dark off a world that
+   is already there. (Keeps .loader / data-state for the QA harness.) */
+.loader.threshold {
+  background: radial-gradient(ellipse at 50% 58%, #0e1113 0, #08090a 58%, #050606 100%);
+  display: grid;
+  place-items: center;
+  padding: var(--gutter);
+  transition:
+    opacity 2.1s cubic-bezier(0.45, 0, 0.2, 1) 0.35s,
+    visibility 0s linear 2.5s;
+}
+.loader.threshold[data-state='leaving'] {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.loader.threshold[data-state='leaving'] > * {
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+.threshold-mark {
+  position: absolute;
+  top: calc(30px + env(safe-area-inset-top));
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font: 11px/1 var(--mono);
+  letter-spacing: 0.34em;
+  color: var(--bone-dim);
+  transition: opacity 0.5s ease;
+}
+.threshold-mark i {
+  width: 5px;
+  height: 5px;
+  background: var(--ceg);
+}
+.threshold-center {
+  display: grid;
+  place-items: center;
+  transition: opacity 0.5s ease;
+}
+.threshold-center > * {
+  grid-area: 1 / 1;
+}
+.threshold-meter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  transition: opacity 0.9s var(--ease);
+}
+.threshold-count {
+  font: 11px/1 var(--mono);
+  letter-spacing: 0.32em;
+  color: var(--bone-dim);
+  font-variant-numeric: tabular-nums;
+}
+.threshold-line {
+  display: block;
+  width: 132px;
+  height: 1px;
+  background: var(--line);
+  overflow: hidden;
+}
+.threshold-line span {
+  display: block;
+  height: 100%;
+  background: var(--bone);
+  transform-origin: left;
+  transition: transform 0.6s var(--ease);
+}
+.loader.threshold[data-state='ready'] .threshold-meter {
+  opacity: 0;
+}
+.loader.threshold .loader-enter {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  opacity: 0;
+  transform: translateY(6px);
+  transition:
+    opacity 1.4s var(--ease) 0.4s,
+    transform 1.4s var(--ease) 0.4s;
+}
+.loader.threshold[data-state='ready'] .loader-enter {
+  opacity: 1;
+  transform: none;
+}
+.threshold-enter {
+  position: relative;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: clamp(34px, 3.4vw, 46px);
+  line-height: 1;
+  letter-spacing: -0.01em;
+  color: var(--bone);
+  padding: 8px 18px 14px;
+}
+.threshold-enter::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 4px;
+  width: 26px;
+  height: 1px;
+  background: currentColor;
+  opacity: 0.5;
+  transform: translateX(-50%);
+  transition:
+    width 0.6s var(--ease),
+    opacity 0.6s var(--ease);
+}
+.threshold-enter:hover::after,
+.threshold-enter:focus-visible::after {
+  width: calc(100% - 36px);
+  opacity: 0.9;
+}
+.threshold-enter:focus-visible,
+.threshold-quiet:focus-visible {
+  outline: 1px solid rgba(239, 233, 223, 0.5);
+  outline-offset: 4px;
+}
+.threshold-quiet {
+  font: 10px/1 var(--mono);
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--bone-dim);
+  padding: 6px 4px;
+  transition: color 0.3s var(--ease);
+}
+.threshold-quiet:hover {
+  color: var(--bone);
+}
+.threshold-foot {
+  position: absolute;
+  left: var(--gutter);
+  right: var(--gutter);
+  bottom: calc(26px + env(safe-area-inset-bottom));
+  margin: 0;
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px 22px;
+  font: 10px/1.6 var(--mono);
+  letter-spacing: 0.12em;
+  color: var(--bone-dim);
+  transition: opacity 0.5s ease;
+}
+.threshold-foot .text-link {
+  font-size: 10px;
+  color: var(--bone-2);
+}
+.threshold-credit {
+  opacity: 0.7;
+}

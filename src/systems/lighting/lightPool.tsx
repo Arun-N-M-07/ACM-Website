@@ -47,6 +47,19 @@ export function useLightAnchors(list: Omit<LightAnchor, 'gain'>[]) {
   }, [list]);
 }
 
+/**
+ * Register several anchors and get them back, so the owner can animate each
+ * one's `gain` (e.g. fixtures that switch on in sequence).
+ */
+export function useGainedLightAnchors(list: Omit<LightAnchor, 'gain'>[]): LightAnchor[] {
+  const items = useMemo(() => list.map((a) => ({ ...a, gain: 1 })), [list]);
+  useEffect(() => {
+    items.forEach((a) => anchors.add(a));
+    return () => items.forEach((a) => anchors.delete(a));
+  }, [items]);
+  return items;
+}
+
 const _scored: { a: LightAnchor; d: number }[] = [];
 
 export function LightPool({ maxDistance = 48 }: { maxDistance?: number }) {

@@ -12,6 +12,7 @@ import { QUALITY } from '@/config/quality';
 import { lerp, smoothstep } from '@/systems/camera/pose';
 import { useExperience } from '@/store/experience';
 import { teamsFrame } from '@/teams/state';
+import { look } from '@/intro/look';
 import { world } from './blend';
 
 const portalHaze = new Color('#1b2233');
@@ -68,6 +69,15 @@ export function Atmosphere() {
     if (h > 0 && world.teams < 0.5) {
       fog.density += 0.02 * smoothstep(0.5, 1, h);
       fog.color.lerp(portalHaze, 0.5 * smoothstep(0.5, 1, h));
+    }
+    // The opening film sets its own air above ground (its colour script,
+    // src/intro/look.ts); below ground the facility's air takes over.
+    const k = world.intro * (1 - u);
+    if (k > 0) {
+      fog.color.lerp(look.fogColor, k);
+      fog.density = lerp(fog.density, look.fogDensity, k);
+      bg.lerp(look.fogColor, k);
+      scene.environmentIntensity = lerp(scene.environmentIntensity, 0.12 + 0.3 * Math.min(1, look.sky.intensity), k);
     }
     // The Teams world has its own air (its materials carry their own reflections).
     if (world.teams > 0) {

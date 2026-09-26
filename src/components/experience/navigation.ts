@@ -3,11 +3,13 @@
  * and the HUD. Every jump goes through here so camera, scroll, phase and the
  * portal stay consistent.
  *
- * The journey up to the portal is one scroll timeline, so those destinations
- * are progress values. The Teams world lies through the portal: going there
- * from anywhere stands you before it and plays the travel (it is never a
- * cut); leaving it for an earlier chapter crosses back instantly behind the
- * jump's fade.
+ * The opening film (chapters 01–05) has its own timeline: going to one of its
+ * chapters cuts into the film at that moment. The journey from the Events up
+ * to the portal is one scroll timeline, so those destinations are progress
+ * values (going there from the film ends the film first). The Teams world lies
+ * through the portal: going there from anywhere stands you before it and
+ * plays the travel (it is never a cut); leaving it for an earlier chapter
+ * crosses back instantly behind the jump's fade.
  */
 import { CHAPTERS, PORTAL_DWELL, progressForRoom, SEGMENTS, type ChapterId } from '@/config/timeline';
 import { CORRIDOR } from '@/config/world';
@@ -20,18 +22,26 @@ import { closeDomain, resetFocus } from '@/teams/focus';
 import { progressForDomain } from '@/teams/layout';
 import { teams, teamsFrame } from '@/teams/state';
 import { enterTeams, onArrival, placeOutside } from '@/teams/travel';
+import { endIntro, jumpIntro } from '@/intro/controller';
+import { introFrame } from '@/intro/state';
 
 function close() {
   experience().set({ menuOpen: false, dossier: null });
 }
 
-/** Jump to a point before the portal (leaving the Teams world first if needed). */
-function jumpOutside(p: number) {
+/** Leave the Teams world instantly (behind a cut), if we're in it or crossing. */
+function leaveTeams() {
   if (teamsFrame.inside || teams().state === 'portalEntering' || teams().state === 'portalExiting') {
     resetFocus();
     placeOutside();
     experience().set({ phase: 'cinematic' });
   }
+}
+
+/** Jump to a point before the portal (ending the film, or leaving the Teams world, first). */
+function jumpOutside(p: number) {
+  if (introFrame.active) endIntro();
+  leaveTeams();
   jumpToProgress(p);
 }
 
@@ -50,6 +60,7 @@ export function backToJourney(p = PORTAL_STAND) {
  */
 export function enterTeamsWorld(domain?: number) {
   close();
+  if (introFrame.active) endIntro();
   const reduced = experience().reducedMotion;
   if (teamsFrame.inside) {
     if (teams().state === 'domainDetail' || teams().state === 'cardFocused') closeDomain();
@@ -67,7 +78,13 @@ export function goToChapter(id: ChapterId) {
   close();
   if (id === 'teams') return enterTeamsWorld();
   const def = CHAPTERS.find((c) => c.id === id);
-  if (!def || def.jumpTo === null) return;
+  if (!def) return;
+  // The opening film: cut into it.
+  if (def.intro !== undefined) {
+    leaveTeams();
+    return jumpIntro(def.intro);
+  }
+  if (def.jumpTo === null) return;
   jumpOutside(def.jumpTo);
 }
 

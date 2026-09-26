@@ -20,9 +20,12 @@ import { smoothstep } from '@/systems/camera/pose';
 import { teamsFrame } from '@/teams/state';
 import { LightPool } from '@/systems/lighting/lightPool';
 import { SUN_DIRECTION } from '../campus/Sky';
+import { look } from '@/intro/look';
 import { world } from './blend';
 
 const COOL_SKY = new Color('#9fb4d6');
+const SKY_TOP = new Color('#9db0d4');
+const SKY_GROUND = new Color('#4a3426');
 
 const SUN_POS = SUN_DIRECTION.clone().multiplyScalar(260).add(new Vector3(0, 0, 10));
 const _away = new Vector3();
@@ -97,6 +100,36 @@ export function WorldLights() {
         sun.current.position.set(SUN_POS.x, SUN_POS.y, SUN_POS.z);
         sun.current.color.set(PALETTE.sun);
       }
+      if (sky.current) {
+        sky.current.color.copy(SKY_TOP);
+        sky.current.groundColor.copy(SKY_GROUND);
+      }
+    }
+
+    // The opening film lights the campus by its own colour script (before
+    // dawn, first light, morning — src/intro/look.ts). Above ground only: below
+    // it, the facility's rig above takes over as it always has.
+    const k = world.intro * (1 - u);
+    if (k > 0) {
+      if (sun.current) {
+        const t = sun.current.target.position;
+        const d = look.sun.dir;
+        sun.current.position.set(t.x + d.x * 260, t.y + d.y * 260, t.z + d.z * 260);
+        sun.current.color.lerp(look.sun.color, k);
+        sun.current.intensity += (look.sun.intensity - sun.current.intensity) * k;
+      }
+      if (sky.current) {
+        sky.current.color.lerp(look.sky.top, k);
+        sky.current.groundColor.lerp(look.sky.bottom, k);
+        sky.current.intensity += (look.sky.intensity - sky.current.intensity) * k;
+      }
+    }
+    // The opening film's tunnel is darker than the facility (its own light is
+    // the story there); the factor is back to 1 at the handoff.
+    if (world.intro > 0 && u > 0) {
+      const g = 1 + (look.tunnelAmbient - 1) * world.intro;
+      if (below.current) below.current.intensity *= g;
+      if (top.current) top.current.intensity *= g;
     }
     // No need to re-render the sun's shadow map once we're underground.
     gl.shadowMap.autoUpdate = u < 0.99;

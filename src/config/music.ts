@@ -1,17 +1,22 @@
 /**
- * The soundtrack. One track plays, quietly, for the whole journey — there are
- * no sound effects: the experience is either music or silence.
+ * The soundtrack. One track, and no sound effects: the experience is either
+ * music or silence.
+ *
+ * The opening cinematic is scored to this recording — a section of it is
+ * locked to the film (src/intro/timeline.ts: SCORE_IN) — and it carries on
+ * quietly under the rest of the journey.
  *
  * The audio file is NOT part of this repository. Drop your own copy at
- * `public/audio/pink-white.mp3` (see docs/ASSETS.md), and make sure the
- * chapter has the right to use it on a public site before deploying.
+ * `public/audio/the-batman.mp3` (see docs/ASSETS.md), and make sure the
+ * chapter has the right to use it on a public site before deploying. Without
+ * it, the intro plays in silence and the music controls stay hidden.
  */
 export const MUSIC = {
-  title: 'Pink + White',
-  artist: 'Frank Ocean',
-  src: '/audio/pink-white.mp3',
+  title: 'The Batman',
+  artist: 'Michael Giacchino',
+  src: '/audio/the-batman.mp3',
   /** Playback volume (0–1). */
-  volume: 0.62,
-  /** Seconds to fade in / out. */
+  volume: 0.72,
+  /** Seconds to fade in / out when music is switched on or off. */
   fade: 2.2,
 } as const;

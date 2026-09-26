@@ -4,6 +4,7 @@
  * mass, roofs and bespoke parts as meshes and every repeated element as an
  * InstancedMesh — about twenty draw calls for the whole building.
  */
+import { useFrame } from '@react-three/fiber';
 import { useLayoutEffect, useMemo } from 'react';
 import {
   BoxGeometry,
@@ -25,6 +26,8 @@ import { useDisposable } from '@/systems/performance/useDisposable';
 import { plasterTexture, roofTileTexture } from '@/systems/textures/surfaces';
 import { fitSize, makeCanvas, text, toTexture } from '@/systems/textures/typeset';
 import { ModelSlot } from '../shared/ModelSlot';
+import { world } from '../shared/blend';
+import { look } from '@/intro/look';
 import { type BoxCat, buildCegModel } from './cegModel';
 
 function clockTexture() {
@@ -118,6 +121,9 @@ function balusterGeometry() {
   return new LatheGeometry(pts, 10);
 }
 
+/** A lit room's glow (the opening film dims them as the day arrives). */
+const LIT = new Color('#f0a458').multiplyScalar(1.05);
+
 function ProceduralBuilding() {
   const quality = useExperience((s) => s.quality);
   const q = QUALITY[quality];
@@ -137,7 +143,7 @@ function ProceduralBuilding() {
       quoin,
       white: new MeshStandardMaterial({ color: '#f2f1eb', roughness: 0.55 }),
       glass: new MeshStandardMaterial({ color: '#1b2229', roughness: 0.12, metalness: 0.55 }),
-      lit: new MeshBasicMaterial({ color: new Color('#f0a458').multiplyScalar(1.05) }),
+      lit: new MeshBasicMaterial({ color: LIT.clone() }),
       hood: new MeshStandardMaterial({ color: '#7c3427', roughness: 0.92 }),
       dark: new MeshStandardMaterial({ color: '#221c18', roughness: 0.9 }),
       dome: new MeshStandardMaterial({ color: '#f3f0e8', roughness: 0.5 }),
@@ -198,6 +204,13 @@ function ProceduralBuilding() {
   }, [model, res, q.shadows]);
 
   useLayoutEffect(() => () => instanced.forEach((m) => m.dispose()), [instanced]);
+
+  // Rooms lit before dawn go dark one by one as the light comes up.
+  useFrame(() => {
+    const lit = res.mats.lit as MeshBasicMaterial;
+    const level = 1 + (look.practicals * 1.25 - 1) * world.intro;
+    lit.color.copy(LIT).multiplyScalar(level);
+  });
 
   return (
     <group name="ceg-building">

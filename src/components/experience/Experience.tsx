@@ -17,9 +17,7 @@ import { progress } from '@/systems/scroll/progress';
 import { jumpToProgress, ScrollTimeline, scrollToProgress } from '@/systems/scroll/ScrollTimeline';
 import { fontsReady } from '@/systems/textures/typeset';
 import { MusicDirector } from './MusicDirector';
-import { ChapterCopy } from './ChapterCopy';
 import { ChapterRail } from './ChapterRail';
-import { DescentMeter } from './DescentMeter';
 import { Dossier } from './Dossier';
 import { IndexMenu } from './IndexMenu';
 import { KeyboardNav } from './KeyboardNav';
@@ -27,6 +25,8 @@ import { LoadingScreen } from './LoadingScreen';
 import { Plates } from './Plates';
 import { ScreenFx } from './ScreenFx';
 import { TeamsExperience } from '@/teams/TeamsExperience';
+import { IntroExperience } from '@/intro/IntroExperience';
+import { introDebug } from '@/intro/debug';
 import { teamsDebug } from '@/teams/debug';
 import { TopBar } from './TopBar';
 
@@ -71,7 +71,7 @@ export function Experience() {
     // Test hook (dev builds, or ?debug in production): lets the visual test
     // harness jump through the journey deterministically.
     if (process.env.NODE_ENV !== 'production' || new URLSearchParams(window.location.search).has('debug')) {
-      (window as unknown as { __acm: unknown }).__acm = { jump: jumpToProgress, scroll: scrollToProgress, store: useExperience, progress, segments: SEGMENTS, music, roomProgress: (i: number, d: number) => { const [a, b] = roomDwellRange(i); return a + (b - a) * d; }, teams: teamsDebug };
+      (window as unknown as { __acm: unknown }).__acm = { jump: jumpToProgress, scroll: scrollToProgress, store: useExperience, progress, segments: SEGMENTS, music, roomProgress: (i: number, d: number) => { const [a, b] = roomDwellRange(i); return a + (b - a) * d; }, teams: teamsDebug, intro: introDebug };
     }
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
     const onChange = () => useExperience.getState().set({ reducedMotion: mq.matches });
@@ -129,8 +129,7 @@ export function Experience() {
       </div>
       <ScreenFx />
       <ScrollTimeline />
-      <ChapterCopy />
-      <DescentMeter />
+      <IntroExperience />
       <Plates />
       <TeamsExperience />
       <ChapterRail />

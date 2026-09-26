@@ -1,14 +1,12 @@
 'use client';
 /**
- * Every content plate along the journey, in order: the chapter on the drone
- * flight, the facility, one per event room, and the portal. (The Teams
- * world has its own interface: src/teams/ui.)
+ * Every content plate along the journey, in order: one per event room, and the
+ * portal. (The opening cinematic says what it has to say in the world itself —
+ * src/intro — and the Teams world has its own interface: src/teams/ui.)
  */
 import { useMemo } from 'react';
 import { PORTAL_DWELL, SEGMENTS, type SegmentId } from '@/config/timeline';
 import { CORRIDOR } from '@/config/world';
-import { CHAPTER, yearsActive } from '@/content/chapter';
-import { EVENTS, FLAGSHIPS } from '@/content/events';
 import { useExperience } from '@/store/experience';
 import { roomDwellRange } from '@/systems/camera/shots';
 import { Plate, PlateFacts } from './Plate';
@@ -21,11 +19,6 @@ export function Plates() {
   const phase = useExperience((s) => s.phase);
   const ranges = useMemo(
     () => ({
-      about: [at('ascent', 0.12), at('ascent', 0.9)] as [number, number],
-      join: [at('campus', 0.1), at('campus', 0.95)] as [number, number],
-      mission: [at('topdown', 0.1), at('descent', 0.05)] as [number, number],
-      facility: [at('facility', 0.04), at('facility', 0.19)] as [number, number],
-      legacy: [at('facility', 0.73), at('facility', 0.87)] as [number, number],
       portal: [at('portal', 0.2), at('portal', PORTAL_DWELL * 0.94)] as [number, number],
       rooms: CORRIDOR.rooms.map((r) => {
         const [a, b] = roomDwellRange(r.index);
@@ -38,49 +31,6 @@ export function Plates() {
 
   return (
     <div className="plates" data-phase={phase}>
-      <Plate id="about" side="left" anchor="tower" pin="THE CLOCK TOWER" range={ranges.about}>
-        <p className="plate-kicker">Since {CHAPTER.established} · The chapter</p>
-        <h2 className="plate-title">To instill an unwavering enthusiasm for computer science.</h2>
-        <p className="plate-body">{CHAPTER.about}</p>
-      </Plate>
-
-      <Plate id="join" side="right" anchor="porch" pin="COLLEGE OF ENGINEERING GUINDY" range={ranges.join}>
-        <p className="plate-kicker">Open to everyone</p>
-        <h2 className="plate-title">Anyone, from any department.</h2>
-        <PlateFacts
-          facts={[
-            { label: 'Membership fee', value: CHAPTER.membership.fee.replace(/\.$/, '') },
-            { label: 'How to join', value: CHAPTER.membership.howToJoin },
-            { label: 'Find us', value: CHAPTER.contact.officeNote.replace(/\.$/, '') },
-          ]}
-        />
-      </Plate>
-
-      <Plate id="mission" side="left" anchor="well" pin="THE WAY IN" range={ranges.mission}>
-        <p className="plate-kicker">Mission</p>
-        <blockquote className="plate-quote">{CHAPTER.mission}</blockquote>
-      </Plate>
-
-      <Plate id="facility" side="right" anchor="board" pin="DEPARTURES" range={ranges.facility}>
-        <p className="plate-kicker">05 · The facility</p>
-        <h2 className="plate-title">Follow the light.<br />Find your spark.</h2>
-        <p className="plate-body">
-          {EVENTS.length - FLAGSHIPS.length} programmes and {FLAGSHIPS.length} flagships, one room each — every one of them is on the board. Keep scrolling to walk the corridor.
-        </p>
-      </Plate>
-
-      <Plate id="legacy" side="left" anchor="plaque" pin={`EST. ${CHAPTER.established}`} range={ranges.legacy}>
-        <p className="plate-kicker">The legacy · {yearsActive()} years</p>
-        <h2 className="plate-title">Where they go next.</h2>
-        <p className="plate-body">{CHAPTER.legacy.text}</p>
-        <PlateFacts
-          facts={[
-            ...CHAPTER.legacy.stats.map((s) => ({ label: s.label, value: s.value })),
-            ...CHAPTER.alsoRuns.map((a) => ({ label: a.name, value: a.text.replace(/\.$/, '') })),
-          ]}
-        />
-      </Plate>
-
       {CORRIDOR.rooms.map((r, i) => {
         const e = r.event;
         return (

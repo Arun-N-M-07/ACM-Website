@@ -19,7 +19,8 @@ export function TopBar() {
   const set = useExperience((s) => s.set);
   const current = CHAPTERS.find((c) => c.id === chapter);
 
-  if (phase === 'loading' || phase === 'ready') return null;
+  // Nothing competes with the opening film.
+  if (phase === 'loading' || phase === 'ready' || phase === 'intro') return null;
 
   return (
     <header className="topbar">

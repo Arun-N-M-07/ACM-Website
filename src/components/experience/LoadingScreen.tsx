@@ -1,8 +1,13 @@
 'use client';
 /**
- * The loader: the chapter's name, a progress bar tied to real work (fonts,
- * renderer, first chapter built and compiled), then a choice to enter with or
- * without sound — which doubles as the user gesture browsers need for audio.
+ * The threshold. While the world is built behind it, a mark and a count — no
+ * headline, no map, nothing that explains what is on the other side. When
+ * everything the opening film needs is ready (the world, its compiled
+ * shaders, the score buffered), one word: Enter. Entering is the user
+ * gesture browsers need for sound, and the start of the film.
+ *
+ * A deep link (#events, an event, a domain, #teams) skips the film and opens
+ * the journey where it points.
  */
 import { useEffect, useRef, useState } from 'react';
 import { SEGMENTS } from '@/config/timeline';
@@ -15,18 +20,24 @@ import { TEAM_DOMAINS } from '@/content/teams';
 import { goToChapter, goToDomain, goToRoom } from './navigation';
 import { jumpToProgress } from '@/systems/scroll/ScrollTimeline';
 import { CHAPTER } from '@/content/chapter';
-import { WorldMap } from './WorldMap';
+import { startIntro } from '@/intro/controller';
+import { INTRO_END, SCORE_IN } from '@/intro/timeline';
 
-function applyDeepLink() {
+/** Where a deep link points, as an action — or null (no link: the film plays). */
+function deepLink(): (() => void) | null {
   const hash = window.location.hash.replace('#', '');
-  if (!hash || hash === 'archive') return;
-  if (hash === 'team' || hash === 'teams') return goToChapter('teams');
+  if (!hash || hash === 'archive') return null;
+  if (hash === 'team' || hash === 'teams') return () => goToChapter('teams');
   const domain = TEAM_DOMAINS.findIndex((d) => d.slug === hash);
-  if (domain >= 0) return goToDomain(domain);
-  if (hash in SEGMENTS) return jumpToProgress(SEGMENTS[hash as keyof typeof SEGMENTS].start + 0.002);
+  if (domain >= 0) return () => goToDomain(domain);
+  if (hash in SEGMENTS) return () => jumpToProgress(SEGMENTS[hash as keyof typeof SEGMENTS].start + 0.002);
   const ev = eventBySlug(hash);
-  if (ev) goToRoom(EVENTS.indexOf(ev));
+  if (ev) return () => goToRoom(EVENTS.indexOf(ev));
+  return null;
 }
+
+/** How long Enter may wait for the score to buffer before the film starts without waiting. */
+const SCORE_WAIT_MS = 9000;
 
 export function LoadingScreen() {
   const phase = useExperience((s) => s.phase);
@@ -35,6 +46,8 @@ export function LoadingScreen() {
   const set = useExperience((s) => s.set);
   const [gone, setGone] = useState(false);
   const [slow, setSlow] = useState(false);
+  const hasTrack = isAvailable(MUSIC.src);
+  const [scoreReady, setScoreReady] = useState(!hasTrack);
   const enterRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
@@ -42,67 +55,90 @@ export function LoadingScreen() {
     return () => window.clearTimeout(t);
   }, []);
 
+  // Buffer the score while the world builds, so the film never starts on a stall.
   useEffect(() => {
-    if (phase === 'ready') enterRef.current?.focus({ preventScroll: true });
+    if (!hasTrack) return;
+    music.preload();
+    const t0 = performance.now();
+    const id = window.setInterval(() => {
+      if (music.ready || music.failed || performance.now() - t0 > SCORE_WAIT_MS) {
+        setScoreReady(true);
+        window.clearInterval(id);
+      }
+    }, 200);
+    return () => window.clearInterval(id);
+  }, [hasTrack]);
+
+  const ready = phase === 'ready' && scoreReady;
+
+  useEffect(() => {
+    if (ready) enterRef.current?.focus({ preventScroll: true });
     if (phase !== 'loading' && phase !== 'ready') {
-      const t = window.setTimeout(() => setGone(true), 1400);
+      const t = window.setTimeout(() => setGone(true), 2200);
       return () => window.clearTimeout(t);
     }
-  }, [phase]);
+  }, [phase, ready]);
 
   if (gone) return null;
 
   const enter = (withMusic: boolean) => {
-    if (withMusic) {
-      set({ musicOn: true });
-      void music.enable();
-    }
-    set({ phase: 'cinematic' });
+    if (withMusic) set({ musicOn: true });
+    const link = deepLink();
+    if (link) {
+      // The journey (without the film) begins at the Events; the link then takes it on.
+      set({ phase: 'cinematic', segment: 'events', chapter: 'events' });
+      if (withMusic) void music.playFrom(SCORE_IN + INTRO_END, MUSIC.fade);
+    } else startIntro(withMusic);
     // Keyboard focus must not be left on a button, or Space would press it
-    // instead of scrolling the journey.
+    // instead of moving the film / the journey.
     requestAnimationFrame(() => {
       (document.activeElement as HTMLElement | null)?.blur();
       document.querySelector<HTMLElement>('.stage')?.focus({ preventScroll: true });
-      applyDeepLink();
+      link?.();
     });
   };
 
-  const hasTrack = isAvailable(MUSIC.src);
-  const ready = phase === 'ready';
   const leaving = phase !== 'loading' && phase !== 'ready';
+  const pct = Math.round(loadProgress * 100);
   return (
-    <div className="loader" data-state={leaving ? 'leaving' : ready ? 'ready' : 'loading'} role="dialog" aria-modal="true" aria-label="Loading the ACM-CEG experience">
-      <div className="loader-masthead"><span>ACM <i /> CEG</span><span>{CHAPTER.city}, India <span className="loader-edition">/ Student Chapter</span></span></div>
-      <div className="loader-atlas"><WorldMap /></div>
-      <div className="loader-inner">
-        <p className="kicker">Welcome to the world of ACM–CEG</p>
-        <h2 className="loader-title"><span>A world of</span><span><em>curious</em> minds.</span></h2>
-        <p className="loader-intro">Begin at the red building. Discover the programmes.<br className="desktop-break" /> Meet the people who bring it all to life.</p>
-        <div className="loader-bar" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(loadProgress * 100)}>
-          <span style={{ transform: `scaleX(${loadProgress})` }} />
+    <div className="loader threshold" data-state={leaving ? 'leaving' : ready ? 'ready' : 'loading'} role="dialog" aria-modal="true" aria-label="ACM-CEG">
+      <p className="threshold-mark" aria-hidden="true">
+        <span>ACM</span>
+        <i />
+        <span>CEG</span>
+      </p>
+      <div className="threshold-center">
+        <div className="threshold-meter" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} aria-valuetext={ready ? 'Ready' : label}>
+          <span className="threshold-count">{String(pct).padStart(3, '0')}</span>
+          <span className="threshold-line">
+            <span style={{ transform: `scaleX(${loadProgress})` }} />
+          </span>
         </div>
-        <p className="loader-label">
-          <span>{ready ? 'Your journey is ready' : label}</span>
-          <span>{String(Math.round(loadProgress * 100)).padStart(3, '0')}</span>
-        </p>
         <div className="loader-enter" aria-hidden={!ready}>
-          {hasTrack && <button ref={enterRef} className="btn btn-primary" disabled={!ready} onClick={() => enter(true)}>
-            Enter with music
-          </button>}
-          <button ref={hasTrack ? undefined : enterRef} className={`btn ${hasTrack ? '' : 'btn-primary'}`} aria-label="Enter silently" disabled={!ready} onClick={() => enter(false)}>
-            {hasTrack ? 'Enter silently' : 'Enter the world'} <span aria-hidden="true">↗</span>
+          <button ref={enterRef} className="threshold-enter" disabled={!ready} onClick={() => enter(hasTrack)} aria-label={hasTrack ? 'Enter with sound' : 'Enter silently'}>
+            Enter
           </button>
-          {hasTrack && <p className="loader-track">♪ {MUSIC.title} <span>— {MUSIC.artist}</span></p>}
+          {hasTrack && (
+            <button className="threshold-quiet" disabled={!ready} onClick={() => enter(false)} aria-label="Enter silently">
+              without sound
+            </button>
+          )}
         </div>
-        <p className="loader-foot">
-          Scroll to explore ·{' '}
-          <button className="text-link" onClick={() => set({ textVersionOpen: true })}>
-            Read the chapter
-          </button>
-          {slow && !ready ? ' — this is taking longer than usual.' : ''}
-        </p>
       </div>
-      <div className="loader-colophon"><span>{CHAPTER.institution}<br />{CHAPTER.university}</span><span>Learn. Build. Connect.<br />Since {CHAPTER.established}</span></div>
+      <p className="threshold-foot">
+        {hasTrack && (
+          <span className="threshold-credit">
+            Sound: {MUSIC.title} — {MUSIC.artist}
+          </span>
+        )}
+        <button className="text-link" onClick={() => set({ textVersionOpen: true })}>
+          Read the chapter as a page
+        </button>
+        {slow && !ready ? <span> — this is taking longer than usual.</span> : null}
+      </p>
+      <p className="sr-only">
+        {CHAPTER.name}, {CHAPTER.institution}.
+      </p>
     </div>
   );
 }

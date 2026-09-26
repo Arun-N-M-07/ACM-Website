@@ -1,57 +1,28 @@
 /**
  * Cinematic shots: a pure, deterministic function from scroll progress to a
  * camera pose. Each segment's first pose equals the previous segment's last
- * pose, so the whole journey is one continuous move.
+ * pose, so the whole journey is one continuous move. The journey opens at the
+ * corridor mouth — where the opening cinematic (src/intro) hands over.
  */
 import { CAMERA_STATES as S } from '@/config/camera';
-import { evaluateFlight } from './flight';
-import { EVENT_STATION_WEIGHTS, PORTAL_DWELL, PORTAL_GATE, SEGMENTS, segmentAt, segmentProgress, progressForRoom, type SegmentId } from '@/config/timeline';
+import { EVENT_STATION_WEIGHTS, PORTAL_DWELL, PORTAL_GATE, SEGMENTS, segmentAt, segmentProgress, progressForRoom } from '@/config/timeline';
 import { progressForDomain } from '@/teams/layout';
 import { CORRIDOR, EYE_Y } from '@/config/world';
 import {
   angleDelta,
-  bezier3,
   copyPose,
-  DEG,
-  easeInCubic,
-  easeInOutCubic,
   easeInOutSine,
-  easeOutCubic,
   emptyPose,
-  lerp,
-  lerp3,
   lerpPose,
   lookPose,
   makePose,
   sampleTrack,
-  smoothstep,
   type CameraPose,
   type PoseKey,
 } from './pose';
 
 /** Fraction of each event station spent travelling (the rest is the dwell). */
 const TRAVEL = 0.52;
-/** Flight time across the four opening segments (arrival → top-down). */
-const flightT = (p: number) => (p - SEGMENTS.arrival.start) / (SEGMENTS.topdown.end - SEGMENTS.arrival.start);
-
-const descentKeys: PoseKey[] = [
-  { t: 0, pose: S.topDown },
-  { t: 0.42, pose: S.descentGround, ease: easeInOutCubic },
-  { t: 0.52, pose: { ...S.descentGround, fov: 54 } },
-  { t: 0.8, pose: S.descentShaft, ease: easeInCubic },
-  { t: 0.93, pose: S.descentHall, ease: easeOutCubic },
-  { t: 1, pose: S.facilityStart, ease: easeInOutSine },
-];
-
-const facilityKeys: PoseKey[] = [
-  { t: 0, pose: S.facilityStart },
-  { t: 0.26, pose: S.facilityBoard, ease: easeInOutSine },
-  { t: 0.48, pose: S.facilityBoardClose, ease: easeInOutSine },
-  { t: 0.6, pose: S.facilityMid, ease: easeInOutSine },
-  { t: 0.72, pose: S.facilityMonument, ease: easeInOutSine },
-  { t: 0.87, pose: S.facilityMonument },
-  { t: 1, pose: S.facilityEnd, ease: easeInOutSine },
-];
 
 const corridorEntry = makePose([0, EYE_Y, CORRIDOR.start + 1], 0, 0, 54);
 export const STATION_POSES: CameraPose[] = CORRIDOR.rooms.map((r) => lookPose(r.viewpoint, r.focus, r.event.flagship ? 66 : 62));
@@ -65,8 +36,6 @@ const portalKeys: PoseKey[] = [
   { t: PORTAL_DWELL, pose: S.portalStand, ease: easeInOutSine },
   { t: 1, pose: S.portalStand },
 ];
-
-const at = (seg: SegmentId, t: number) => SEGMENTS[seg].start + (SEGMENTS[seg].end - SEGMENTS[seg].start) * t;
 
 /** Progress range of a room's dwell (when the camera is looking into it). */
 export function roomDwellRange(index: number): [number, number] {
@@ -149,15 +118,6 @@ export function evaluateCinematic(p: number, out: CameraPose): CameraPose {
   const seg = segmentAt(p);
   const u = segmentProgress(p, seg);
   switch (seg) {
-    case 'arrival':
-    case 'ascent':
-    case 'campus':
-    case 'topdown':
-      return evaluateFlight(flightT(p), out);
-    case 'descent':
-      return sampleTrack(descentKeys, u, out);
-    case 'facility':
-      return sampleTrack(facilityKeys, u, out);
     case 'events':
       return evaluateEvents(p, out);
     case 'portal':
@@ -171,21 +131,12 @@ export function evaluateCinematic(p: number, out: CameraPose): CameraPose {
 
 // ─── Values other systems derive from the same timeline ────────────────────────
 
-/** 0 → 1 as the glass light-well opens during the descent. */
-export const wellOpenAmount = (p: number) => smoothstep(0.38, 0.52, segmentProgress(p, 'descent'));
-
 /**
  * Reduced-motion "stills": the camera cuts between these instead of flying.
  * Each is a progress value whose pose frames a chapter well.
  */
 export const REDUCED_MOTION_STOPS: number[] = [
-  at('arrival', 0.4),
-  at('ascent', 0.55),
-  at('campus', 0.55),
-  at('topdown', 0.6),
-  at('facility', 0.12),
-  at('facility', 0.45),
-  at('facility', 0.8),
+  SEGMENTS.events.start,
   ...CORRIDOR.rooms.map((_, i) => progressForRoom(i)),
   PORTAL_GATE - 0.0002,
   // Inside the Teams world (the gate keeps these out of reach until the portal is entered).

@@ -1,14 +1,17 @@
 'use client';
 /**
  * The camera system. One component owns the camera for the whole journey —
- * arrival to the Teams world, and the travel through the portal between.
+ * the opening cinematic, the scroll journey to the Teams world, and the travel
+ * through the portal between.
  *
  * Every frame:
  *   1. damp raw scroll progress → progress.value, publish to overlays
  *   2. derive segment / chapter / active room → store (on change); run the
  *      Teams controller (portal hold, walls, hover)
- *   3. evaluate the shot: the scroll-driven cinematic (with the portal hold's
- *      pull and dolly layered on), or — travelling or inside — the Teams shot
+ *   3. evaluate the shot: the opening cinematic's film camera (src/intro —
+ *      its own playhead, not scroll), the scroll-driven cinematic (with the
+ *      portal hold's pull and dolly layered on), or — travelling or inside —
+ *      the Teams shot
  *   4. layer hand-held drift, apply
  */
 import { useFrame, useThree } from '@react-three/fiber';
@@ -16,6 +19,9 @@ import { useEffect, useRef } from 'react';
 import type { PerspectiveCamera } from 'three';
 import { CAMERA_RESPONSE } from '@/config/camera';
 import { chapterForSegment, segmentAt } from '@/config/timeline';
+import { evaluateIntroShot } from '@/intro/camera';
+import { updateIntro } from '@/intro/controller';
+import { introFrame } from '@/intro/state';
 import { experience } from '@/store/experience';
 import { world } from '@/scenes/shared/blend';
 import { progress } from '@/systems/scroll/progress';
@@ -33,6 +39,8 @@ export function CameraRig() {
   const lastStop = useRef(-1);
   const fadingOut = useRef(false);
   const lastPos = useRef({ x: 0, y: 0, z: 0 });
+  /** The hand-held drift fades in after the intro hands over (no snap at the handoff). */
+  const driftIn = useRef(1);
 
   useEffect(() => {
     camera.rotation.order = 'YXZ';
@@ -79,16 +87,21 @@ export function CameraRig() {
     progress.publish(dt);
 
     // 2 ─ discrete state
-    const seg = segmentAt(progress.value);
-    if (seg !== st.segment) st.set({ segment: seg, chapter: chapterForSegment(seg) });
-    const station = eventStationAt(progress.value);
-    const active = seg === 'events' && station.index >= 0 && (station.dwell > 0 || station.travel > 0.8) ? station.index : -1;
-    if (active !== st.activeRoom) st.set({ activeRoom: active });
+    updateIntro(dt);
+    const inIntro = introFrame.active;
+    if (!inIntro) {
+      const seg = segmentAt(progress.value);
+      if (seg !== st.segment) st.set({ segment: seg, chapter: chapterForSegment(seg) });
+      const station = eventStationAt(progress.value);
+      const active = seg === 'events' && station.index >= 0 && (station.dwell > 0 || station.travel > 0.8) ? station.index : -1;
+      if (active !== st.activeRoom) st.set({ activeRoom: active });
+    }
     updateTeams(dt, camera);
 
     // 3 ─ shot
     const inTeams = teamsCameraActive();
-    if (inTeams) evaluateTeamsShot(dt, time, camera.aspect, shot.current, shot.current, st.reducedMotion);
+    if (inIntro) evaluateIntroShot(time, camera.aspect, shot.current, st.reducedMotion);
+    else if (inTeams) evaluateTeamsShot(dt, time, camera.aspect, shot.current, shot.current, st.reducedMotion);
     else {
       evaluateCinematic(progress.value, shot.current);
       applyPortalHold(shot.current, teamsFrame.hold, time, st.reducedMotion);
@@ -99,8 +112,10 @@ export function CameraRig() {
     // 4 ─ drift, apply
     const p = pose.current;
     copyPose(shot.current, p);
-    if (!st.reducedMotion && st.phase !== 'travel') {
-      const d = teamsFrame.inside ? 0.35 : 1;
+    // (The intro camera carries its own breath.)
+    driftIn.current = inIntro ? 0 : Math.min(1, driftIn.current + dt / 1.5);
+    if (!st.reducedMotion && st.phase !== 'travel' && !inIntro) {
+      const d = (teamsFrame.inside ? 0.35 : 1) * driftIn.current * driftIn.current;
       p.yaw += Math.sin(time * 0.31) * CAMERA_RESPONSE.driftAngle * d;
       p.pitch += Math.sin(time * 0.23 + 1.3) * CAMERA_RESPONSE.driftAngle * 0.7 * d;
       p.y += Math.sin(time * 0.41 + 0.4) * CAMERA_RESPONSE.driftPosition * d;
@@ -111,7 +126,7 @@ export function CameraRig() {
     // horizontal coverage a landscape screen would have. The Teams world is
     // composed for portrait itself (teams/layout), so it is left alone.
     let fov = p.fov;
-    if (camera.aspect < 1 && world.underground > 0.5 && !teamsFrame.inside) {
+    if (camera.aspect < 1 && world.underground > 0.5 && !teamsFrame.inside && !inIntro) {
       const widen = Math.min(2.1, 1 + (1 / camera.aspect - 1) * 0.9);
       fov = Math.min(110, (2 * Math.atan(Math.tan((p.fov * Math.PI) / 360) * widen) * 180) / Math.PI);
       // …and steps back a little (every interior shot has room behind it).

@@ -2,22 +2,18 @@
  * The scroll timeline. Scroll is treated as one normalised progress value
  * (0 → 1) across a tall scroll track; each segment below owns a slice of it.
  *
+ * The journey's scroll begins at the Events: progress 0 is the corridor mouth,
+ * where the opening cinematic hands over (src/intro — the cinematic has its
+ * own film timeline and its own input, and is not a slice of this track).
+ *
  * Tune pacing by editing the `vh` weights (how many viewport-heights of
  * scrolling a segment takes). Everything else — chapter ranges, the camera,
  * scene streaming, overlay copy — derives from these numbers.
  */
+import { INTRO_CHAPTERS, type IntroChapterId } from '@/intro/timeline';
 import { CORRIDOR } from './world';
 
-export type SegmentId =
-  | 'arrival'
-  | 'ascent'
-  | 'campus'
-  | 'topdown'
-  | 'descent'
-  | 'facility'
-  | 'events'
-  | 'portal'
-  | 'teams';
+export type SegmentId = 'events' | 'portal' | 'teams';
 
 const EVENT_VH = { regular: 85, flagship: 125 };
 const eventsVh = CORRIDOR.rooms.reduce((sum, r) => sum + (r.event.flagship ? EVENT_VH.flagship : EVENT_VH.regular), 0);
@@ -34,12 +30,6 @@ const PORTAL_VH = 150;
 const TEAMS_VH = 720;
 
 const SEGMENT_WEIGHTS: { id: SegmentId; vh: number }[] = [
-  { id: 'arrival', vh: 110 },
-  { id: 'ascent', vh: 150 },
-  { id: 'campus', vh: 110 },
-  { id: 'topdown', vh: 70 },
-  { id: 'descent', vh: 210 },
-  { id: 'facility', vh: 130 },
   { id: 'events', vh: eventsVh + 40 },
   { id: 'portal', vh: PORTAL_VH },
   { id: 'teams', vh: TEAMS_VH },
@@ -91,23 +81,22 @@ export const PORTAL_GATE = SEGMENTS.portal.end;
 
 // ─── User-facing chapters (the chapter rail + index menu) ──────────────────────
 
-export type ChapterId = 'arrival' | 'ascent' | 'campus' | 'descent' | 'facility' | 'events' | 'portal' | 'teams';
+export type ChapterId = IntroChapterId | 'events' | 'portal' | 'teams';
 
 export interface ChapterDef {
   id: ChapterId;
   number: string;
   label: string;
-  /** Scroll progress to jump to. */
+  /** Scroll progress to jump to (null: not a place on the scroll track). */
   jumpTo: number | null;
   segments: SegmentId[];
+  /** The opening cinematic's chapters: the film time to jump to. */
+  intro?: number;
 }
 
 export const CHAPTERS: ChapterDef[] = [
-  { id: 'arrival', number: '01', label: 'Arrival', jumpTo: 0, segments: ['arrival'] },
-  { id: 'ascent', number: '02', label: 'Ascent', jumpTo: SEGMENTS.ascent.start + 0.002, segments: ['ascent'] },
-  { id: 'campus', number: '03', label: 'Campus', jumpTo: SEGMENTS.campus.start + 0.002, segments: ['campus', 'topdown'] },
-  { id: 'descent', number: '04', label: 'Descent', jumpTo: SEGMENTS.descent.start + 0.002, segments: ['descent'] },
-  { id: 'facility', number: '05', label: 'Facility', jumpTo: SEGMENTS.facility.start + 0.002, segments: ['facility'] },
+  // 01–05: the opening cinematic (its own film timeline — see src/intro).
+  ...INTRO_CHAPTERS.map((c) => ({ id: c.id, number: c.number, label: c.label, jumpTo: null, segments: [] as SegmentId[], intro: c.enterAt })),
   { id: 'events', number: '06', label: 'Events', jumpTo: SEGMENTS.events.start + 0.002, segments: ['events'] },
   { id: 'portal', number: '07', label: 'The Portal', jumpTo: SEGMENTS.portal.start + (SEGMENTS.portal.end - SEGMENTS.portal.start) * (PORTAL_DWELL + 0.08), segments: ['portal'] },
   // Entered through the portal (navigation plays the travel), never jumped into.
@@ -115,7 +104,7 @@ export const CHAPTERS: ChapterDef[] = [
 ];
 
 export function chapterForSegment(seg: SegmentId): ChapterId {
-  return CHAPTERS.find((c) => c.segments.includes(seg))?.id ?? 'arrival';
+  return CHAPTERS.find((c) => c.segments.includes(seg))?.id ?? 'events';
 }
 
 /** Progress of the dwell point for a given room (used by "jump to event"). */

@@ -36,17 +36,31 @@ import { QUALITY } from '@/config/quality';
 import { CAMPUS } from '@/config/world';
 import { rng } from '@/lib/random';
 import { useExperience } from '@/store/experience';
-import { wellOpenAmount } from '@/systems/camera/shots';
 import { merge, metricBox, place } from '@/systems/geometry/build';
 import { useDisposable } from '@/systems/performance/useDisposable';
 import { progress } from '@/systems/scroll/progress';
 import { lawnTexture } from '@/systems/textures/surfaces';
 import { makeCanvas, toTexture } from '@/systems/textures/typeset';
+import { look } from '@/intro/look';
+import { world } from '../shared/blend';
+
+const LAMP = new Color('#ffd49a').multiplyScalar(1.4);
+/** An unlit globe in daylight: pale frosted glass. */
+const LAMP_OFF = new Color('#aaa59c');
 
 const W = CAMPUS.well;
 const PL = CAMPUS.plaza;
 const G = CAMPUS.garden;
 const P = CAMPUS.pool;
+
+/** Lamp posts along the garden's walks and the drive (x, z); the globe is at y = LAMP_Y. */
+export const LAMP_SPOTS: [number, number][] = (() => {
+  const spots: [number, number][] = [];
+  for (let z = 40; z <= 96; z += 11) spots.push([G.x0 - 1.4, z], [G.x1 + 1.4, z]);
+  for (let x = -50; x <= 50; x += 20) spots.push([x, 28.4]);
+  return spots;
+})();
+export const LAMP_Y = 4.35;
 const FRONT = CAMPUS.frontZ;
 const RIM = 0.45;
 const WATER_Y = 0.34;
@@ -288,9 +302,7 @@ export function Grounds() {
       place(metricBox(0.9, 0.9, G.z1 - G.z0 - 8), { position: [G.x0 + 1.2, 0.45, (G.z0 + G.z1) / 2] }),
       place(metricBox(0.9, 0.9, G.z1 - G.z0 - 8), { position: [G.x1 - 1.2, 0.45, (G.z0 + G.z1) / 2] }),
     ]);
-    const lampSpots: [number, number][] = [];
-    for (let z = 40; z <= 96; z += 11) lampSpots.push([G.x0 - 1.4, z], [G.x1 + 1.4, z]);
-    for (let x = -50; x <= 50; x += 20) lampSpots.push([x, 28.4]);
+    const lampSpots = LAMP_SPOTS;
     const lampPosts = merge(lampSpots.map(([x, z]) => place(new CylinderGeometry(0.06, 0.09, 4.2, 8), { position: [x, 2.1, z] })));
     const lampHeads = merge(lampSpots.map(([x, z]) => place(new SphereGeometry(0.22, 12, 8), { position: [x, 4.35, z] })));
 
@@ -323,7 +335,7 @@ export function Grounds() {
       mHedge: new MeshStandardMaterial({ color: '#35522a', roughness: 1 }),
       mShrub: new MeshStandardMaterial({ color: '#3d5f2c', roughness: 0.95 }),
       mPost: new MeshStandardMaterial({ color: '#2c2e31', roughness: 0.5, metalness: 0.6 }),
-      mLamp: new MeshBasicMaterial({ color: new Color('#ffd49a').multiplyScalar(1.4) }),
+      mLamp: new MeshBasicMaterial({ color: LAMP.clone() }),
       mGlass: new MeshStandardMaterial({ color: PALETTE.glass, roughness: 0.04, metalness: 0.5, transparent: true, opacity: 0.45, depthWrite: false }),
       mSteel: new MeshStandardMaterial({ color: '#2a2d31', roughness: 0.35, metalness: 0.85 }),
       mGlow: new MeshBasicMaterial({ color: new Color('#cfe0ff').multiplyScalar(1.3) }),
@@ -350,10 +362,9 @@ export function Grounds() {
   }, [res]);
 
   useFrame((_, dt) => {
-    const open = wellOpenAmount(progress.value);
-    const slide = open * (W.r + 0.8);
-    if (left.current) left.current.position.x = W.x - slide;
-    if (right.current) right.current.position.x = W.x + slide;
+    // Lamps burn before dawn and go out as the day arrives (the opening film).
+    res.mLamp.color.copy(LAMP_OFF).lerp(LAMP, 1 + (look.practicals - 1) * world.intro);
+    // (The light-well's glass stays closed: the way down is the opening film's now.)
     const n = water.current?.normalMap;
     if (n) {
       n.offset.x += dt * 0.02;

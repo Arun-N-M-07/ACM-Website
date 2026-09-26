@@ -4,11 +4,8 @@
  * thing it describes.
  */
 import { Vector3 } from 'three';
-import { CAMPUS, CORRIDOR, FLOOR_Y, hallZ, PORTAL, UNDERGROUND, type RoomLayout } from './world';
+import { CORRIDOR, PORTAL, type RoomLayout } from './world';
 import { setAnchor } from '@/systems/anchors/anchors';
-
-const H = UNDERGROUND.hall;
-const C = UNDERGROUND.corridor;
 
 /** A room's back wall, where its title is painted. */
 export function roomAnchor(r: RoomLayout) {
@@ -18,12 +15,6 @@ export function roomAnchor(r: RoomLayout) {
 }
 
 export const ANCHOR = {
-  tower: new Vector3(CAMPUS.tower.x, CAMPUS.tower.top - 4.5, CAMPUS.tower.z),
-  porch: new Vector3(0, 9.5, 19),
-  well: new Vector3(CAMPUS.well.x, 0.4, CAMPUS.well.z),
-  board: new Vector3(-H.width / 2 + 0.3, FLOOR_Y + 3.4, hallZ(9)),
-  plaque: new Vector3(H.width / 2 - 0.3, FLOOR_Y + 3.6, hallZ(3.6)),
-  corridorSign: new Vector3(0, FLOOR_Y + C.height + 1.6, H.north + 0.1),
   /** The portal: its centre, the top of the ring and just below it (the prompt). */
   portal: new Vector3(0, PORTAL.y, PORTAL.z),
   portalTop: new Vector3(0, PORTAL.y + PORTAL.radius + PORTAL.tube, PORTAL.z),

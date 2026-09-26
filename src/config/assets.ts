@@ -14,11 +14,10 @@ export interface ModelSlotDef {
   castShadow?: boolean;
 }
 
-export type ModelSlotId = 'cegBuilding' | 'cegCampus' | 'facilityHall' | 'corridor';
+export type ModelSlotId = 'cegBuilding' | 'cegCampus' | 'corridor';
 
 export const MODEL_SLOTS: Record<ModelSlotId, ModelSlotDef> = {
   cegBuilding: { path: '/models/campus/ceg-building.glb', castShadow: true },
   cegCampus: { path: '/models/campus/ceg-campus.glb' },
-  facilityHall: { path: '/models/underground/facility-hall.glb' },
   corridor: { path: '/models/underground/corridor.glb' },
 };

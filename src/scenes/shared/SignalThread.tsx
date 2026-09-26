@@ -1,14 +1,17 @@
 'use client';
 /**
  * A light inlaid into the route. Its position and revealed length rewind with
- * scroll. It ends in the portal — and while the portal is held, it floods
- * towards it.
+ * scroll. It picks up where the opening cinematic's tunnel line leaves off, at
+ * the corridor mouth, and ends in the portal — and while the portal is held,
+ * it floods towards it.
  */
 import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
 import { CatmullRomCurve3, Color, type Group, MeshBasicMaterial, SphereGeometry, TubeGeometry, Vector3 } from 'three';
 import { PORTAL_DWELL, SEGMENTS } from '@/config/timeline';
-import { CAMPUS, CORRIDOR, FLOOR_Y, PORTAL, UNDERGROUND } from '@/config/world';
+import { CORRIDOR, FLOOR_Y, PORTAL, UNDERGROUND } from '@/config/world';
+import { introFrame } from '@/intro/state';
+import { T } from '@/intro/timeline';
 import { roomDwellRange } from '@/systems/camera/shots';
 import { smoothstep } from '@/systems/camera/pose';
 import { teamsFrame } from '@/teams/state';
@@ -20,13 +23,8 @@ const within = (segment: keyof typeof SEGMENTS, f: number) => SEGMENTS[segment].
 const key = (p: number, x: number, y: number, z: number) => ({ p, at: new Vector3(x, y, z) });
 
 export const SIGNAL_KEYS = (() => {
-  const w = CAMPUS.well;
-  const keys = [
-    key(within('descent', .15), w.x + w.r - .2, 0, w.z),
-    key(within('descent', .76), w.x + w.r - .2, FLOOR_Y + 1, w.z),
-    key(within('facility', .04), 0, Y, w.z - 1),
-    key(within('facility', .95), 0, Y, UNDERGROUND.hall.north + 2),
-  ];
+  // From the corridor mouth (where the tunnel's line ends), room by room.
+  const keys = [key(SEGMENTS.events.start, 0, Y, UNDERGROUND.hall.north + 2)];
   for (const r of CORRIDOR.rooms) {
     const [a, b] = roomDwellRange(r.index);
     const gap = a - keys[keys.length - 1].p;
@@ -79,12 +77,13 @@ export function SignalThread() {
   useFrame(() => {
     const p = progress.value;
     const t = signalFraction(p);
-    if (group.current) group.current.visible = p > SEGMENTS.descent.start && !teamsFrame.inside;
+    // During the film it waits in the dark until the tunnel reaches it.
+    if (group.current) group.current.visible = !teamsFrame.inside && (!introFrame.active || introFrame.t > T.tunnel - 0.6);
     // The hold pulls the rest of the thread into the ring.
     const h = smoothstep(0.45, 1, teamsFrame.hold);
     const shown = t + (1 - t) * h;
     res.tube.setDrawRange(0, Math.floor(shown * 1200) * 24);
-    res.material.opacity = .85 * smoothstep(SEGMENTS.descent.start, SIGNAL_KEYS[0].p, p);
+    res.material.opacity = .85;
     res.material.color.copy(SIGNAL_BLUE).multiplyScalar(1 + 2.2 * h);
     if (head.current) head.current.position.copy(res.curve.getPoint(Math.min(1, shown), point));
   });

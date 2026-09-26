@@ -8,7 +8,6 @@ import { PerformanceMonitor } from '@react-three/drei';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ACESFilmicToneMapping, SRGBColorSpace } from 'three';
-import { FLIGHT } from '@/config/camera';
 import { QUALITY } from '@/config/quality';
 import { Atmosphere } from '@/scenes/shared/Atmosphere';
 import { WorldLights } from '@/scenes/shared/WorldLights';
@@ -18,6 +17,7 @@ import { experience, useExperience } from '@/store/experience';
 import { CameraRig } from '@/systems/camera/CameraRig';
 import { fx } from '@/systems/camera/effects';
 import { AnchorProjector } from './AnchorProjector';
+import { INTRO_KEYS } from '@/intro/camera';
 import { PostProcessing } from '@/teams/post/PostProcessing';
 import { SceneDirector } from './SceneDirector';
 
@@ -69,7 +69,7 @@ export default function ExperienceCanvas() {
   const [dpr, setDpr] = useState(q.dpr[1]);
   const declines = useRef(0);
   const lastDecline = useRef(0);
-  const start = FLIGHT[0];
+  const start = INTRO_KEYS[0];
 
   useEffect(() => setDpr((current) => Math.min(current, q.dpr[1])), [q.dpr]);
 

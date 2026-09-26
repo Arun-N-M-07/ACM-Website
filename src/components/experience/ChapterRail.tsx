@@ -18,7 +18,8 @@ export function ChapterRail() {
     if (counter.current) counter.current.textContent = `${String(Math.round(p * 100)).padStart(2, '0')}%`;
   });
 
-  if (phase === 'loading' || phase === 'ready') return null;
+  // Nothing competes with the opening film.
+  if (phase === 'loading' || phase === 'ready' || phase === 'intro') return null;
   return (
     <nav className="rail" aria-label="Chapters">
       <span className="rail-line" aria-hidden="true">

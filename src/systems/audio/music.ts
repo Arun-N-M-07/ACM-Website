@@ -1,7 +1,11 @@
 /**
- * The music player: one looping track, faded in and out, with a low-pass that
- * closes as the journey goes underground and opens again inside — so the song
- * feels like it is playing in the room you are in. No other sound is made.
+ * The music player: one track, faded in and out, with a low-pass that closes
+ * as the journey goes underground and opens again inside — so the song feels
+ * like it is playing in the room you are in. No other sound is made.
+ *
+ * The intro drives it as a clock: it starts the score at an exact point
+ * (`playFrom`), reads its position back (`time`), and lets it breathe out and
+ * back in when the film comes to rest (`hold`, `setLevel`).
  *
  * Everything is wrapped defensively: a missing file, a blocked AudioContext or
  * a codec the browser dislikes must never break the journey.
@@ -16,6 +20,9 @@ class MusicPlayer {
   private gain: GainNode | null = null;
   private filter: BiquadFilterNode | null = null;
   private wanted = false;
+  private level = 1;
+  private holdTimer = 0;
+  private holding = false;
   state: State = 'idle';
   /** Set when the browser refuses to play (autoplay policy, missing file…). */
   message = '';
@@ -32,10 +39,15 @@ class MusicPlayer {
       this.message = `No audio file at ${MUSIC.src}`;
     });
     this.el = el;
+  }
+
+  /** The Web Audio graph needs a user gesture to run; build it on the first one. */
+  private graph() {
+    if (this.ctx || !this.el) return;
     try {
       const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
       const ctx = new Ctx();
-      const src = ctx.createMediaElementSource(el);
+      const src = ctx.createMediaElementSource(this.el);
       const filter = ctx.createBiquadFilter();
       filter.type = 'lowpass';
       filter.frequency.value = 20000;
@@ -49,26 +61,111 @@ class MusicPlayer {
     } catch {
       // No Web Audio: fall back to plain element volume.
       this.ctx = null;
-      el.volume = 0;
+      this.el.volume = 0;
     }
+  }
+
+  /** Start fetching the file while the world loads (no sound, no gesture needed). */
+  preload() {
+    this.build();
+    this.el?.load();
+  }
+
+  /** Enough of the file is buffered to start without a stall. */
+  get ready() {
+    return !!this.el && this.el.readyState >= 3;
+  }
+
+  /** The file can't be played (missing, or refused). */
+  get failed() {
+    return this.state === 'missing' || this.state === 'blocked';
+  }
+
+  /** Playback position (s). */
+  get time() {
+    return this.el?.currentTime ?? 0;
+  }
+
+  /** Audibly playing (not paused, not stalled waiting for data, not breathing out). */
+  get running() {
+    const el = this.el;
+    return !!el && !el.paused && !el.ended && el.readyState >= 3 && this.state === 'playing' && !this.holding;
   }
 
   /** Called from a user gesture (the loader's buttons, the top bar). */
   async enable() {
     this.wanted = true;
     this.build();
+    this.graph();
     const el = this.el;
     if (!el) return;
+    window.clearTimeout(this.holdTimer);
+    this.holding = false;
     try {
       await this.ctx?.resume();
       await el.play();
       this.state = 'playing';
       this.message = '';
-      this.fadeTo(MUSIC.volume, MUSIC.fade);
+      this.fadeTo(MUSIC.volume * this.level, MUSIC.fade);
     } catch (err) {
       this.state = el.error ? 'missing' : 'blocked';
       this.message = el.error ? `No audio file at ${MUSIC.src}` : String((err as Error)?.message ?? err);
     }
+  }
+
+  /**
+   * Play from `at` seconds, fading in over `fade`. Safe to call before the
+   * metadata has loaded (the seek is applied once it has).
+   */
+  async playFrom(at: number, fade = 0.6) {
+    this.wanted = true;
+    this.build();
+    this.graph();
+    const el = this.el;
+    if (!el) return;
+    window.clearTimeout(this.holdTimer);
+    this.holding = false;
+    const seek = () => {
+      try {
+        el.currentTime = at;
+      } catch {
+        // Not seekable yet; the loadedmetadata handler below will retry.
+      }
+    };
+    if (el.readyState >= 1) seek();
+    else el.addEventListener('loadedmetadata', seek, { once: true });
+    this.silence();
+    try {
+      await this.ctx?.resume();
+      await el.play();
+      this.state = 'playing';
+      this.message = '';
+      this.fadeTo(MUSIC.volume * this.level, fade);
+    } catch (err) {
+      this.state = el.error ? 'missing' : 'blocked';
+      this.message = el.error ? `No audio file at ${MUSIC.src}` : String((err as Error)?.message ?? err);
+    }
+  }
+
+  /** Breathe out and pause (the film has come to rest); `playFrom` resumes. Idempotent. */
+  hold(fade = 1.2) {
+    const el = this.el;
+    if (!el || el.paused || this.holding) return;
+    this.holding = true;
+    this.fadeTo(0, fade);
+    window.clearTimeout(this.holdTimer);
+    this.holdTimer = window.setTimeout(() => {
+      if (this.holding) el.pause();
+      this.holding = false;
+    }, fade * 1000 + 120);
+  }
+
+  /** Scale the volume (0..1) — e.g. with the film's speed as it comes to rest. Per-frame safe. */
+  setLevel(level: number) {
+    const l = Math.min(1, Math.max(0, level));
+    if (Math.abs(l - this.level) < 0.01) return;
+    this.level = l;
+    if (this.el && !this.el.paused && !this.holding) this.fadeTo(MUSIC.volume * l, 0.25);
   }
 
   disable() {
@@ -76,10 +173,20 @@ class MusicPlayer {
     this.fadeTo(0, 0.8);
     const el = this.el;
     if (!el) return;
-    window.setTimeout(() => {
+    window.clearTimeout(this.holdTimer);
+    this.holdTimer = window.setTimeout(() => {
       if (!this.wanted) el.pause();
     }, 900);
     if (this.state === 'playing') this.state = 'idle';
+  }
+
+  private silence() {
+    const g = this.gain;
+    const ctx = this.ctx;
+    if (g && ctx) {
+      g.gain.cancelScheduledValues(ctx.currentTime);
+      g.gain.setValueAtTime(0, ctx.currentTime);
+    } else if (this.el) this.el.volume = 0;
   }
 
   private fadeTo(v: number, seconds: number) {
@@ -106,14 +213,15 @@ class MusicPlayer {
   /** Brief dip, for the push through the door. */
   duck(depth = 0.45, seconds = 1.2) {
     if (!this.wanted) return;
-    this.fadeTo(MUSIC.volume * (1 - depth), 0.25);
+    this.fadeTo(MUSIC.volume * this.level * (1 - depth), 0.25);
     window.setTimeout(() => {
-      if (this.wanted) this.fadeTo(MUSIC.volume, seconds);
+      if (this.wanted) this.fadeTo(MUSIC.volume * this.level, seconds);
     }, seconds * 400);
   }
 
   destroy() {
     this.wanted = false;
+    window.clearTimeout(this.holdTimer);
     this.el?.pause();
     this.el = null;
     void this.ctx?.close();
