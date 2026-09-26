@@ -22,7 +22,7 @@ const kill = () => {
   tween = null;
 };
 
-const DUR = { open: 1.35, close: 1.15, step: 1.3 };
+const DUR = { open: 1.85, close: 1.45, step: 1.6 };
 
 export function selectDomain(i: number) {
   const st = teams();

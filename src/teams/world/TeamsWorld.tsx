@@ -25,6 +25,7 @@ import { buildTeamsEnvironment } from './environment';
 import { ParticleField } from './ParticleField';
 import { Spine } from './Spine';
 import { Tunnel } from './Tunnel';
+import { TeamEntrance } from './TeamEntrance';
 
 const _cam = new Vector3();
 const _ray = new Vector3();
@@ -34,8 +35,7 @@ export function TeamsWorld() {
   const scene = useThree((s) => s.scene);
   const camera = useThree((s) => s.camera);
   const size = useThree((s) => s.size);
-  const portrait = size.width / Math.max(1, size.height) < 0.9;
-  const comp = useMemo(() => composition(size.width / Math.max(1, size.height)), [portrait]); // eslint-disable-line react-hooks/exhaustive-deps
+  const comp = useMemo(() => composition(size.width / Math.max(1, size.height)), [size.width, size.height]);
   const group = useRef<Group>(null);
   const ready = useRef(false);
 
@@ -118,7 +118,8 @@ export function TeamsWorld() {
   return (
     <group ref={group} name="teams-world">
       <Backdrop />
-      <group position={O} scale={comp.portrait ? 0.86 : 1.22}>
+      <TeamEntrance env={env} />
+      <group position={O} scale={comp.portrait ? 0.92 : 1.05}>
         <Spine env={env} />
       </group>
       <ParticleField comp={comp} />

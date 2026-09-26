@@ -19,7 +19,7 @@ import { Vector3 } from 'three';
 import { CAMERA_STATES } from '@/config/camera';
 import { PORTAL } from '@/config/world';
 import { clamp01, easeInOutCubic, easeOutCubic, lerp, lerpAngle, lerpPose, smoothstep, type CameraPose } from '@/systems/camera/pose';
-import { C_ENTRY, C_OUTRO, C_FINAL, cardAngle, cardCenter, cardY, LAST, O, STEP, type Composition } from './layout';
+import { C_ENTRY, C_OUTRO, C_FINAL, ENTRY_Z, cardAngle, cardCenter, cardY, LAST, O, STEP, type Composition } from './layout';
 
 export interface Shot {
   pos: Vector3;
@@ -62,7 +62,19 @@ const _b = new Vector3();
  * c < 0 is the establishing approach, 0..5 the cards, > 5 the pull-back.
  */
 export function orbitShot(c: number, comp: Composition, out: Shot) {
-  const intro = smoothstep(0, C_ENTRY, c);
+  if (c < 0) {
+    // A single reversible dolly through the word space. Letters remain behind us.
+    const u = smoothstep(C_ENTRY, 0, c);
+    const end = comp.radius + comp.orbitDist;
+    const start = ENTRY_Z + Math.max(24, 12 / (Math.tan(comp.fov * Math.PI / 360) * comp.aspect));
+    const framing = 1.7 * (1 - smoothstep(0, 0.6, u));
+    out.pos.set(O.x + framing + Math.sin(u * Math.PI) * 0.13, O.y + comp.lift, O.z + lerp(start, end, u));
+    out.target.set(O.x + framing, O.y + comp.lift + lerp(0, comp.portrait ? 0.12 : 0.16, u), O.z + comp.radius * 0.7);
+    out.fov = comp.fov;
+    out.roll = 0;
+    return out;
+  }
+  const intro = 0;
   const outro = c > C_OUTRO ? easeInOutCubic(clamp01((c - C_OUTRO) / (C_FINAL - C_OUTRO))) : 0;
   const onCards = c >= 0 && c <= LAST ? 1 : 0;
   // Between two cards the camera eases back a little, then in again: a breath.
@@ -92,31 +104,14 @@ export function orbitShot(c: number, comp: Composition, out: Shot) {
 export function focusShot(k: number, comp: Composition, out: Shot) {
   cardCenter(k, comp, out.target, FOCUS_PUSH);
   const a = cardAngle(k);
-  out.pos.set(out.target.x + Math.sin(a) * comp.detailDist, out.target.y, out.target.z + Math.cos(a) * comp.detailDist);
-  // Frame the card off-centre to leave room for the details: centre-right on
-  // landscape screens (the text sits lower-left, as on the reference), higher
-  // on portrait ones (the text sits beneath). Pan, don't turn: the card stays square.
-  const tanH = Math.tan((comp.detailFov * Math.PI) / 360);
-  if (comp.portrait) {
-    const s = DETAIL_SHIFT.y * tanH * comp.detailDist;
-    out.pos.y -= s;
-    out.target.y -= s;
-  } else {
-    const s = DETAIL_SHIFT.x * tanH * comp.aspect * comp.detailDist;
-    const rx = Math.cos(a);
-    const rz = -Math.sin(a);
-    out.pos.x -= rx * s;
-    out.pos.z -= rz * s;
-    out.target.x -= rx * s;
-    out.target.z -= rz * s;
-  }
+  // End behind the physical surface, still looking into the domain's space.
+  out.pos.set(out.target.x - Math.sin(a) * 0.8, out.target.y, out.target.z - Math.cos(a) * 0.8);
+  out.target.x -= Math.sin(a) * 4;
+  out.target.z -= Math.cos(a) * 4;
   out.fov = comp.detailFov;
   out.roll = 0;
   return out;
 }
-
-/** Where an open card sits on screen: NDC offset of its centre (landscape: right; portrait: up). */
-export const DETAIL_SHIFT = { x: 0.24, y: 0.32 };
 
 /** How far a chosen card comes forward out of the ring. */
 export const FOCUS_PUSH = 0.55;

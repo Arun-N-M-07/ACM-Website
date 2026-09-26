@@ -8,7 +8,8 @@
  */
 import { useFrame } from '@react-three/fiber';
 import { useRef } from 'react';
-import { BackSide, type Mesh, ShaderMaterial, SphereGeometry } from 'three';
+import { BackSide, Color, type Mesh, ShaderMaterial, SphereGeometry } from 'three';
+import { TEAM_DOMAINS } from '@/content/teams';
 import { smoothstep } from '@/systems/camera/pose';
 import { useDisposable } from '@/systems/performance/useDisposable';
 import { teamsFrame } from '../state';
@@ -22,7 +23,7 @@ export function Backdrop() {
       depthWrite: false,
       depthTest: false,
       fog: false,
-      uniforms: { uLevel: { value: 0 } },
+      uniforms: { uLevel: { value: 0 }, uDomain: { value: new Color() }, uFocus: { value: 0 } },
       vertexShader: /* glsl */ `
         varying vec3 vDir;
         void main() {
@@ -31,11 +32,14 @@ export function Backdrop() {
         }`,
       fragmentShader: /* glsl */ `
         uniform float uLevel;
+        uniform vec3 uDomain;
+        uniform float uFocus;
         varying vec3 vDir;
         void main() {
           float teal = pow(max(0.0, dot(vDir, normalize(vec3(0.62, 0.55, -0.55)))), 3.0);
           float violet = pow(max(0.0, dot(vDir, normalize(vec3(-0.6, -0.45, 0.5)))), 2.5);
           vec3 c = vec3(0.012, 0.045, 0.055) * teal + vec3(0.05, 0.02, 0.07) * violet;
+          c = mix(c, uDomain * (0.012 + 0.035 * teal), uFocus);
           gl_FragColor = vec4(c * uLevel, 1.0);
           #include <colorspace_fragment>
         }`,
@@ -46,7 +50,10 @@ export function Backdrop() {
     const m = mesh.current;
     if (!m) return;
     m.position.copy(camera.position);
-    res.mat.uniforms.uLevel.value = smoothstep(0.35, 0.7, teamsFrame.arrival) * (1 - 0.6 * teamsFrame.focus);
+    res.mat.uniforms.uLevel.value = smoothstep(0.05, 0.7, teamsFrame.arrival);
+    res.mat.uniforms.uFocus.value = teamsFrame.focus;
+    const k = Math.max(0, Math.min(TEAM_DOMAINS.length - 1, Math.round(teamsFrame.focusK)));
+    res.mat.uniforms.uDomain.value.set(TEAM_DOMAINS[k].tone);
   });
   return <mesh ref={mesh} geometry={res.geo} material={res.mat} renderOrder={-10} frustumCulled={false} />;
 }

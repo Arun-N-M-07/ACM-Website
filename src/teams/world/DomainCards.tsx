@@ -1,28 +1,9 @@
 'use client';
-/**
- * The six domain cards: real objects in the world — plates of frosted glass
- * (physical transmission: the spine behind them shows through, blurred) with
- * a typeset face.
- *
- * Every movement is a consequence of something:
- *   position   the helix (layout) · the arrival (each card materialises in
- *              turn, sliding in from the dark) · focus (the chosen card comes
- *              forward; the others give way outward) · hover (a lift, and a
- *              lean towards the pointer)
- *   rotation   faces outward from the spine · leans against scroll velocity
- *              (inertia) · the card under the pointer tilts to meet it ·
- *              turns aside while another is open
- *   idle       the world's slow wave passes down the helix: each card rises
- *              and settles as it passes (a phase per card — not random bobbing)
- *   title      settled on the card in view (and the one under the pointer);
- *              off-centre cards carry it broken up; arriving it stutters in,
- *              leaving it breaks apart (cardFace.ts)
- *   glint      a soft flare follows the pointer across the card it's over
- */
+/** Six physical plates on radial mounts. Typography shares each plate's
+ * transform and lighting; selection uses the rendered surface matrix. */
 import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
 import {
-  AdditiveBlending,
   CanvasTexture,
   Color,
   ExtrudeGeometry,
@@ -30,6 +11,8 @@ import {
   type Mesh,
   MeshBasicMaterial,
   MeshPhysicalMaterial,
+  MeshStandardMaterial,
+  CylinderGeometry,
   PlaneGeometry,
   Shape,
   ShapeGeometry,
@@ -47,7 +30,7 @@ import { FOCUS_PUSH } from '../camera';
 import { cardPick } from '../controller';
 import { cardAngle, cardCenter, STEP, type Composition } from '../layout';
 import { emitCardRect, teams, teamsFrame } from '../state';
-import { drawCardFace, type FaceMode } from './cardFace';
+import { drawCardFace } from './cardFace';
 
 function roundedRect(w: number, h: number, r: number) {
   const s = new Shape();
@@ -70,7 +53,6 @@ const _c = new Vector3();
 const _corner = new Vector3();
 const _right = new Vector3();
 
-const TITLE = { decode: 0.95, leave: 0.5, reseed: [0.35, 0.65] as const };
 
 function DomainCard({ d, i, comp, env, transmission }: { d: TeamDomain; i: number; comp: Composition; env: Texture | null; transmission: boolean }) {
   const group = useRef<Group>(null);
@@ -95,7 +77,10 @@ function DomainCard({ d, i, comp, env, transmission }: { d: TeamDomain; i: numbe
     const sp = screen.getAttribute('position');
     const suv = screen.getAttribute('uv');
     for (let k = 0; k < sp.count; k++) suv.setXY(k, sp.getX(k) / comp.cardW + 0.5, sp.getY(k) / comp.cardH + 0.5);
-    return { slab, plane, screen };
+    const arm = new CylinderGeometry(0.028, 0.065, comp.radius - 0.65, 8);
+    arm.rotateX(Math.PI / 2);
+    arm.translate(0, 0, -(comp.radius - 0.65) / 2);
+    return { slab, plane, screen, arm };
   }, [comp.cardW, comp.cardH, comp.corner, comp.cardDepth]);
 
   const tex = useDisposable(() => {
@@ -110,13 +95,13 @@ function DomainCard({ d, i, comp, env, transmission }: { d: TeamDomain; i: numbe
     const tone = new Color(d.tone);
     const glass = transmission
       ? new MeshPhysicalMaterial({
-          // Milky frost: roughness × (ior − 1) sets the blur of what's behind.
-          color: new Color('#dde0e8').lerp(tone, 0.24),
-          metalness: 0,
-          roughness: 0.56,
-          transmission: 1,
-          thickness: 0.6,
-          ior: 1.5,
+          // Smoked resin: restrained transmission with a sharp edge reflection.
+          color: new Color('#263239').lerp(tone, 0.22),
+          metalness: 0.16,
+          roughness: 0.22,
+          transmission: quality === 'high' ? 0.28 : 0.14,
+          thickness: 0.12,
+          ior: 1.3,
           attenuationColor: tone.clone().lerp(new Color('#ffffff'), 0.45),
           attenuationDistance: 2.6,
           clearcoat: 1,
@@ -129,14 +114,15 @@ function DomainCard({ d, i, comp, env, transmission }: { d: TeamDomain; i: numbe
           metalness: 0.1,
           roughness: 0.28,
           transparent: true,
-          opacity: 0.6,
+          opacity: 0.94,
           clearcoat: 1,
           clearcoatRoughness: 0.14,
           envMap: env,
           envMapIntensity: 1,
           depthWrite: false,
         });
-    const faceMat = new MeshBasicMaterial({ map: tex.texture as CanvasTexture, transparent: true, depthWrite: false, toneMapped: false, opacity: 0 });
+    const faceMat = new MeshStandardMaterial({ map: tex.texture as CanvasTexture, emissiveMap: tex.texture, emissive: '#ffffff', emissiveIntensity: 0.32, roughness: 0.65, metalness: 0.12, transparent: true, depthWrite: false, opacity: 0 });
+    const mount = new MeshStandardMaterial({ color: '#647076', metalness: 0.7, roughness: 0.3, envMap: env });
     // The screen that switches on behind the name as the card opens.
     const sc = document.createElement('canvas');
     sc.width = 64;
@@ -170,35 +156,23 @@ function DomainCard({ d, i, comp, env, transmission }: { d: TeamDomain; i: numbe
     const lightMap = new CanvasTexture(lc);
     lightMap.colorSpace = SRGBColorSpace;
     const light = new MeshBasicMaterial({ map: lightMap, transparent: true, opacity: 0, depthWrite: false });
-    return { glass, faceMat, screen, screenMap, light, lightMap, base: glass.color.clone() };
-  }, [d.tone, transmission, env, tex]);
+    return { glass, faceMat, mount, screen, screenMap, light, lightMap, base: glass.color.clone() };
+  }, [d.tone, transmission, quality, env, tex]);
 
-  // The title's state (see cardFace.ts). Redrawn only while it animates, or
-  // when a broken title is re-seeded.
-  const title = useRef({ mode: 'glitched' as FaceMode, t: 0, seed: i * 13 + 1, next: 0, tick: -1, dirty: true, placed: false });
-  const draw = () => {
-    const tt = title.current;
+  useEffect(() => {
     drawCardFace(tex.ctx, tex.canvas.width, tex.canvas.height, d, i, (comp.corner / comp.cardW) * tex.canvas.width, {
-      portrait: comp.portrait,
-      mode: tt.mode,
-      t: tt.t,
-      seed: tt.seed,
+      portrait: comp.portrait, mode: 'settled', t: 1, seed: i,
     });
     tex.texture.needsUpdate = true;
-  };
-  useEffect(() => {
-    title.current.dirty = true;
-    title.current.placed = false;
-  }, [tex, d, i, comp.portrait]);
+  }, [tex, d, i, comp]);
 
   useFrame(({ clock, camera }, dt) => {
     const g = group.current;
     if (!g) return;
     const f = teamsFrame;
-    const t = clock.elapsedTime;
+    const t = useExperience.getState().reducedMotion ? 0 : clock.elapsedTime;
     const st = teams();
-    const ex = useExperience.getState();
-    const appear = appearAt(i, f.arrival);
+    const appear = appearAt(i, f.reveal);
 
     const near = Math.max(0, 1 - Math.abs(f.focusK - i));
     const sel = f.focus * near;
@@ -209,48 +183,6 @@ function DomainCard({ d, i, comp, env, transmission }: { d: TeamDomain; i: numbe
     const hovered = f.hover === i;
     const hx = hovered ? f.hoverAt.x / (comp.cardW / 2) : 0;
     const hy = hovered ? f.hoverAt.y / (comp.cardH / 2) : 0;
-
-    // ── title state ──
-    const tt = title.current;
-    const live = st.state === 'teamsActive' || st.state === 'cardFocused' || st.state === 'domainDetail';
-    const wantSettled =
-      ex.reducedMotion ||
-      sel > 0.3 ||
-      hover > 0.5 ||
-      (live && st.current === i && Math.abs(f.c - i) < 0.5) ||
-      (st.state === 'teamsEntering' && i === 0 && appear > 0.4);
-    if (!tt.placed) {
-      // First draw: no animation, just the right state.
-      tt.mode = wantSettled ? 'settled' : 'glitched';
-      tt.placed = true;
-      tt.dirty = true;
-    } else if (wantSettled && (tt.mode === 'glitched' || tt.mode === 'leaving')) {
-      tt.mode = 'decoding';
-      tt.t = 0;
-    } else if (!wantSettled && (tt.mode === 'settled' || tt.mode === 'decoding')) {
-      tt.mode = 'leaving';
-      tt.t = 0;
-    }
-    if (tt.mode === 'decoding' || tt.mode === 'leaving') {
-      tt.t = Math.min(1, tt.t + dt / (tt.mode === 'decoding' ? TITLE.decode : TITLE.leave));
-      const tick = Math.floor(t * 30);
-      if (tt.t >= 1) {
-        tt.mode = tt.mode === 'decoding' ? 'settled' : 'glitched';
-        tt.dirty = true;
-      } else if (tick !== tt.tick) {
-        tt.tick = tick;
-        if (tt.mode === 'leaving') tt.seed = tick;
-        tt.dirty = true;
-      }
-    } else if (tt.mode === 'glitched' && t > tt.next && appear > 0.01) {
-      tt.seed = Math.floor(t * 17) + i;
-      tt.next = t + TITLE.reseed[0] + ((i * 0.37) % 1) * (TITLE.reseed[1] - TITLE.reseed[0]);
-      tt.dirty = true;
-    }
-    if (tt.dirty) {
-      tt.dirty = false;
-      draw();
-    }
 
     // ── placement ──
     const radial = FOCUS_PUSH * sel + 1.4 * others + hover * 0.14 + (1 - appear) * 2.6;
@@ -286,12 +218,12 @@ function DomainCard({ d, i, comp, env, transmission }: { d: TeamDomain; i: numbe
     // Others recede into the dark while one is open; the chosen one lights up.
     mats.glass.color.copy(mats.base).multiplyScalar(1 - 0.72 * others);
     mats.glass.envMapIntensity = (0.4 + 0.7 * appear) * (1 - 0.7 * others) * (1 + 0.4 * hover);
-    mats.faceMat.opacity = appear * (0.9 + 0.1 * Math.max(hover, cc)) * (1 - 0.75 * others);
+    mats.faceMat.opacity = appear * (0.9 + 0.1 * Math.max(hover, cc)) * (1 - 0.9 * others) * (1 - smoothstep(0.7, 0.92, sel));
     // Kept just under the bloom threshold: the glow is baked into the lettering,
     // and a blooming title would haze the whole card.
     mats.faceMat.color.setScalar(0.96 + 0.04 * Math.max(hover, sel));
-    mats.screen.opacity = 0.94 * smoothstep(0.35, 0.95, sel);
-    mats.light.opacity = appear * (0.2 + 0.06 * Math.max(hover, cc)) * (1 - smoothstep(0.1, 0.6, sel)) * (1 - 0.8 * others);
+    mats.screen.opacity = 0.45 * smoothstep(0.35, 0.75, sel) * (1 - smoothstep(0.8, 1, sel));
+    mats.light.opacity = appear * 0.035 * (1 - sel) * (1 - others);
 
     // Publish for picking (and, when chosen, for the detail layer).
     g.updateMatrixWorld();
@@ -332,6 +264,7 @@ function DomainCard({ d, i, comp, env, transmission }: { d: TeamDomain; i: numbe
 
   return (
     <group ref={group} name={`card-${d.slug}`}>
+      <mesh geometry={geo.arm} material={mats.mount} />
       <mesh geometry={geo.slab} material={mats.glass} />
       <mesh geometry={geo.screen} material={mats.light} position={[0, 0, comp.cardDepth / 2 + 0.018]} renderOrder={3} />
       <mesh geometry={geo.screen} material={mats.screen} position={[0, 0, comp.cardDepth / 2 + 0.02]} renderOrder={4} />
@@ -340,51 +273,10 @@ function DomainCard({ d, i, comp, env, transmission }: { d: TeamDomain; i: numbe
   );
 }
 
-/** The flare that follows the pointer across the card it's over. */
-function Glint({ comp }: { comp: Composition }) {
-  const mesh = useRef<Mesh>(null);
-  const amount = useRef(0);
-  const last = useRef(-1);
-  const res = useDisposable(() => {
-    const c = document.createElement('canvas');
-    c.width = c.height = 128;
-    const g = c.getContext('2d')!;
-    const grad = g.createRadialGradient(64, 64, 0, 64, 64, 64);
-    grad.addColorStop(0, 'rgba(255,255,255,1)');
-    grad.addColorStop(0.18, 'rgba(255,246,250,0.75)');
-    grad.addColorStop(0.45, 'rgba(255,225,240,0.18)');
-    grad.addColorStop(1, 'rgba(255,225,240,0)');
-    g.fillStyle = grad;
-    g.fillRect(0, 0, 128, 128);
-    const map = new CanvasTexture(c);
-    const mat = new MeshBasicMaterial({ map, color: new Color('#fff4f7').multiplyScalar(1.7), transparent: true, opacity: 0, blending: AdditiveBlending, depthWrite: false, toneMapped: false });
-    const geo = new PlaneGeometry(1, 1);
-    return { map, mat, geo };
-  }, []);
-  useFrame(({ camera, clock }, dt) => {
-    const m = mesh.current;
-    if (!m) return;
-    const f = teamsFrame;
-    const i = f.hover;
-    const target = i >= 0 ? 1 : 0;
-    amount.current += (target - amount.current) * (1 - Math.exp(-dt * (target ? 7 : 3.5)));
-    if (i >= 0) last.current = i;
-    const k = last.current;
-    if (k >= 0) {
-      m.position.set(f.hoverAt.x, f.hoverAt.y, 0.05).applyMatrix4(cardPick[k].matrix);
-    }
-    m.quaternion.copy(camera.quaternion);
-    m.scale.setScalar(Math.min(comp.cardW, comp.cardH) * 0.42 * (1 + 0.04 * Math.sin(clock.elapsedTime * 3.1)));
-    res.mat.opacity = amount.current * (1 - f.focus);
-    m.visible = res.mat.opacity > 0.003;
-  });
-  return <mesh ref={mesh} geometry={res.geo} material={res.mat} renderOrder={7} frustumCulled={false} visible={false} />;
-}
-
 export function DomainCards({ comp, env }: { comp: Composition; env: Texture | null }) {
-  // Frosted glass on every tier: the transmission pass only has to redraw the
-  // spine behind the cards, and TeamsWorld lowers its resolution on smaller tiers.
-  const transmission = true;
+  // Low tier keeps the same silhouette and ink without a transmission pass.
+  const quality = useExperience((s) => s.quality);
+  const transmission = quality !== 'low';
   const cards = useMemo(() => TEAM_DOMAINS.map((d, i) => ({ d, i })), []);
   useEffect(
     () => () => {
@@ -398,7 +290,6 @@ export function DomainCards({ comp, env }: { comp: Composition; env: Texture | n
       {cards.map(({ d, i }) => (
         <DomainCard key={`${d.slug}-${comp.portrait ? 'p' : 'l'}`} d={d} i={i} comp={comp} env={env} transmission={transmission} />
       ))}
-      <Glint comp={comp} />
     </group>
   );
 }

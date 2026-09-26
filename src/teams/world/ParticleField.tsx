@@ -31,7 +31,7 @@ import { cardAngle, cardY, O, SPINE_BOTTOM, SPINE_TOP, type Composition } from '
 import { teamsFrame } from '../state';
 
 const PALETTE = ['#e397b2', '#9b8cea', '#6f9ee6', '#e9dfcf', '#7fc4c6', '#c77fb0'].map((c) => new Color(c));
-const COUNTS = { high: [46000, 7000], medium: [26000, 4500], low: [10000, 2500] } as const;
+const COUNTS = { high: [14000, 5000], medium: [7500, 3000], low: [2400, 1600] } as const;
 
 const VERT = /* glsl */ `
 uniform float uTime;
@@ -144,7 +144,7 @@ function build(comp: Composition, blooms: number, ambient: number) {
       const th = r() * Math.PI * 2;
       const rad = 2 + Math.pow(r(), 0.7) * 13;
       x = Math.cos(th) * rad;
-      z = Math.sin(th) * rad;
+      z = Math.sin(th) * rad + (i % 2 === 0 ? r() * 60 : 0);
       y = SPINE_BOTTOM + r() * (SPINE_TOP - SPINE_BOTTOM);
       cx = 0;
       cy = y;
@@ -203,24 +203,25 @@ export function ParticleField({ comp }: { comp: Composition }) {
   useFrame(({ clock, camera }, dt) => {
     const f = teamsFrame;
     const u = mat.uniforms;
-    u.uTime.value = clock.elapsedTime;
+    const reduced = useExperience.getState().reducedMotion;
+    u.uTime.value = reduced ? 0 : clock.elapsedTime;
     vel.current += (Math.min(2, Math.abs(f.cVel)) - vel.current) * (1 - Math.exp(-dt * (Math.abs(f.cVel) > vel.current ? 5 : 1.6)));
     u.uVel.value = vel.current;
     u.uReveal.value = smoothstep(0.02, 0.4, f.arrival);
-    u.uDim.value = 1 - 0.55 * f.focus;
+    u.uDim.value = 1 - 0.94 * f.focus;
     const cam = camera as typeof camera & { fov: number };
     u.uScale.value = (size.height * gl.getPixelRatio()) / (2 * Math.tan(((cam.fov ?? 45) * Math.PI) / 360));
     // A point on the pointer ray about as deep as the spine.
-    if (f.pointer.active && f.inside) {
+    if (f.pointer.active && f.inside && !reduced) {
       _cam.setFromMatrixPosition(camera.matrixWorld);
-      _ray.set(f.pointer.x, f.pointer.y, 0.5).unproject(camera).sub(_cam).normalize();
-      const depth = _cam.distanceTo(O) * 0.85;
+      _ray.set(f.pointer.fx, f.pointer.fy, 0.5).unproject(camera).sub(_cam).normalize();
+      const depth = Math.min(12, _cam.distanceTo(O) * 0.85);
       (u.uPointer.value as Vector3).copy(_cam).addScaledVector(_ray, depth).sub(O);
       u.uPointerOn.value += (1 - u.uPointerOn.value) * (1 - Math.exp(-dt * 3));
       // The pointer's velocity at that depth, in world units per second (capped).
       const half = depth * Math.tan(((cam.fov ?? 45) * Math.PI) / 360);
-      _right.setFromMatrixColumn(camera.matrixWorld, 0).multiplyScalar(f.pointer.vx * half * (size.width / size.height));
-      _up.setFromMatrixColumn(camera.matrixWorld, 1).multiplyScalar(f.pointer.vy * half);
+      _right.setFromMatrixColumn(camera.matrixWorld, 0).multiplyScalar(f.pointer.fvx * half * (size.width / size.height));
+      _up.setFromMatrixColumn(camera.matrixWorld, 1).multiplyScalar(f.pointer.fvy * half);
       const pv = u.uPointerVel.value as Vector3;
       pv.copy(_right).add(_up);
       if (pv.length() > 12) pv.setLength(12);

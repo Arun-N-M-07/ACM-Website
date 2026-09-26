@@ -29,15 +29,15 @@ import { rng } from '@/lib/random';
 import { SPINE_BOTTOM, SPINE_TOP, STEP } from '../layout';
 
 /** Drop per card in the landscape composition — the twist follows the orbit. */
-const TWIST_DROP = 1.05;
+const TWIST_DROP = 3.2;
 
 /** Centre-line of the column at height y (relative to the world origin). */
 export function spineAxis(y: number, out: Vector3) {
-  return out.set(0.1 * Math.sin(y * 0.23 + 0.4), y, 0.32 * Math.sin(y * 0.17 + 0.8));
+  return out.set(0.045 * Math.sin(y * 0.32), y, 0.12 * Math.sin(y * 0.27));
 }
 
 /** Vertebra size along the column: finer above, heavier below. */
-const sizeAt = (y: number) => 1.3 + 0.55 * Math.min(1, Math.max(0, (SPINE_TOP - y) / (SPINE_TOP - SPINE_BOTTOM)));
+const sizeAt = (y: number) => 1.55 + 0.24 * Math.cos(y * 0.19);
 
 /** Smooth organic noise (sums of warped sines — cheap, deterministic). */
 function organic(x: number, y: number, z: number) {
@@ -82,7 +82,7 @@ function vertebra(r: () => number): BufferGeometry[] {
   // Neural arch behind the body.
   parts.push(place(new TorusGeometry(R * 0.56, R * 0.17, 10, 18, Math.PI), [0, 0, -R * 0.86], [-Math.PI / 2, 0, 0], [1, 1, 1.15]));
   // Transverse processes: wings out to the sides, swept back and up.
-  const wing = 1 + (r() - 0.5) * 0.5;
+  const wing = 1.6 + (r() - 0.5) * 0.18;
   for (const side of [-1, 1]) {
     parts.push(place(new ConeGeometry(R * 0.2, R * 1.35 * wing, 10, 2), [side * R * 1.2, H * 0.08, -R * 1.02], [0, side * 0.35, -side * (Math.PI / 2 - 0.22)]));
   }
@@ -157,8 +157,8 @@ export function spineGeometry(): Promise<BufferGeometry> {
         const H = 0.3 * s;
         spineAxis(y, _axis);
         // Twist: keep the anterior face turned towards the orbiting camera.
-        const twist = (-y / TWIST_DROP) * STEP + (r() - 0.5) * 0.35;
-        const tilt = (r() - 0.5) * 0.12;
+        const twist = (-y / TWIST_DROP) * STEP + (r() - 0.5) * 0.12;
+        const tilt = (r() - 0.5) * 0.04;
         _q.setFromAxisAngle(Y, twist);
         _m.compose(_axis, _q, _s.set(s, s, s));
         const parts = vertebra(r).map((g) => {

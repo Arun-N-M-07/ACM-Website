@@ -95,8 +95,8 @@ export function drawCardFace(ctx: CanvasRenderingContext2D, w: number, h: number
   ctx.fillText(idx, w / 2, top - size * 0.55);
 
   applyType(ctx, { ...NAME, size, align: 'left' });
-  ctx.shadowColor = 'rgba(255,255,255,0.5)';
-  ctx.shadowBlur = size * 0.28;
+  ctx.shadowColor = 'rgba(0,0,0,0.35)';
+  ctx.shadowBlur = 1;
   const tracking = (NAME.tracking ?? 0) * size;
   const n = d.name.length;
   let gi = 0;

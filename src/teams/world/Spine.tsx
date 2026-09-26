@@ -31,14 +31,15 @@ import {
 import { smoothstep } from '@/systems/camera/pose';
 import { useDisposable } from '@/systems/performance/useDisposable';
 import { teamsFrame } from '../state';
+import { useExperience } from '@/store/experience';
 import { filamentPoints, spineGeometry } from './spineGeometry';
 
 function spineMaterial(env: Texture | null) {
   const mat = new MeshPhysicalMaterial({
     color: new Color('#cbc5d9'),
     metalness: 0.9,
-    roughness: 0.26,
-    iridescence: 1,
+    roughness: 0.32,
+    iridescence: 0.45,
     iridescenceIOR: 1.5,
     iridescenceThicknessRange: [220, 700],
     clearcoat: 0.4,
@@ -98,22 +99,26 @@ export function Spine({ env }: { env: Texture | null }) {
 
   useFrame(({ clock }, dt) => {
     const f = teamsFrame;
-    const t = clock.elapsedTime;
+    const reduced = useExperience.getState().reducedMotion;
+    const t = reduced ? 0 : clock.elapsedTime;
     const u = res.uniforms;
     u.uTime.value = t;
-    u.uSil.value = smoothstep(0.1, 0.38, f.arrival);
-    u.uLit.value = smoothstep(0.3, 0.64, f.arrival);
-    u.uDim.value = 1 - 0.5 * f.focus;
+    u.uSil.value = smoothstep(0.05, 0.3, f.reveal);
+    u.uLit.value = smoothstep(0.25, 0.7, f.reveal);
+    u.uDim.value = 1 - 0.998 * smoothstep(0.25, 0.9, f.focus);
     u.uWave.value = 1 + Math.min(3, Math.abs(f.cVel) * 2.2);
     // Turns a little with the orbit (counter to it, for parallax) and drifts.
-    if (group.current) group.current.rotation.y = -f.c * 0.06 + Math.sin(t * 0.05) * 0.04;
+    if (group.current) {
+      group.current.visible = f.reveal > 0.001;
+      group.current.rotation.y = -Math.max(0, f.c) * 0.035 + Math.sin(t * 0.05) * 0.015;
+    }
     // The thread draws itself in on arrival; a bead of light runs down it.
-    const drawn = smoothstep(0.24, 0.92, f.arrival);
+    const drawn = smoothstep(0.24, 0.92, f.reveal);
     res.tube.setDrawRange(0, Math.floor(drawn * 1600) * 30);
-    res.thread.opacity = 0.85 * (1 - 0.6 * f.focus);
-    beadT.current = (beadT.current + dt * 0.018) % 1;
+    res.thread.opacity = 0.55 * (1 - 0.99 * f.focus);
+    if (!reduced) beadT.current = (beadT.current + dt * 0.018) % 1;
     if (bead.current) {
-      bead.current.visible = drawn > 0.99;
+      bead.current.visible = drawn > 0.99 && f.focus < 0.5;
       res.curve.getPointAt(beadT.current, bead.current.position);
     }
   });

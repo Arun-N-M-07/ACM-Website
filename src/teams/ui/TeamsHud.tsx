@@ -97,7 +97,11 @@ export function TeamsHud() {
       o.style.transform = `translate3d(0, ${((1 - outroK) * 18).toFixed(1)}px, 0)`;
     }
     // The closing plate takes the corner the nav lives in.
-    if (nav.current) nav.current.style.opacity = String(1 - smooth(C_OUTRO + 0.1, C_OUTRO + 0.35, f.c));
+    if (nav.current) {
+      const visible = smooth(0.75, 1, f.reveal) * (1 - smooth(C_OUTRO + 0.1, C_OUTRO + 0.35, f.c));
+      nav.current.style.opacity = String(visible);
+      nav.current.style.visibility = visible < 0.01 ? 'hidden' : 'visible';
+    }
   });
 
   useEffect(

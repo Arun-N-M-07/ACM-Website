@@ -33,14 +33,14 @@ import {
   tunnelFor,
   type Shot,
 } from './camera';
-import { carouselAt, composition, nearestCard, type Composition } from './layout';
+import { O, carouselAt, composition, nearestCard, type Composition } from './layout';
 import { teams, teamsFrame } from './state';
 import { capture, enterTeams, exitTeams, travelChannels } from './travel';
 
 /** Seconds of holding to go through. */
 export const HOLD_SECONDS = 2;
 /** How quickly the orbit catches up with the scroll (per second; lower = heavier glide). */
-export const ORBIT_GLIDE = 2.3;
+export const ORBIT_GLIDE = 4.2;
 /** Sustained upward scroll (CSS px of wheel / swipe) at the start of the world that takes you back out. */
 export const PULL_EXIT = 760;
 
@@ -165,8 +165,21 @@ export function updateTeams(dt: number, camera: PerspectiveCamera) {
   f.pointer.sx += ((f.pointer.active ? f.pointer.x : 0) - f.pointer.sx) * k;
   f.pointer.sy += ((f.pointer.active ? f.pointer.y : 0) - f.pointer.sy) * k;
 
+  // Damped force field: input attracts a small mass; velocity survives direction
+  // changes and decays after stopping. Substeps make it stable on slow devices.
+  const p = f.pointer;
+  const steps = Math.max(1, Math.ceil(dt / (1 / 120)));
+  const h = dt / steps;
+  for (let i = 0; i < steps; i++) {
+    p.fvx += (((p.active ? p.x : 0) - p.fx) * 110 - p.fvx * 18) * h;
+    p.fvy += (((p.active ? p.y : 0) - p.fy) * 110 - p.fvy * 18) * h;
+    p.fx += p.fvx * h;
+    p.fy += p.fvy * h;
+  }
+  p.energy += ((reduced ? 0 : Math.min(1, Math.hypot(p.vx, p.vy) * 0.1)) - p.energy) * (1 - Math.exp(-dt * 5));
+
   // Hover: mouse / pen only (TeamsInput never marks a touch as the pointer; touch selects on tap).
-  const canHover = f.inside && st.state === 'teamsActive' && f.pointer.active;
+  const canHover = f.inside && f.reveal > 0.9 && st.state === 'teamsActive' && f.pointer.active;
   f.hover = canHover ? pickCard(camera, f.pointer.x, f.pointer.y) : -1;
   if (f.hover >= 0) {
     // Ease the hit point so the glint glides with the pointer instead of snapping.
@@ -249,7 +262,7 @@ export function evaluateTeamsShot(dt: number, time: number, aspect: number, prev
   if (st !== 'teamsEntering') {
     const target = carouselAt(progress.value);
     // A jump (menu, deep link) is a cut behind a fade, not a velocity.
-    const cut = reduced || fx.fade > 0.5 || Math.abs(target - f.c) > 1.5;
+    const cut = reduced || fx.fade > 0.5;
     // The orbit glides after the scroll with a long, weighted tail — a wheel
     // notch keeps the world drifting for seconds, as on the reference.
     const c = cut ? target : f.c + (target - f.c) * (1 - Math.exp(-dt * ORBIT_GLIDE));
@@ -258,6 +271,9 @@ export function evaluateTeamsShot(dt: number, time: number, aspect: number, prev
     f.c = c;
   } else f.cVel = 0;
   orbitShot(f.c, cp, A);
+  // Reveal begins only after the camera clears the back of the letters.
+  const letterClear = smoothstep(22, 15, A.pos.z - O.z);
+  f.reveal = f.arrival * (f.c >= 0 ? 1 : letterClear);
 
   // Idle: the camera breathes, slowly, in and up.
   if (!reduced) {
@@ -280,26 +296,16 @@ export function evaluateTeamsShot(dt: number, time: number, aspect: number, prev
     focusShotAt(f.focusK, cp, F);
     blendShots(OUT, F, f.focus, OUT);
   }
-  // Opening, the camera dives past the framing — the name rushes up at you —
-  // and settles back (not on closing, not card-to-card).
-  const opening = st === 'cardFocused' && teams().focusDir === 'in' && !reduced;
-  const diveTarget = opening ? Math.pow(Math.sin(Math.PI * Math.min(1, f.focus / 0.92)), 2) * smoothstep(0.08, 0.4, f.focus) : 0;
-  f.dive += (diveTarget - f.dive) * (1 - Math.exp(-dt * 20));
-  if (f.dive > 1e-3) {
-    _fwd.subVectors(OUT.target, OUT.pos);
-    const d = _fwd.length();
-    OUT.pos.addScaledVector(_fwd.normalize(), d * 0.6 * f.dive);
-    OUT.fov += 14 * f.dive;
-  }
+  f.dive = 0;
 
   // ── layered response: pointer parallax, scroll bank, the exit pull ──
   _fwd.subVectors(OUT.target, OUT.pos).normalize();
   _right.crossVectors(_fwd, _up).normalize();
   const live = st === 'teamsEntering' ? smoothstep(0.85, 1, f.arrival) : 1;
-  const par = (reduced ? 0.4 : 1) * live * (1 - 0.65 * f.focus);
+  const par = (reduced ? 0 : 0.45) * live * (1 - f.focus);
   OUT.pos.addScaledVector(_right, f.pointer.sx * 0.14 * par).addScaledVector(_up, f.pointer.sy * 0.09 * par);
   OUT.target.addScaledVector(_right, f.pointer.sx * 0.05 * par).addScaledVector(_up, f.pointer.sy * 0.03 * par);
-  if (!reduced) OUT.roll += Math.max(-0.05, Math.min(0.05, -f.cVel * 0.02)) * (1 - f.focus);
+  if (!reduced) OUT.roll += Math.max(-0.008, Math.min(0.008, -f.cVel * 0.004)) * (1 - f.focus);
   const pull = clamp01(f.pull / PULL_EXIT);
   if (pull > 0) {
     OUT.pos.addScaledVector(_fwd, -1.8 * pull * pull);

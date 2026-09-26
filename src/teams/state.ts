@@ -104,6 +104,8 @@ export const teamsFrame = {
 
   /** World reveal 0..1 (arrival sequence). */
   arrival: 0,
+  /** Scroll reveal after the architectural letters have passed the lens. */
+  reveal: 0,
   /** Focus blend 0..1 from the orbit towards the chosen card (eased). */
   focus: 0,
   /** The dive into a card as it opens (0..1, peaks mid-flight): drives the lens surge. */
@@ -118,7 +120,7 @@ export const teamsFrame = {
   cVel: 0,
 
   // ── Pointer (NDC, −1..1, +y up) ───────────────────────────────────────────
-  pointer: { x: 0, y: 0, sx: 0, sy: 0, active: false, dx: 0, dy: 0, vx: 0, vy: 0 },
+  pointer: { x: 0, y: 0, sx: 0, sy: 0, active: false, dx: 0, dy: 0, vx: 0, vy: 0, fx: 0, fy: 0, fvx: 0, fvy: 0, energy: 0 },
   /** Card under the pointer (−1 none). */
   hover: -1,
   /** Where the pointer is on that card (metres from its centre, in its plane), eased. */

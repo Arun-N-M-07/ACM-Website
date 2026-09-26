@@ -71,7 +71,7 @@ export default function ExperienceCanvas() {
   const lastDecline = useRef(0);
   const start = FLIGHT[0];
 
-  useEffect(() => setDpr(q.dpr[1]), [q.dpr]);
+  useEffect(() => setDpr((current) => Math.min(current, q.dpr[1])), [q.dpr]);
 
   return (
     <Canvas

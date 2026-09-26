@@ -65,12 +65,12 @@ export function composition(aspect: number): Composition {
     return {
       portrait,
       aspect,
-      radius: 2.35,
+      radius: 2.7,
       cardW,
       cardH,
       cardDepth: 0.07,
       corner: 0.12,
-      drop: 1.55,
+      drop: 1.35,
       fov,
       orbitDist: fitDistance(cardW, cardH, fov, aspect, 0.74, 0.5),
       lift: 0.3,
@@ -80,17 +80,17 @@ export function composition(aspect: number): Composition {
   }
   const cardW = 3.2;
   const cardH = 2.2;
-  const fov = 38;
+  const fov = 44;
   const detailFov = 36;
   return {
     portrait,
     aspect,
-    radius: 3.3,
+    radius: 3.65,
     cardW,
     cardH,
     cardDepth: 0.07,
-    corner: 0.13,
-    drop: 1.05,
+    corner: 0.065,
+    drop: 0.85,
     fov,
     orbitDist: fitDistance(cardW, cardH, fov, aspect, 0.53, 0.56),
     lift: 0.3,
@@ -102,7 +102,9 @@ export function composition(aspect: number): Composition {
 // ─── Scroll → orbit ──────────────────────────────────────────────────────────
 
 /** Orbit coordinate at the start of the Teams segment (an establishing view before card 01)… */
-export const C_START = -0.24;
+export const C_START = -2;
+/** Solid typography sits in front of the same world; its central word space is the passage. */
+export const ENTRY_Z = 22;
 /** …and at the end (past card 06: the pull-back over the whole ring). */
 export const C_END = 5.9;
 /**
@@ -116,20 +118,30 @@ const shape = (r: number) => r - (SHAPE * Math.sin(2 * Math.PI * r)) / (2 * Math
 /** Orbit coordinate for scroll progress p. */
 export function carouselAt(p: number) {
   const u = segmentProgress(p, 'teams');
-  return shape(C_START + (C_END - C_START) * u);
+  const c = C_START + (C_END - C_START) * u;
+  return c < 0 ? c : shape(c);
 }
 
 /** Scroll progress at which orbit coordinate `c` is reached (exact at whole cards). */
 export function progressForCarousel(c: number) {
   const s = SEGMENTS.teams;
-  return s.start + ((s.end - s.start) * (c - C_START)) / (C_END - C_START);
+  // Invert the monotonic dwell curve, including fractional debug/navigation stops.
+  let lo = 0, hi = C_END;
+  if (c >= 0) {
+    for (let i = 0; i < 32; i++) {
+      const mid = (lo + hi) / 2;
+      if (shape(mid) < c) lo = mid; else hi = mid;
+    }
+  }
+  const raw = c < 0 ? c : (lo + hi) / 2;
+  return s.start + ((s.end - s.start) * (raw - C_START)) / (C_END - C_START);
 }
 
 /** Scroll progress with domain `i` centred. */
 export const progressForDomain = (i: number) => progressForCarousel(i);
 
 /** The establishing coordinate the world opens on. */
-export const C_ENTRY = shape(C_START);
+export const C_ENTRY = C_START;
 /** Where the outro begins and ends. */
 export const C_OUTRO = LAST;
 export const C_FINAL = shape(C_END);
@@ -150,5 +162,5 @@ export function cardCenter(i: number, comp: Composition, out: Vector3, radial = 
 }
 
 /** The spine's vertical extent (relative to O), covering the helix with room above and below. */
-export const SPINE_TOP = 9;
-export const SPINE_BOTTOM = -19;
+export const SPINE_TOP = 6;
+export const SPINE_BOTTOM = -12;

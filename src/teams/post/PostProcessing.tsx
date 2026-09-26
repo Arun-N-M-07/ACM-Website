@@ -48,6 +48,12 @@ const FinalShader = {
     uBarrel: { value: 0 },
     uDim: { value: 0 },
     uRect: { value: new Vector4(0, 0, 1, 1) },
+    uGrain: { value: 0 },
+    uTime: { value: 0 },
+    uResolution: { value: new Vector2(1, 1) },
+    uForce: { value: new Vector2(0.5, 0.5) },
+    uVelocity: { value: new Vector2() },
+    uEnergy: { value: 0 },
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -63,7 +69,12 @@ const FinalShader = {
     uniform float uBarrel;
     uniform float uDim;
     uniform vec4 uRect;
+    uniform float uGrain, uTime, uEnergy;
+    uniform vec2 uResolution, uForce, uVelocity;
     varying vec2 vUv;
+    float noise(vec2 p) {
+      return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+    }
     void main() {
       // Lens surge: magnify towards the middle, pulling the edges in.
       vec2 uv = vUv;
@@ -102,6 +113,15 @@ const FinalShader = {
       }
       col = 1.0 - (1.0 - col) * (1.0 - uFlash * vec3(0.98, 0.95, 0.93));
       col *= 1.0 - uDark;
+      // Only the grain coordinates are advected: never warp text or the scene.
+      // A damped force field gives local motion a trailing, settling response.
+      vec2 delta = (vUv - uForce) * vec2(uResolution.x / uResolution.y, 1.0);
+      float influence = exp(-dot(delta, delta) * 32.0);
+      vec2 displacement = uVelocity * influence * (5.0 + 9.0 * uEnergy);
+      vec2 grainUv = vUv * uResolution - displacement;
+      float grain = noise(floor(grainUv) + floor(uTime * 18.0)) - 0.5;
+      float texture = noise(floor(grainUv * 0.38)) - 0.5;
+      col += (grain * 0.026 + texture * influence * uEnergy * 0.025) * uGrain;
       gl_FragColor = vec4(col, 1.0);
     }
   `,
@@ -146,7 +166,7 @@ function Composer() {
   );
 
   const blend = useRef(0);
-  useFrame((_, dt) => {
+  useFrame(({ clock }, dt) => {
     const f = teamsFrame;
     const tr = f.travel;
     const h = f.hold;
@@ -156,18 +176,25 @@ function Composer() {
     blend.current = Math.min(1, blend.current + dt * 1.5);
     const u = res.final.material.uniforms;
     const holdWarp = 0.4 * smoothstep(0.82, 1, h);
-    const orbitWarp = f.inside ? 0.05 * Math.min(1, Math.abs(f.cVel)) : 0;
+    const orbitWarp = 0;
     u.uWarp.value = Math.max(travelling ? tr.warp : 0, holdWarp, orbitWarp);
-    u.uAberration.value = Math.max(travelling ? tr.aberration : 0, 0.55 * smoothstep(0.75, 1, h), f.inside ? 0.12 * blend.current : 0);
+    u.uAberration.value = Math.max(travelling ? tr.aberration : 0, 0.55 * smoothstep(0.75, 1, h));
     u.uFlash.value = travelling ? tr.flash : 0;
     u.uDark.value = tr.dark;
     u.uBarrel.value = f.dive * 0.5;
     // The detail room: only once the card's rectangle is known on screen.
     const r = f.cardRect;
-    u.uDim.value = r.visible && f.inside ? smoothstep(0.35, 1, f.focus) * 0.92 : 0;
+    u.uDim.value = 0;
+    const reduced = useExperience.getState().reducedMotion;
+    u.uGrain.value = f.inside ? smoothstep(0, 0.4, f.arrival) : 0;
+    u.uTime.value = reduced ? 0 : clock.elapsedTime;
+    (u.uResolution.value as Vector2).set(size.width * dpr, size.height * dpr);
+    (u.uForce.value as Vector2).set(f.pointer.fx * 0.5 + 0.5, f.pointer.fy * 0.5 + 0.5);
+    (u.uVelocity.value as Vector2).set(reduced ? 0 : f.pointer.fvx, reduced ? 0 : f.pointer.fvy);
+    u.uEnergy.value = reduced ? 0 : f.pointer.energy;
     if (r.visible) (u.uRect.value as Vector4).set(r.x / size.width, 1 - (r.y + r.h) / size.height, (r.x + r.w) / size.width, 1 - r.y / size.height);
     if (res.bloom) {
-      const target = travelling ? 0.7 : f.inside ? 0.38 : 0.12 + 0.3 * smoothstep(0.3, 1, h);
+      const target = travelling ? 0.7 : f.inside ? 0.16 : 0.12 + 0.3 * smoothstep(0.3, 1, h);
       res.bloom.strength = target * blend.current;
     }
     res.composer.render(dt);

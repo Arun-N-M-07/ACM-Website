@@ -62,13 +62,6 @@ export function DomainDetail() {
                 </li>
               ))}
             </ul>
-            <ul className="domain-placeholders" aria-label="Content to come">
-              {[0, 1].map((k) => (
-                <li key={k}>
-                  <TypeIn text="[CONTENT PLACEHOLDER]" delay={base + 0.75 + n * 0.22 + k * 0.2} />
-                </li>
-              ))}
-            </ul>
             <p className="domain-step">
               <button onClick={() => stepDomain(-1)} disabled={selected <= 0} aria-label="Previous domain">
                 <TypeIn text="<- Prev" delay={controls} />

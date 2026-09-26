@@ -25,10 +25,10 @@ import { smoothstep } from '@/systems/camera/pose';
 import { progress } from '@/systems/scroll/progress';
 import { placeScroll } from '@/systems/scroll/ScrollTimeline';
 import { ENTER_CROSS, EXIT_CROSS } from './camera';
-import { carouselAt, progressForDomain } from './layout';
+import { C_ENTRY, carouselAt, progressForCarousel } from './layout';
 import { teams, teamsFrame } from './state';
 
-const DUR = { enter: 2.3, arrival: 3.8, exit: 2.1 };
+const DUR = { enter: 2.3, arrival: 1.8, exit: 2.1 };
 
 let tl: gsap.core.Timeline | null = null;
 
@@ -54,7 +54,7 @@ function setInside(inside: boolean) {
  * reference's work opens on its first project. (The establishing view lies
  * between it and the gate; scrolling back up from card 01 passes through it.)
  */
-const REST_P = progressForDomain(0);
+const REST_P = progressForCarousel(C_ENTRY);
 
 function resetTravel(dir: 1 | -1) {
   const tr = teamsFrame.travel;
