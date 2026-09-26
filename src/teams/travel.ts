@@ -25,7 +25,7 @@ import { smoothstep } from '@/systems/camera/pose';
 import { progress } from '@/systems/scroll/progress';
 import { placeScroll } from '@/systems/scroll/ScrollTimeline';
 import { ENTER_CROSS, EXIT_CROSS } from './camera';
-import { C_ENTRY, carouselAt, progressForCarousel } from './layout';
+import { TEAMS_FLOOR, carouselAt } from './layout';
 import { teams, teamsFrame } from './state';
 
 const DUR = { enter: 2.3, arrival: 1.8, exit: 2.1 };
@@ -39,7 +39,7 @@ function kill() {
 
 /** Scroll walls: outside, the portal gate is a ceiling; inside, it's a floor. */
 export function applyScrollLock() {
-  progress.lock = teamsFrame.inside ? { min: PORTAL_GATE, max: 1 } : { min: 0, max: PORTAL_GATE };
+  progress.lock = teamsFrame.inside ? { min: TEAMS_FLOOR, max: 1 } : { min: 0, max: PORTAL_GATE };
 }
 
 /** Cross between worlds (always behind a flash or a fade). */
@@ -49,12 +49,8 @@ function setInside(inside: boolean) {
   applyScrollLock();
 }
 
-/**
- * The progress value the arrival settles on: card 01 centred, as the
- * reference's work opens on its first project. (The establishing view lies
- * between it and the gate; scrolling back up from card 01 passes through it.)
- */
-const REST_P = progressForCarousel(C_ENTRY);
+/** The progress value the arrival settles on: the floor of the world, facing THE TEAM. */
+const REST_P = TEAMS_FLOOR;
 
 function resetTravel(dir: 1 | -1) {
   const tr = teamsFrame.travel;
@@ -250,7 +246,7 @@ export function placeInside(p: number) {
   teamsFrame.focus = 0;
   teams().set({ state: 'teamsActive', selected: null });
   experience().set({ phase: 'cinematic' });
-  return Math.max(PORTAL_GATE, p);
+  return Math.max(TEAMS_FLOOR, p);
 }
 
 /** Leave the world instantly (a jump back to an earlier chapter). */

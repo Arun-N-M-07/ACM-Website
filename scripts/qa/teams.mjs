@@ -54,6 +54,13 @@ await page.waitForSelector('.loader[data-state="ready"]', { timeout: 180000 });
 await sleep(800);
 await page.click('.loader-enter button[aria-label="Enter silently"]');
 await sleep(1800);
+// The opening film owns the camera while it runs; the Teams steps below place
+// the journey directly, so end the film first (no-op when it isn't playing).
+await page.evaluate(() => {
+  const intro = window.__acm?.intro;
+  if (intro?.snapshot?.().active) intro.skip?.();
+});
+await sleep(600);
 
 let vw = W;
 let vh = H;

@@ -15,7 +15,7 @@
  * at the height of card 01).
  */
 import { Vector3 } from 'three';
-import { SEGMENTS, segmentProgress } from '@/config/timeline';
+import { PORTAL_GATE, SCROLL_LENGTH_VH, SEGMENTS, segmentProgress } from '@/config/timeline';
 import { TEAMS_ORIGIN } from '@/config/world';
 import { DOMAIN_COUNT } from '@/content/teams';
 
@@ -139,6 +139,16 @@ export function progressForCarousel(c: number) {
 
 /** Scroll progress with domain `i` centred. */
 export const progressForDomain = (i: number) => progressForCarousel(i);
+
+/**
+ * The floor of the world's scroll: a hair inside the Teams segment (a few
+ * pixels past the portal gate), so the rest pose belongs to the Teams chapter
+ * and not to the portal it just came through.
+ */
+export const TEAMS_FLOOR = PORTAL_GATE + 0.6 / SCROLL_LENGTH_VH;
+
+/** Framed stills inside the world for reduced motion: the entrance, then every domain. */
+export const teamsStops = () => [TEAMS_FLOOR, ...Array.from({ length: DOMAIN_COUNT }, (_, i) => progressForDomain(i))];
 
 /** The establishing coordinate the world opens on. */
 export const C_ENTRY = C_START;
