@@ -399,8 +399,9 @@ export function LectureHall({ event, depth, clock }: PieceProps) {
   return (
     <group>
       <mesh geometry={risers} material={kit.oak} />
+      {/* The chair faces +z (the doorway); the audience faces the slides and the lectern at -z. */}
       {rows.flatMap((r, ri) =>
-        [-2.6, -1.3, 0, 1.3, 2.6].map((x) => <Chair key={`${ri}-${x}`} position={[x, r.y, r.z]} rotation={[0, 0, 0]} />),
+        [-2.6, -1.3, 0, 1.3, 2.6].map((x) => <Chair key={`${ri}-${x}`} position={[x, r.y, r.z]} rotation={[0, Math.PI, 0]} />),
       )}
       <group position={[-3.2, 0, -depth / 2 + 1.6]}>
         <mesh position={[0, 0.55, 0]} material={kit.oak}>
@@ -567,10 +568,12 @@ export function HackNight({ event, width, clock }: PieceProps) {
           {[0, 1].map((row) => (
             <group key={row} position={[0, 0, row * -1.8]}>
               <Desk width={tableLen} depth={0.8} />
+              {/* Seats on the doorway side of each desk, facing the commit wall: the
+                  visitor looks over the hackers' shoulders at their screens. */}
               {[-1, 0, 1].map((k) => (
                 <group key={k}>
-                  <Laptop position={[k * (tableLen / 3), 0.74, 0.05]} rotation={[0, Math.PI, 0]} draw={(ctx, w, h) => codeScreen(ctx, w, h, k + row * 3 + side + 4)} drawKey={`codher-${side}-${row}-${k}`} />
-                  <Chair position={[k * (tableLen / 3), 0, -0.72]} />
+                  <Laptop position={[k * (tableLen / 3), 0.74, -0.05]} draw={(ctx, w, h) => codeScreen(ctx, w, h, k + row * 3 + side + 4)} drawKey={`codher-${side}-${row}-${k}`} />
+                  <Chair position={[k * (tableLen / 3), 0, 0.72]} rotation={[0, Math.PI, 0]} />
                 </group>
               ))}
             </group>

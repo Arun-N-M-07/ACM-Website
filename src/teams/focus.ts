@@ -26,13 +26,11 @@ const DUR = { open: 1.85, close: 1.45, step: 1.6 };
 
 export function selectDomain(i: number) {
   const st = teams();
-  if (!teamsFrame.inside || (st.state !== 'teamsActive' && st.state !== 'cardFocused')) return;
+  if (!teamsFrame.inside || st.state !== 'teamsActive') return;
   if (i < 0 || i >= DOMAIN_COUNT) return;
   kill();
   const reduced = experience().reducedMotion;
-  // Re-opening while a close is still in flight: reverse from where it is.
-  if (st.state !== 'cardFocused' || teamsFrame.focus < 0.02) teamsFrame.focusK = i;
-  else if (Math.round(teamsFrame.focusK) !== i) teamsFrame.focusK = i;
+  teamsFrame.focusK = i;
   teams().set({ state: 'cardFocused', selected: i, focusDir: 'in' });
   tween = gsap.to(teamsFrame, {
     focus: 1,
@@ -69,8 +67,9 @@ export function hopTo(next: number) {
   if (next < 0 || next >= DOMAIN_COUNT || next === st.selected) return;
   kill();
   const reduced = experience().reducedMotion;
-  const dist = Math.abs(next - teamsFrame.focusK);
-  teams().set({ selected: next, state: 'cardFocused', focusDir: 'in' });
+  // Pull out through the current surface before approaching the next. Never
+  // interpolate a camera from inside one plate directly through the spine.
+  teams().set({ state: 'cardFocused', focusDir: 'out' });
   tween = gsap
     .timeline({
       onComplete: () => {
@@ -78,8 +77,12 @@ export function hopTo(next: number) {
         teams().set({ state: 'domainDetail' });
       },
     })
-    .to(teamsFrame, { focus: 1, duration: reduced ? 0.01 : 0.4, ease: 'power2.out' }, 0)
-    .to(teamsFrame, { focusK: next, duration: reduced ? 0.01 : DUR.step * (0.75 + dist * 0.25), ease: 'power2.inOut' }, 0);
+    .to(teamsFrame, { focus: 0, duration: reduced ? 0.01 : 1.0, ease: 'power2.inOut' })
+    .call(() => {
+      teamsFrame.focusK = next;
+      teams().set({ selected: next, focusDir: 'in' });
+    })
+    .to(teamsFrame, { focus: 1, duration: reduced ? 0.01 : DUR.step, ease: 'power2.inOut' });
 }
 
 /** Next / previous domain while one is open. */

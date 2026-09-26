@@ -24,6 +24,7 @@ import {
   blendShots,
   copyShot,
   focusShot,
+  entryShot,
   makeShot,
   makeTunnel,
   orbitShot,
@@ -33,7 +34,9 @@ import {
   tunnelFor,
   type Shot,
 } from './camera';
-import { O, carouselAt, composition, nearestCard, type Composition } from './layout';
+import { O, cardAngle, cardCenter, carouselAt, composition, nearestCard, type Composition } from './layout';
+import { FOCUS_PUSH } from './camera';
+import { updatePointerField } from './pointer';
 import { teams, teamsFrame } from './state';
 import { capture, enterTeams, exitTeams, travelChannels } from './travel';
 
@@ -56,7 +59,7 @@ export const currentComposition = () => comp;
 // ─── Card picking ────────────────────────────────────────────────────────────
 
 /** Each card publishes its world matrix and half-size here every frame. */
-export const cardPick = Array.from({ length: DOMAIN_COUNT }, () => ({ matrix: new Matrix4(), inverse: new Matrix4(), hw: 1, hh: 1, live: false }));
+export const cardPick = Array.from({ length: DOMAIN_COUNT }, () => ({ matrix: new Matrix4(), inverse: new Matrix4(), hw: 1, hh: 1, radius: 0.1, live: false }));
 
 const _o = new Vector3();
 const _d = new Vector3();
@@ -67,7 +70,7 @@ const _ld = new Vector3();
 export const lastHit = { x: 0, y: 0 };
 
 /** Card index under NDC point (x, y), or −1. */
-export function pickCard(camera: PerspectiveCamera, x: number, y: number) {
+export function pickCard(camera: PerspectiveCamera, x: number, y: number, proximity = false) {
   _o.setFromMatrixPosition(camera.matrixWorld);
   _d.set(x, y, 0.5).unproject(camera).sub(_o).normalize();
   let best = -1;
@@ -78,12 +81,16 @@ export function pickCard(camera: PerspectiveCamera, x: number, y: number) {
     c.inverse.copy(c.matrix).invert();
     _lo.copy(_o).applyMatrix4(c.inverse);
     _ld.copy(_d).transformDirection(c.inverse);
-    if (Math.abs(_ld.z) < 1e-5) continue;
+    if (_ld.z >= -1e-5 || _lo.z <= 0) continue;
     const t = -_lo.z / _ld.z;
-    if (t <= 0 || t >= bestT) continue;
+    if (t <= 0) continue;
     const hx = _lo.x + _ld.x * t;
     const hy = _lo.y + _ld.y * t;
-    if (Math.abs(hx) <= c.hw && Math.abs(hy) <= c.hh) {
+    const qx = Math.abs(hx) - c.hw + c.radius;
+    const qy = Math.abs(hy) - c.hh + c.radius;
+    const distance = Math.hypot(Math.max(0, qx), Math.max(0, qy)) + Math.min(0, Math.max(qx, qy)) - c.radius;
+    if (proximity) teamsFrame.proximity[i] = 1 - smoothstep(0, 0.42, distance);
+    if (distance <= 0 && t < bestT) {
       best = i;
       bestT = t;
       lastHit.x = hx;
@@ -167,20 +174,13 @@ export function updateTeams(dt: number, camera: PerspectiveCamera) {
 
   // Damped force field: input attracts a small mass; velocity survives direction
   // changes and decays after stopping. Substeps make it stable on slow devices.
-  const p = f.pointer;
-  const steps = Math.max(1, Math.ceil(dt / (1 / 120)));
-  const h = dt / steps;
-  for (let i = 0; i < steps; i++) {
-    p.fvx += (((p.active ? p.x : 0) - p.fx) * 110 - p.fvx * 18) * h;
-    p.fvy += (((p.active ? p.y : 0) - p.fy) * 110 - p.fvy * 18) * h;
-    p.fx += p.fvx * h;
-    p.fy += p.fvy * h;
-  }
-  p.energy += ((reduced ? 0 : Math.min(1, Math.hypot(p.vx, p.vy) * 0.1)) - p.energy) * (1 - Math.exp(-dt * 5));
+  updatePointerField(f.pointer, dt, reduced);
 
   // Hover: mouse / pen only (TeamsInput never marks a touch as the pointer; touch selects on tap).
   const canHover = f.inside && f.reveal > 0.9 && st.state === 'teamsActive' && f.pointer.active;
-  f.hover = canHover ? pickCard(camera, f.pointer.x, f.pointer.y) : -1;
+  f.proximity.fill(0);
+  f.hover = canHover ? pickCard(camera, f.pointer.x, f.pointer.y, true) : -1;
+  if (f.touchCard >= 0) f.proximity[f.touchCard] = 0.6;
   if (f.hover >= 0) {
     // Ease the hit point so the glint glides with the pointer instead of snapping.
     const kp = 1 - Math.exp(-dt * 14);
@@ -190,7 +190,7 @@ export function updateTeams(dt: number, camera: PerspectiveCamera) {
   }
   lastHover = f.hover;
   const kh = 1 - Math.exp(-dt * 7);
-  for (let i = 0; i < f.hoverAmt.length; i++) f.hoverAmt[i] += ((i === f.hover ? 1 : 0) - f.hoverAmt[i]) * kh;
+  for (let i = 0; i < f.hoverAmt.length; i++) f.hoverAmt[i] += ((reduced ? 0 : f.proximity[i]) - f.hoverAmt[i]) * kh;
 
   travelChannels();
 }
@@ -259,7 +259,7 @@ export function evaluateTeamsShot(dt: number, time: number, aspect: number, prev
   }
 
   // ── the orbit ──
-  if (st !== 'teamsEntering') {
+  if (st === 'teamsActive') {
     const target = carouselAt(progress.value);
     // A jump (menu, deep link) is a cut behind a fade, not a velocity.
     const cut = reduced || fx.fade > 0.5;
@@ -293,9 +293,12 @@ export function evaluateTeamsShot(dt: number, time: number, aspect: number, prev
 
   // ── focus ──
   if (f.focus > 1e-4) {
-    focusShotAt(f.focusK, cp, F);
-    blendShots(OUT, F, f.focus, OUT);
+    entryShot(OUT, f.focusK, cp, f.focus, OUT);
   }
+  cardCenter(f.focusK, cp, _rad, FOCUS_PUSH);
+  const normalAngle = cardAngle(f.focusK);
+  const surfaceDistance = (OUT.pos.x - _rad.x) * Math.sin(normalAngle) + (OUT.pos.z - _rad.z) * Math.cos(normalAngle);
+  f.domainReveal = f.focus > 0.28 ? 1 - smoothstep(-0.65, -0.05, surfaceDistance) : 0;
   f.dive = 0;
 
   // ── layered response: pointer parallax, scroll bank, the exit pull ──

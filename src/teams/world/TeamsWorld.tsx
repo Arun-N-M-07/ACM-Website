@@ -21,6 +21,7 @@ import { composition, O } from '../layout';
 import { teams, teamsFrame } from '../state';
 import { Backdrop } from './Backdrop';
 import { DomainCards } from './DomainCards';
+import { DomainInterior } from './DomainInterior';
 import { buildTeamsEnvironment } from './environment';
 import { ParticleField } from './ParticleField';
 import { Spine } from './Spine';
@@ -112,18 +113,19 @@ export function TeamsWorld() {
     _ray.set(teamsFrame.pointer.sx, teamsFrame.pointer.sy, 0.5).unproject(cam).sub(_cam).normalize();
     // Between the lens and the cards, so its highlight slides broadly rather than burning a spot.
     pointerLight.position.copy(_cam).addScaledVector(_ray, Math.max(1.2, (_cam.distanceTo(O) - comp.radius) * 0.22));
-    pointerLight.gain = teamsFrame.inside && teamsFrame.pointer.active ? 1 - teamsFrame.focus : 0;
+    pointerLight.gain = teamsFrame.inside && teamsFrame.pointer.active && !useExperience.getState().reducedMotion ? 0.18 * (1 - teamsFrame.focus) : 0;
   });
 
   return (
     <group ref={group} name="teams-world">
       <Backdrop />
       <TeamEntrance env={env} />
-      <group position={O} scale={comp.portrait ? 0.92 : 1.05}>
+      <group position={O}>
         <Spine env={env} />
       </group>
       <ParticleField comp={comp} />
       <DomainCards comp={comp} env={env} />
+      <DomainInterior comp={comp} />
       <Tunnel />
     </group>
   );

@@ -33,38 +33,38 @@ export function TopBar() {
         <span className="label">{current?.label}</span>
       </p>
       <nav className="controls" aria-label="Experience controls">
-        <button
-          className={`ctl ctl-music ${musicOn ? 'on' : ''}`}
-          aria-pressed={musicOn}
-          disabled={!hasTrack}
-          title={hasTrack ? `${MUSIC.title} — ${MUSIC.artist}` : 'This experience is silent'}
-          onClick={(e) => {
-            const next = !musicOn;
-            set({ musicOn: next });
-            if (next) void music.enable();
-            else music.disable();
-            e.currentTarget.blur();
-          }}
-        >
-          <span className="dot" aria-hidden="true" />
-          {musicOn ? (
-            <>
-              <span className="note" aria-hidden="true">
-                ♪
-              </span>{' '}
-              {MUSIC.title}
-            </>
-          ) : hasTrack ? (
-            'Music off'
-          ) : (
-            'Silent'
-          )}
-        </button>
-        <button className={`ctl ${reduced ? 'on' : ''}`} aria-pressed={reduced} onClick={() => set({ reducedMotion: !reduced })}>
+        {/* The music toggle exists only when a soundtrack file is present. */}
+        {hasTrack && (
+          <button
+            className={`ctl ctl-music ${musicOn ? 'on' : ''}`}
+            aria-pressed={musicOn}
+            title={`${MUSIC.title} — ${MUSIC.artist}`}
+            onClick={(e) => {
+              const next = !musicOn;
+              set({ musicOn: next });
+              if (next) void music.enable();
+              else music.disable();
+              e.currentTarget.blur();
+            }}
+          >
+            <span className="dot" aria-hidden="true" />
+            {musicOn ? (
+              <>
+                <span className="note" aria-hidden="true">
+                  ♪
+                </span>{' '}
+                {MUSIC.title}
+              </>
+            ) : (
+              'Music off'
+            )}
+          </button>
+        )}
+        <button className={`ctl ctl-motion ${reduced ? 'on' : ''}`} aria-pressed={reduced} onClick={() => set({ reducedMotion: !reduced })}>
           <span className="dot" aria-hidden="true" />
           {reduced ? 'Reduced motion' : 'Full motion'}
         </button>
-        <button className="ctl" onClick={() => set({ textVersionOpen: true })}>
+        <button className="ctl ctl-text" onClick={() => set({ textVersionOpen: true })}>
           Text version
         </button>
         <button className="ctl ctl-index" onClick={() => set({ menuOpen: true })} aria-haspopup="dialog">

@@ -477,7 +477,7 @@ html.scroll-locked .experience-canvas {
   .controls {
     gap: 14px;
   }
-  .ctl:nth-child(3) {
+  .ctl-text {
     display: none;
   }
 }
@@ -985,10 +985,6 @@ html.scroll-locked .experience-canvas {
   font-family: var(--mono);
   color: var(--warm);
 }
-.ctl:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
 .ctl-music .note {
   display: inline-block;
   color: var(--warm);
@@ -1085,6 +1081,19 @@ html.scroll-locked .experience-canvas {
 .index-intro em { color: #ceb397; }
 .index-intro p { font-size: 13px; line-height: 1.8; color: var(--bone-dim); margin: 0; }
 .index-motion { margin-bottom: 28px; font-size: 9px; letter-spacing: .05em; }
+.index-contact .who {
+  display: block;
+  color: var(--bone);
+}
+.index-contact .role {
+  display: block;
+  margin: 2px 0 4px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--bone-dim);
+}
 .index-more .credit {
   font-family: var(--mono);
   font-size: 10px;
@@ -1680,8 +1689,8 @@ html[data-fallback='true'] .archive-controls {
     font-size: 10px;
     letter-spacing: 0.1em;
   }
-  .ctl:nth-child(2),
-  .ctl:nth-child(3) {
+  .ctl-motion,
+  .ctl-text {
     display: none;
   }
   .copy-right {

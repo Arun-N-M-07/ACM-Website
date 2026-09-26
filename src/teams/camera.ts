@@ -19,7 +19,7 @@ import { Vector3 } from 'three';
 import { CAMERA_STATES } from '@/config/camera';
 import { PORTAL } from '@/config/world';
 import { clamp01, easeInOutCubic, easeOutCubic, lerp, lerpAngle, lerpPose, smoothstep, type CameraPose } from '@/systems/camera/pose';
-import { C_ENTRY, C_OUTRO, C_FINAL, ENTRY_Z, cardAngle, cardCenter, cardY, LAST, O, STEP, type Composition } from './layout';
+import { C_ENTRY, C_OUTRO, C_FINAL, ENTRY_Z, cardAngle, cardCenter, cardRadius, cardY, spineAxis, LAST, O, type Composition } from './layout';
 
 export interface Shot {
   pos: Vector3;
@@ -79,17 +79,18 @@ export function orbitShot(c: number, comp: Composition, out: Shot) {
   const onCards = c >= 0 && c <= LAST ? 1 : 0;
   // Between two cards the camera eases back a little, then in again: a breath.
   const breath = onCards * Math.sin(Math.PI * frac(c)) ** 2 * (comp.portrait ? 0.35 : 0.5);
-  const phi = c * STEP;
-  const yFocus = -c * comp.drop;
-  const dist = comp.radius + comp.orbitDist + breath + intro * 2.2 + outro * (comp.portrait ? 15 : 12);
+  const phi = cardAngle(c);
+  const yFocus = cardY(c, comp);
+  spineAxis(yFocus, _b);
+  const dist = cardRadius(c, comp) + comp.orbitDist + breath + outro * (comp.portrait ? 15 : 12);
   const camY = O.y + yFocus + comp.lift + intro * 0.9 + outro * (comp.portrait ? 9 : 6.5);
-  out.pos.set(O.x + Math.sin(phi) * dist, camY, O.z + Math.cos(phi) * dist);
+  out.pos.set(O.x + _b.x + Math.sin(phi) * dist, camY, O.z + _b.z + Math.cos(phi) * dist);
   // Look through the focused card towards the spine, the gaze a little above
   // the card: the card sits low in frame (≈ 60% down, as on the reference)
   // with the spine rising behind and above it.
   const r = comp.radius * 0.7;
   const gaze = comp.portrait ? 0.12 : 0.16;
-  out.target.set(O.x + Math.sin(phi) * r, O.y + yFocus + comp.lift + gaze, O.z + Math.cos(phi) * r);
+  out.target.set(O.x + _b.x + Math.sin(phi) * r, O.y + yFocus + comp.lift + gaze, O.z + _b.z + Math.cos(phi) * r);
   if (outro > 0) {
     // …and in the pull-back, at the middle of the whole helix.
     _a.set(O.x, O.y + cardY(LAST, comp) * 0.5, O.z);
@@ -115,6 +116,31 @@ export function focusShot(k: number, comp: Composition, out: Shot) {
 
 /** How far a chosen card comes forward out of the ring. */
 export const FOCUS_PUSH = 0.55;
+
+const aligned = makeShot();
+const entered = makeShot();
+/** Align outside the selected plate before advancing through its normal.
+ * Reversing the same scalar retraces the exact path without a content cut. */
+export function entryShot(from: Shot, k: number, comp: Composition, focus: number, out: Shot) {
+  cardCenter(k, comp, aligned.target, FOCUS_PUSH);
+  const a = cardAngle(k);
+  aligned.pos.copy(aligned.target);
+  aligned.pos.x += Math.sin(a) * comp.orbitDist;
+  aligned.pos.z += Math.cos(a) * comp.orbitDist;
+  aligned.fov = comp.fov;
+  aligned.roll = 0;
+  if (focus < 0.28) return blendShots(from, aligned, smoothstep(0, 0.28, focus), out);
+  focusShot(k, comp, entered);
+  const t = smoothstep(0.28, 1, focus);
+  out.pos.lerpVectors(aligned.pos, entered.pos, t);
+  // Constant forward gaze avoids a flip when crossing the plate's plane.
+  out.target.copy(out.pos);
+  out.target.x -= Math.sin(a) * 4;
+  out.target.z -= Math.cos(a) * 4;
+  out.fov = lerp(comp.fov, comp.detailFov, t);
+  out.roll = 0;
+  return out;
+}
 
 /**
  * Blend two shots, arcing around the spine: angle, radius and height about

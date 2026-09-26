@@ -26,18 +26,16 @@ import {
 } from 'three';
 import { mergeGeometries, mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { rng } from '@/lib/random';
-import { SPINE_BOTTOM, SPINE_TOP, STEP } from '../layout';
+import { SPINE_BOTTOM, SPINE_TOP, STEP, spineAxis } from '../layout';
 
 /** Drop per card in the landscape composition — the twist follows the orbit. */
 const TWIST_DROP = 3.2;
 
 /** Centre-line of the column at height y (relative to the world origin). */
-export function spineAxis(y: number, out: Vector3) {
-  return out.set(0.045 * Math.sin(y * 0.32), y, 0.12 * Math.sin(y * 0.27));
-}
+export { spineAxis } from '../layout';
 
 /** Vertebra size along the column: finer above, heavier below. */
-const sizeAt = (y: number) => 1.55 + 0.24 * Math.cos(y * 0.19);
+const sizeAt = (y: number) => 1.32 + 0.3 * Math.cos(y * 0.19);
 
 /** Smooth organic noise (sums of warped sines — cheap, deterministic). */
 function organic(x: number, y: number, z: number) {
@@ -65,7 +63,7 @@ function place(g: BufferGeometry, pos: [number, number, number], rot: [number, n
 
 /** One vertebra in its local frame (y up the column, −z posterior), unit size. */
 function vertebra(r: () => number): BufferGeometry[] {
-  const R = 0.26;
+  const R = 0.29;
   const H = 0.3;
   const parts: BufferGeometry[] = [];
   // Body: a waisted drum with rounded rims.
@@ -82,7 +80,7 @@ function vertebra(r: () => number): BufferGeometry[] {
   // Neural arch behind the body.
   parts.push(place(new TorusGeometry(R * 0.56, R * 0.17, 10, 18, Math.PI), [0, 0, -R * 0.86], [-Math.PI / 2, 0, 0], [1, 1, 1.15]));
   // Transverse processes: wings out to the sides, swept back and up.
-  const wing = 1.6 + (r() - 0.5) * 0.18;
+  const wing = 1.85 + (r() - 0.5) * 0.28;
   for (const side of [-1, 1]) {
     parts.push(place(new ConeGeometry(R * 0.2, R * 1.35 * wing, 10, 2), [side * R * 1.2, H * 0.08, -R * 1.02], [0, side * 0.35, -side * (Math.PI / 2 - 0.22)]));
   }

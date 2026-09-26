@@ -58,21 +58,21 @@ void main() {
   p += (d / dl) * sin(uTime * 0.6 - p.y * 0.9) * 0.035;
   // Scroll speed loosens the clusters outward and sets them turning.
   float v = uVel * (0.4 + aSeed.x * 0.8);
-  p += d * v * 0.45;
+  p += d * v * 0.08;
   float ang = v * 0.35 * (aSeed.y - 0.5);
   p.xz = aCenter.xz + mat2(cos(ang), -sin(ang), sin(ang), cos(ang)) * (p.xz - aCenter.xz);
   // The pointer parts the dust, and drags a wake after it as it moves.
   vec3 tp = p - uPointer;
   float fall = exp(-dot(tp, tp) * 0.9) * uPointerOn;
-  p += normalize(tp + 1e-4) * fall * 0.3;
+  p += normalize(tp + 1e-4) * fall * 0.04;
   float wake = exp(-dot(tp, tp) * 0.35) * uPointerOn;
-  p += uPointerVel * wake * (0.14 + 0.1 * aSeed.x);
+  p += uPointerVel * wake * (0.025 + 0.015 * aSeed.x);
 
   vec4 mv = modelViewMatrix * vec4(p, 1.0);
   gl_Position = projectionMatrix * mv;
   float bokeh = step(0.955, aSeed.w);
   float size = mix(0.014 + 0.026 * aSeed.w, 0.06 + 0.1 * aSeed.z, bokeh);
-  gl_PointSize = clamp(size * uScale / -mv.z, 1.0, 42.0);
+  gl_PointSize = clamp(size * uScale / -mv.z, 1.0, 12.0);
   float appear = smoothstep(aSeed.y * 0.6, aSeed.y * 0.6 + 0.4, uReveal);
   // Dust right at the lens would balloon: let it thin out as it comes close.
   float near = smoothstep(1.2, 3.5, -mv.z);
@@ -146,9 +146,9 @@ function build(comp: Composition, blooms: number, ambient: number) {
       x = Math.cos(th) * rad;
       z = Math.sin(th) * rad + (i % 2 === 0 ? r() * 60 : 0);
       y = SPINE_BOTTOM + r() * (SPINE_TOP - SPINE_BOTTOM);
-      cx = 0;
+      cx = x;
       cy = y;
-      cz = 0;
+      cz = z;
       tmp.copy(PALETTE[3]).lerp(PALETTE[2], r() * 0.6).multiplyScalar(0.7);
     }
     pos.set([x, y, z], i * 3);
@@ -217,15 +217,15 @@ export function ParticleField({ comp }: { comp: Composition }) {
       _ray.set(f.pointer.fx, f.pointer.fy, 0.5).unproject(camera).sub(_cam).normalize();
       const depth = Math.min(12, _cam.distanceTo(O) * 0.85);
       (u.uPointer.value as Vector3).copy(_cam).addScaledVector(_ray, depth).sub(O);
-      u.uPointerOn.value += (1 - u.uPointerOn.value) * (1 - Math.exp(-dt * 3));
+      u.uPointerOn.value = f.pointer.energy;
       // The pointer's velocity at that depth, in world units per second (capped).
       const half = depth * Math.tan(((cam.fov ?? 45) * Math.PI) / 360);
       _right.setFromMatrixColumn(camera.matrixWorld, 0).multiplyScalar(f.pointer.fvx * half * (size.width / size.height));
       _up.setFromMatrixColumn(camera.matrixWorld, 1).multiplyScalar(f.pointer.fvy * half);
       const pv = u.uPointerVel.value as Vector3;
       pv.copy(_right).add(_up);
-      if (pv.length() > 12) pv.setLength(12);
-    } else u.uPointerOn.value *= Math.exp(-dt * 3);
+      if (pv.length() > 4) pv.setLength(4);
+    } else u.uPointerOn.value *= Math.exp(-dt * 14);
   });
 
   return <points ref={points} geometry={geo} material={mat} position={O} frustumCulled={false} renderOrder={1} />;

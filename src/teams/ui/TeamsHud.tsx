@@ -98,7 +98,7 @@ export function TeamsHud() {
     }
     // The closing plate takes the corner the nav lives in.
     if (nav.current) {
-      const visible = smooth(0.75, 1, f.reveal) * (1 - smooth(C_OUTRO + 0.1, C_OUTRO + 0.35, f.c));
+      const visible = orbiting ? smooth(0.75, 1, f.reveal) * (1 - smooth(C_OUTRO + 0.1, C_OUTRO + 0.35, f.c)) : 0;
       nav.current.style.opacity = String(visible);
       nav.current.style.visibility = visible < 0.01 ? 'hidden' : 'visible';
     }
@@ -115,9 +115,9 @@ export function TeamsHud() {
 
   return (
     <div className="teams-hud" data-state={state} data-ui>
-      <nav ref={nav} className="teams-nav" aria-label="The six domains">
+      <nav ref={nav} className="teams-nav" aria-label="Core and domains" inert={!orbiting}>
         <p className="teams-nav-title" key={`t${typeKey}`}>
-          <TypeIn text="The six domains" delay={0} />
+          <TypeIn text="Core / The six domains" delay={0} />
         </p>
         <ol>
           {TEAM_DOMAINS.map((dm, i) => (
@@ -159,7 +159,7 @@ export function TeamsHud() {
           <br />
           <em>many minds.</em>
         </h2>
-        <p className="plate-body">{DOMAIN_COUNT} domains. A campus. A community. A place for your curiosity.</p>
+        <p className="plate-body">Core. Six domains. A campus. A community. A place for your curiosity.</p>
         <p className="finale-membership">
           {CHAPTER.membership.openTo} {CHAPTER.membership.fee}
         </p>

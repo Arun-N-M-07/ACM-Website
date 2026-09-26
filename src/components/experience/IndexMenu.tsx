@@ -87,6 +87,38 @@ export function IndexMenu() {
           </ol>
         </nav>
         <div>
+          <p className="kicker">Contact us</p>
+          <ul className="index-more index-contact">
+            <li>
+              <a className="text-link" href={`mailto:${CHAPTER.contact.email}`}>
+                {CHAPTER.contact.email}
+              </a>
+            </li>
+            {CHAPTER.contact.phones.map((p) => (
+              <li key={p.number}>
+                <span className="who">{p.name}</span>
+                <span className="role">{p.role}</span>
+                <a className="text-link" href={`tel:${p.number.replace(/\s/g, '')}`}>
+                  {p.number}
+                </a>
+              </li>
+            ))}
+          </ul>
+          <p className="kicker">Follow us on</p>
+          <ul className="index-more">
+            <li>
+              <a className="text-link" href={CHAPTER.siteUrl} target="_blank" rel="noopener noreferrer">
+                {CHAPTER.siteUrl.replace(/^https?:\/\//, '')} ↗
+              </a>
+            </li>
+            {CHAPTER.socials.map((s) => (
+              <li key={s.href}>
+                <a className="text-link" href={s.href} target="_blank" rel="noopener noreferrer">
+                  {s.label} · {s.handle} ↗
+                </a>
+              </li>
+            ))}
+          </ul>
           <p className="kicker">Everything else</p>
           <ul className="index-more">
             <li>
@@ -99,18 +131,6 @@ export function IndexMenu() {
                 Open the printed edition ↗
               </a>
             </li>
-            <li>
-              <a className="text-link" href={`mailto:${CHAPTER.contact.email}`}>
-                {CHAPTER.contact.email}
-              </a>
-            </li>
-            {CHAPTER.socials.map((s) => (
-              <li key={s.href}>
-                <a className="text-link" href={s.href} target="_blank" rel="noopener noreferrer">
-                  {s.label} ↗
-                </a>
-              </li>
-            ))}
             <li className="credit">
               Campus map data ©{' '}
               <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">

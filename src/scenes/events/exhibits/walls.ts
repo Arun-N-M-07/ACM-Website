@@ -676,8 +676,9 @@ const prodigy: WallDraw = (ctx, w, h, wall, u, t, info) => {
   ctx.fillRect(0, 0, w, h);
   ctx.fillStyle = 'rgba(255,255,255,0.04)';
   for (let i = 0; i < 300; i++) ctx.fillRect(hash(i) * w, hash(i * 7) * h, hash(i * 3) * w * 0.05, 1);
-  const half = wall === 'left' ? PRODIGY_PROGRAMME.slice(0, 4) : PRODIGY_PROGRAMME.slice(4, 8);
-  text(ctx, wall === 'left' ? 'ON THE DAY' : 'AND ALSO', w * 0.08, h * 0.16, { family: 'mono', size: s * 3.2, color: 'rgba(240,240,230,0.55)', tracking: 0.26 });
+  // Left board: the technical events; right: the non-technical ones.
+  const half = PRODIGY_PROGRAMME.filter((p) => p.track === (wall === 'left' ? 'Technical' : 'Non-Technical'));
+  text(ctx, `${wall === 'left' ? 'Technical' : 'Non-Technical'} events`.toUpperCase(), w * 0.08, h * 0.16, { family: 'mono', size: s * 3.2, color: 'rgba(240,240,230,0.55)', tracking: 0.26 });
   half.forEach((p, i) => {
     const k = ramp(u, 0.05 + i * 0.1, 0.15 + i * 0.1);
     text(ctx, typed(p.title, k, 0, 1), w * 0.08, h * (0.32 + i * 0.17), { family: 'serif', italic: true, size: s * 7.4, color: 'rgba(245,245,236,0.92)' });

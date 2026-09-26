@@ -117,11 +117,11 @@ const FinalShader = {
       // A damped force field gives local motion a trailing, settling response.
       vec2 delta = (vUv - uForce) * vec2(uResolution.x / uResolution.y, 1.0);
       float influence = exp(-dot(delta, delta) * 32.0);
-      vec2 displacement = uVelocity * influence * (5.0 + 9.0 * uEnergy);
+      vec2 displacement = clamp(uVelocity, -2.0, 2.0) * influence * (1.2 + 2.8 * uEnergy);
       vec2 grainUv = vUv * uResolution - displacement;
       float grain = noise(floor(grainUv) + floor(uTime * 18.0)) - 0.5;
       float texture = noise(floor(grainUv * 0.38)) - 0.5;
-      col += (grain * 0.026 + texture * influence * uEnergy * 0.025) * uGrain;
+      col += (grain * 0.018 + texture * influence * uEnergy * 0.012) * uGrain;
       gl_FragColor = vec4(col, 1.0);
     }
   `,
@@ -142,12 +142,13 @@ function Composer() {
     composer.addPass(render);
     const bloom = quality === 'low' ? null : new UnrealBloomPass(new Vector2(256, 256), 0.4, 0.55, 1.05);
     if (bloom) composer.addPass(bloom);
-    composer.addPass(new OutputPass());
+    const output = new OutputPass();
+    composer.addPass(output);
     const fxaa = dpr < 1.5 ? new ShaderPass(FXAAShader) : null;
     if (fxaa) composer.addPass(fxaa);
     const final = new ShaderPass(FinalShader);
     composer.addPass(final);
-    return { composer, target, bloom, fxaa, final };
+    return { composer, target, bloom, fxaa, final, output };
   }, [gl, scene, camera, quality, dpr]);
 
   useEffect(() => {
@@ -161,6 +162,9 @@ function Composer() {
       res.composer.dispose();
       res.target.dispose();
       res.bloom?.dispose();
+      res.output.dispose();
+      res.fxaa?.dispose();
+      res.final.dispose();
     },
     [res],
   );

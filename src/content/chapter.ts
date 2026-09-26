@@ -36,11 +36,12 @@ export const CHAPTER = {
     { name: 'Webinars & Alumni Talks', text: 'Insights into new technologies and career guidance.' },
   ],
 
+  /** Email and phone contacts: the chapter's 2026–27 "For further queries" card. */
   contact: {
-    email: 'acmceg2019@gmail.com',
+    email: 'acm.ceg.26@gmail.com',
     phones: [
-      { name: 'Anagha', number: '+91 8825789933' },
-      { name: 'Dharaniraj', number: '+91 9976231117' },
+      { name: 'Visvam Srinivasan', role: 'Chairperson', number: '+91 6385050355' },
+      { name: 'Sankara Krishnan P', role: 'Vice-Chairperson', number: '+91 8870393359' },
     ],
     address: ['College of Engineering Guindy', 'Anna University', 'Chennai, Tamil Nadu - 600025'],
     officeNote: 'Our office is located in the Computer Science department building.',
@@ -48,7 +49,7 @@ export const CHAPTER = {
 
   socials: [
     { label: 'Instagram', handle: '@acmceg', href: 'https://www.instagram.com/acmceg/' },
-    { label: 'LinkedIn', handle: 'acm-ceg', href: 'https://www.linkedin.com/in/acm-ceg/' },
+    { label: 'LinkedIn', handle: 'ACM Student Chapter of CEG', href: 'https://www.linkedin.com/in/acm-ceg/' },
   ],
 
   /** From the alumni page. */

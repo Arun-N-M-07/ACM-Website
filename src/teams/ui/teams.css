@@ -282,6 +282,22 @@ html[data-teams-hover='true'] body {
   font-family: var(--mono);
   text-transform: uppercase;
 }
+.domain-controls {
+  position: absolute;
+  bottom: calc(28px + env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: clamp(12px, 4vw, 64px);
+  white-space: nowrap;
+  font: 11px var(--mono);
+  letter-spacing: 0.06em;
+}
+.domain-controls button { color: var(--bone); padding: 14px 4px; min-height: 44px; font: inherit; }
+.domain-detail[data-open='true'] .domain-controls { pointer-events: auto; }
+.domain-controls button:disabled { opacity: 0.3; }
+.domain-controls button:focus-visible { outline: 1px solid var(--bone); outline-offset: 4px; }
 .domain-scroll {
   position: fixed;
   top: calc(64px + env(safe-area-inset-top));

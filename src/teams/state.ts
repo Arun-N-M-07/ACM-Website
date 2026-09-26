@@ -13,6 +13,7 @@
  *    it directly inside useFrame / GSAP tweens; React never sees it.
  */
 import { create } from 'zustand';
+import { DOMAIN_COUNT } from '@/content/teams';
 
 export type TeamsState =
   /** Anywhere before the portal. */
@@ -126,7 +127,11 @@ export const teamsFrame = {
   /** Where the pointer is on that card (metres from its centre, in its plane), eased. */
   hoverAt: { x: 0, y: 0 },
   /** Smoothed hover amount per card. */
-  hoverAmt: [0, 0, 0, 0, 0, 0],
+  hoverAmt: Array.from({ length: DOMAIN_COUNT }, () => 0),
+  proximity: Array.from({ length: DOMAIN_COUNT }, () => 0),
+  touchCard: -1,
+  /** Visibility of content physically behind the chosen card. */
+  domainReveal: 0,
 
   /** The selected card's rectangle on screen (CSS px) — the detail layer is laid out inside it. */
   cardRect: { x: 0, y: 0, w: 0, h: 0, visible: false } as ScreenRect,

@@ -39,7 +39,10 @@ export function TeamsInput() {
     let lastTouchY: number | null = null;
 
     const move = (e: PointerEvent) => {
-      if (e.pointerType === 'touch') return;
+      if (e.pointerType === 'touch') {
+        if (down && Math.hypot(e.clientX - down.x, e.clientY - down.y) > 12) f.touchCard = -1;
+        return;
+      }
       const p = ndc(e.clientX, e.clientY);
       if (f.pointer.active) {
         // Motion since the last frame (the controller turns it into a velocity).
@@ -52,6 +55,7 @@ export function TeamsInput() {
     };
     const leave = () => {
       f.pointer.active = false;
+      f.touchCard = -1;
     };
     const pdown = (e: PointerEvent) => {
       if (onUI(e.target) || (e.pointerType === 'mouse' && e.button !== 0)) return;
@@ -61,11 +65,13 @@ export function TeamsInput() {
         const p = ndc(e.clientX, e.clientY);
         f.pointer.x = p.x;
         f.pointer.y = p.y;
+        f.touchCard = teams().state === 'teamsActive' ? pickAt(p.x, p.y) : -1;
       }
     };
     const pup = (e: PointerEvent) => {
       const d = down;
       down = null;
+      f.touchCard = -1;
       if (!d || d.id !== e.pointerId || onUI(e.target)) return;
       const moved = Math.hypot(e.clientX - d.x, e.clientY - d.y);
       if (moved > 12 || performance.now() - d.t > 650) return;
@@ -75,9 +81,9 @@ export function TeamsInput() {
         const i = pickAt(p.x, p.y);
         if (i >= 0) selectDomain(i);
       } else if (s === 'domainDetail') {
-        const r = f.cardRect;
-        const inside = e.clientX >= r.x && e.clientX <= r.x + r.w && e.clientY >= r.y && e.clientY <= r.y + r.h;
-        if (!inside) closeDomain();
+        // The selected surface is now behind the camera; its projected
+        // rectangle cannot be used as an outside-click boundary.
+        closeDomain();
       }
     };
 
@@ -137,6 +143,7 @@ export function TeamsInput() {
     window.addEventListener('blur', leave);
     window.addEventListener('pointerdown', pdown, { passive: true });
     window.addEventListener('pointerup', pup, { passive: true });
+    window.addEventListener('pointercancel', leave, { passive: true });
     window.addEventListener('wheel', wheel, { passive: true });
     window.addEventListener('touchstart', tstart, { passive: true });
     window.addEventListener('touchmove', tmove, { passive: true });
@@ -148,6 +155,7 @@ export function TeamsInput() {
       window.removeEventListener('blur', leave);
       window.removeEventListener('pointerdown', pdown);
       window.removeEventListener('pointerup', pup);
+      window.removeEventListener('pointercancel', leave);
       window.removeEventListener('wheel', wheel);
       window.removeEventListener('touchstart', tstart);
       window.removeEventListener('touchmove', tmove);

@@ -37,15 +37,15 @@ import { filamentPoints, spineGeometry } from './spineGeometry';
 function spineMaterial(env: Texture | null) {
   const mat = new MeshPhysicalMaterial({
     color: new Color('#cbc5d9'),
-    metalness: 0.9,
-    roughness: 0.32,
-    iridescence: 0.45,
+    metalness: 0.68,
+    roughness: 0.38,
+    iridescence: 0.25,
     iridescenceIOR: 1.5,
     iridescenceThicknessRange: [220, 700],
     clearcoat: 0.4,
     clearcoatRoughness: 0.1,
     envMap: env,
-    envMapIntensity: 1.15,
+    envMapIntensity: 0.85,
   });
   const uniforms = { uTime: { value: 0 }, uSil: { value: 1 }, uLit: { value: 1 }, uDim: { value: 1 }, uWave: { value: 1 } };
   mat.onBeforeCompile = (shader) => {
@@ -88,7 +88,7 @@ export function Spine({ env }: { env: Texture | null }) {
   const res = useDisposable(() => {
     const { mat, uniforms } = spineMaterial(env);
     const curve = new CatmullRomCurve3(filamentPoints(), false, 'centripetal');
-    const tube = new TubeGeometry(curve, 1600, 0.012, 5, false);
+    const tube = new TubeGeometry(curve, 640, 0.012, 5, false);
     const thread = new MeshBasicMaterial({ color: new Color('#83bbff').multiplyScalar(1.3), transparent: true, opacity: 0.9, toneMapped: false, depthWrite: false });
     const bead = new SphereGeometry(0.035, 10, 8);
     const beadMat = new MeshBasicMaterial({ color: new Color('#eef5ff').multiplyScalar(2), toneMapped: false });
@@ -109,13 +109,13 @@ export function Spine({ env }: { env: Texture | null }) {
     u.uWave.value = 1 + Math.min(3, Math.abs(f.cVel) * 2.2);
     // Turns a little with the orbit (counter to it, for parallax) and drifts.
     if (group.current) {
-      group.current.visible = f.reveal > 0.001;
-      group.current.rotation.y = -Math.max(0, f.c) * 0.035 + Math.sin(t * 0.05) * 0.015;
+      group.current.visible = f.reveal > 0.001 && f.focus < 0.93;
+      group.current.rotation.y = 0;
     }
     // The thread draws itself in on arrival; a bead of light runs down it.
     const drawn = smoothstep(0.24, 0.92, f.reveal);
-    res.tube.setDrawRange(0, Math.floor(drawn * 1600) * 30);
-    res.thread.opacity = 0.55 * (1 - 0.99 * f.focus);
+    res.tube.setDrawRange(0, Math.floor(drawn * 640) * 30);
+    res.thread.opacity = 0.18 * (1 - 0.99 * f.focus);
     if (!reduced) beadT.current = (beadT.current + dt * 0.018) % 1;
     if (bead.current) {
       bead.current.visible = drawn > 0.99 && f.focus < 0.5;

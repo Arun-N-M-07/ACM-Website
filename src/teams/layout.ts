@@ -68,9 +68,9 @@ export function composition(aspect: number): Composition {
       radius: 2.7,
       cardW,
       cardH,
-      cardDepth: 0.07,
+      cardDepth: 0.11,
       corner: 0.12,
-      drop: 1.35,
+      drop: 1.25,
       fov,
       orbitDist: fitDistance(cardW, cardH, fov, aspect, 0.74, 0.5),
       lift: 0.3,
@@ -88,9 +88,9 @@ export function composition(aspect: number): Composition {
     radius: 3.65,
     cardW,
     cardH,
-    cardDepth: 0.07,
-    corner: 0.065,
-    drop: 0.85,
+    cardDepth: 0.11,
+    corner: 0.12,
+    drop: 1.05,
     fov,
     orbitDist: fitDistance(cardW, cardH, fov, aspect, 0.53, 0.56),
     lift: 0.3,
@@ -106,7 +106,7 @@ export const C_START = -2;
 /** Solid typography sits in front of the same world; its central word space is the passage. */
 export const ENTRY_Z = 22;
 /** …and at the end (past card 06: the pull-back over the whole ring). */
-export const C_END = 5.9;
+export const C_END = LAST + 0.9;
 /**
  * Scroll is shaped so each card holds the centre a little longer than the
  * travel between them (0 = linear; must stay < 1 to remain monotonic).
@@ -151,14 +151,34 @@ export const nearestCard = (c: number) => Math.max(0, Math.min(LAST, Math.round(
 
 // ─── Placement ───────────────────────────────────────────────────────────────
 
-export const cardAngle = (i: number) => i * STEP;
-export const cardY = (i: number, comp: Composition) => -i * comp.drop;
+// Authored stations, not an evenly spaced carousel. Cubic interpolation keeps
+// the camera's direction continuous between the discrete physical cards.
+const ANGLES = [0, 0.91, 1.98, 2.80, 3.86, 4.83, 5.82];
+const HEIGHTS = [0, -1.04, -2.31, -3.24, -4.63, -5.69, -6.95];
+const RADII = [0, 0.32, -0.15, 0.42, 0.03, 0.28, -0.12];
+function station(values: number[], c: number) {
+  const at = (i: number): number => i < 0 ? values[0] + i * (values[1] - values[0]) : i > LAST ? values[LAST] + (i - LAST) * (values[LAST] - values[LAST - 1]) : values[i];
+  const i = Math.floor(c), t = c - i;
+  const a = at(i), b = at(i + 1), m0 = (b - at(i - 1)) / 2, m1 = (at(i + 2) - a) / 2;
+  return (2*t*t*t - 3*t*t + 1)*a + (t*t*t - 2*t*t + t)*m0 + (-2*t*t*t + 3*t*t)*b + (t*t*t - t*t)*m1;
+}
+export const cardAngle = (i: number) => station(ANGLES, i);
+export const cardY = (i: number, comp: Composition) => station(HEIGHTS, i) * comp.drop;
+export const cardRadius = (i: number, comp: Composition) => comp.radius + station(RADII, i) * (comp.portrait ? 0.65 : 1);
+
+/** Shared by the sculpted column, its mounts and the camera track. */
+export function spineAxis(y: number, out: Vector3) {
+  return out.set(0.48 * Math.sin(y * 0.32), y, 0.42 * Math.sin(y * 0.27));
+}
 
 /** World-space centre of card i, pushed `radial` metres out from its ring position. */
 export function cardCenter(i: number, comp: Composition, out: Vector3, radial = 0) {
   const a = cardAngle(i);
-  const r = comp.radius + radial;
-  return out.set(O.x + Math.sin(a) * r, O.y + cardY(i, comp), O.z + Math.cos(a) * r);
+  const r = cardRadius(i, comp) + radial;
+  spineAxis(cardY(i, comp), out).add(O);
+  out.x += Math.sin(a) * r;
+  out.z += Math.cos(a) * r;
+  return out;
 }
 
 /** The spine's vertical extent (relative to O), covering the helix with room above and below. */
