@@ -20,11 +20,10 @@ import { clamp01, copyPose, emptyPose, smoothstep, type CameraPose } from '@/sys
 import { fx } from '@/systems/camera/effects';
 import { progress } from '@/systems/scroll/progress';
 import {
-  arrivalStartShot,
   blendShots,
   copyShot,
-  focusShot,
   entryShot,
+  letterClearance,
   makeShot,
   makeTunnel,
   orbitShot,
@@ -34,7 +33,7 @@ import {
   tunnelFor,
   type Shot,
 } from './camera';
-import { O, cardAngle, cardCenter, carouselAt, composition, nearestCard, type Composition } from './layout';
+import { C_ENTRY, O, cardAngle, cardCenter, carouselAt, composition, nearestCard, type Composition } from './layout';
 import { FOCUS_PUSH } from './camera';
 import { updatePointerField } from './pointer';
 import { teams, teamsFrame } from './state';
@@ -42,10 +41,25 @@ import { capture, enterTeams, exitTeams, travelChannels } from './travel';
 
 /** Seconds of holding to go through. */
 export const HOLD_SECONDS = 2;
-/** How quickly the orbit catches up with the scroll (per second; lower = heavier glide). */
-export const ORBIT_GLIDE = 4.2;
+/**
+ * The orbit follows the scroll with a critically damped spring (rad/s): an
+ * immediate first response, ~0.1 s of lag, and a tail that settles without
+ * overshoot. It reads the Lenis-smoothed scroll target directly — Lenis is
+ * the one smoothing stage in front of it — instead of stacking a third
+ * exponential tail on top (the old glide kept a single wheel notch drifting
+ * for ~1.5 s and reversed ~0.5 s late).
+ */
+export const ORBIT_FOLLOW = 20;
+/**
+ * Everything else feels the orbit's velocity at its own rate (1/s), so the
+ * world doesn't move as one rigid block: the camera banks first, the cards
+ * near it trail a touch later, the heavier spine later still.
+ */
+const RATE = { camera: 6, cards: 7, spine: 3.2 };
 /** Sustained upward scroll (CSS px of wheel / swipe) at the start of the world that takes you back out. */
 export const PULL_EXIT = 760;
+/** QA only (debug.ts): hold the camera still — no pointer parallax, no idle breathing. */
+export const qa = { still: false };
 
 // ─── Composition cache ───────────────────────────────────────────────────────
 
@@ -119,6 +133,14 @@ export function cardScreenPoint(i: number) {
   return { x: (_sc.x * 0.5 + 0.5) * window.innerWidth, y: (-_sc.y * 0.5 + 0.5) * window.innerHeight };
 }
 
+/** The camera as last placed (QA traces). */
+export function cameraSnapshot() {
+  const c = lastCamera;
+  if (!c) return null;
+  const r = (v: number) => Math.round(v * 1000) / 1000;
+  return { x: r(c.position.x), y: r(c.position.y), z: r(c.position.z), yaw: r(c.rotation.y), pitch: r(c.rotation.x), roll: r(c.rotation.z), fov: r(c.fov) };
+}
+
 export function updateTeams(dt: number, camera: PerspectiveCamera) {
   lastCamera = camera;
   const ex = experience();
@@ -158,6 +180,10 @@ export function updateTeams(dt: number, camera: PerspectiveCamera) {
     exitTeams({ reduced });
   }
 
+  // At rest at the entrance (facing THE TEAM, the scroll on its floor)?
+  const resting = f.inside && st.state === 'teamsActive' && progress.target <= progress.lock.min + 0.0006 && f.c <= C_ENTRY + 0.03 && Math.abs(f.cV) < 0.08;
+  f.floorRest = resting ? f.floorRest + dt : 0;
+
   const cNear = nearestCard(f.c);
   if (f.inside && cNear !== st.current) st.set({ current: cNear });
 
@@ -167,10 +193,14 @@ export function updateTeams(dt: number, camera: PerspectiveCamera) {
   f.pointer.vy += (f.pointer.dy / Math.max(dt, 1e-3) - f.pointer.vy) * kv;
   f.pointer.dx = f.pointer.dy = 0;
 
-  // Pointer, smoothed — everything that follows the pointer reads sx / sy.
+  // Pointer, smoothed: the slow channel (sx / sy, the portal's lean) and the
+  // camera's parallax channel (cx / cy) — short enough that the view never chases.
   const k = 1 - Math.exp(-dt * 2.6);
   f.pointer.sx += ((f.pointer.active ? f.pointer.x : 0) - f.pointer.sx) * k;
   f.pointer.sy += ((f.pointer.active ? f.pointer.y : 0) - f.pointer.sy) * k;
+  const kc = 1 - Math.exp(-dt * 4.5);
+  f.pointer.cx += ((f.pointer.active ? f.pointer.x : 0) - f.pointer.cx) * kc;
+  f.pointer.cy += ((f.pointer.active ? f.pointer.y : 0) - f.pointer.cy) * kc;
 
   // Damped force field: input attracts a small mass; velocity survives direction
   // changes and decays after stopping. Substeps make it stable on slow devices.
@@ -189,8 +219,13 @@ export function updateTeams(dt: number, camera: PerspectiveCamera) {
     f.hoverAt.y = jump ? lastHit.y : f.hoverAt.y + (lastHit.y - f.hoverAt.y) * kp;
   }
   lastHover = f.hover;
-  const kh = 1 - Math.exp(-dt * 7);
-  for (let i = 0; i < f.hoverAmt.length; i++) f.hoverAmt[i] += ((reduced ? 0 : f.proximity[i]) - f.hoverAmt[i]) * kh;
+  // Proximity answers quickly and lets go a little slower (no pop either way).
+  const kIn = 1 - Math.exp(-dt * 12);
+  const kOut = 1 - Math.exp(-dt * 6);
+  for (let i = 0; i < f.hoverAmt.length; i++) {
+    const t = reduced ? 0 : f.proximity[i];
+    f.hoverAmt[i] += (t - f.hoverAmt[i]) * (t > f.hoverAmt[i] ? kIn : kOut);
+  }
 
   travelChannels();
 }
@@ -203,25 +238,12 @@ const travelFrom = emptyPose();
 const exitFrom = makeShot();
 const lastShot = makeShot();
 const A = makeShot();
-const B = makeShot();
 const F = makeShot();
-const F0 = makeShot();
-const F1 = makeShot();
 const OUT = makeShot();
 const _right = new Vector3();
 const _up = new Vector3(0, 1, 0);
 const _fwd = new Vector3();
 const _rad = new Vector3();
-
-function focusShotAt(k: number, cp: Composition, out: Shot) {
-  const k0 = Math.floor(k);
-  const t = k - k0;
-  focusShot(k0, cp, F0);
-  if (t < 1e-4) return copyShot(F0, out);
-  focusShot(Math.min(DOMAIN_COUNT - 1, k0 + 1), cp, F1);
-  // Card to card: arc out around the ring and back in.
-  return blendShots(F0, F1, t, out, cp.portrait ? 2.2 : 2.8);
-}
 
 /**
  * Is the Teams camera in charge this frame? (Travel in either direction, or
@@ -259,37 +281,52 @@ export function evaluateTeamsShot(dt: number, time: number, aspect: number, prev
   }
 
   // ── the orbit ──
-  if (st === 'teamsActive') {
-    const target = carouselAt(progress.value);
-    // A jump (menu, deep link) is a cut behind a fade, not a velocity.
+  let v = 0;
+  // The orbit keeps gliding while a card is chosen or open: a selection made
+  // mid-scroll lets the orbit's momentum settle (focus.ts has already moved the
+  // scroll to where it comes to rest) instead of stopping it dead.
+  if (st === 'teamsActive' || st === 'cardFocused' || st === 'domainDetail') {
+    // A jump (menu, deep link) is a cut behind a fade, not a velocity; reduced
+    // motion cuts between framed stills (progress.value holds the still).
     const cut = reduced || fx.fade > 0.5;
-    // The orbit glides after the scroll with a long, weighted tail — a wheel
-    // notch keeps the world drifting for seconds, as on the reference.
-    const c = cut ? target : f.c + (target - f.c) * (1 - Math.exp(-dt * ORBIT_GLIDE));
-    const v = cut ? 0 : (c - f.c) / Math.max(dt, 1e-3);
-    f.cVel += (v - f.cVel) * (1 - Math.exp(-dt * 6));
-    f.c = c;
-  } else f.cVel = 0;
+    const target = carouselAt(cut ? progress.value : progress.target);
+    if (cut) {
+      f.c = target;
+      f.cV = 0;
+    } else {
+      // Critically damped follower, substepped so it is stable at any frame rate.
+      const n = Math.max(1, Math.ceil(dt * 240));
+      const h = dt / n;
+      const w = ORBIT_FOLLOW;
+      for (let i = 0; i < n; i++) {
+        f.cV += ((target - f.c) * w * w - 2 * w * f.cV) * h;
+        f.c += f.cV * h;
+      }
+      if (Math.abs(target - f.c) < 2e-5 && Math.abs(f.cV) < 2e-3) {
+        f.c = target;
+        f.cV = 0;
+      }
+    }
+    v = f.cV;
+  } else f.cV = 0;
+  // Each layer feels the motion at its own rate, and lets it go at its own rate
+  // (nothing snaps to rest when a card is chosen mid-scroll).
+  const e = (r: number) => 1 - Math.exp(-dt * r);
+  f.cVel += (v - f.cVel) * e(RATE.camera);
+  f.cardVel += (v - f.cardVel) * e(RATE.cards);
+  f.spineVel += (v - f.spineVel) * e(RATE.spine);
   orbitShot(f.c, cp, A);
-  // Reveal begins only after the camera clears the back of the letters.
-  const letterClear = smoothstep(22, 15, A.pos.z - O.z);
-  f.reveal = f.arrival * (f.c >= 0 ? 1 : letterClear);
+  // The world is revealed as the camera comes out through the back of the letters.
+  f.reveal = f.arrival * (f.c >= 0 ? 1 : letterClearance(A.pos.z));
 
   // Idle: the camera breathes, slowly, in and up.
-  if (!reduced) {
+  if (!reduced && !qa.still) {
     _rad.set(A.pos.x - A.target.x, 0, A.pos.z - A.target.z).normalize();
     A.pos.addScaledVector(_rad, Math.sin(time * 0.31) * 0.05);
     A.pos.y += Math.sin(time * 0.45 + 0.8) * 0.035;
   }
 
   copyShot(A, OUT);
-
-  // ── the arrival glide ──
-  if (st === 'teamsEntering') {
-    arrivalStartShot(tunnel, cp, B);
-    const a = smoothstep(0, 0.96, f.arrival);
-    blendShots(B, A, 1 - Math.pow(1 - a, 2.6), OUT);
-  }
 
   // ── focus ──
   if (f.focus > 1e-4) {
@@ -298,17 +335,24 @@ export function evaluateTeamsShot(dt: number, time: number, aspect: number, prev
   cardCenter(f.focusK, cp, _rad, FOCUS_PUSH);
   const normalAngle = cardAngle(f.focusK);
   const surfaceDistance = (OUT.pos.x - _rad.x) * Math.sin(normalAngle) + (OUT.pos.z - _rad.z) * Math.cos(normalAngle);
-  f.domainReveal = f.focus > 0.28 ? 1 - smoothstep(-0.65, -0.05, surfaceDistance) : 0;
+  // The domain's hand is fully dealt as the eye comes through the surface.
+  f.domainReveal = f.focus > 0.3 ? 1 - smoothstep(-0.45, -0.04, surfaceDistance) : 0;
   f.dive = 0;
 
   // ── layered response: pointer parallax, scroll bank, the exit pull ──
   _fwd.subVectors(OUT.target, OUT.pos).normalize();
   _right.crossVectors(_fwd, _up).normalize();
   const live = st === 'teamsEntering' ? smoothstep(0.85, 1, f.arrival) : 1;
-  const par = (reduced ? 0 : 0.45) * live * (1 - f.focus);
-  OUT.pos.addScaledVector(_right, f.pointer.sx * 0.14 * par).addScaledVector(_up, f.pointer.sy * 0.09 * par);
-  OUT.target.addScaledVector(_right, f.pointer.sx * 0.05 * par).addScaledVector(_up, f.pointer.sy * 0.03 * par);
-  if (!reduced) OUT.roll += Math.max(-0.008, Math.min(0.008, -f.cVel * 0.004)) * (1 - f.focus);
+  // Pointer parallax: out in the orbit, and (smaller) once through a card, where
+  // it keeps the dust behind the member hand reading as depth.
+  const par = qa.still ? 0 : (reduced ? 0 : 0.45) * live * (1 - f.focus) + (reduced ? 0 : 0.22) * f.domainReveal;
+  OUT.pos.addScaledVector(_right, f.pointer.cx * 0.14 * par).addScaledVector(_up, f.pointer.cy * 0.09 * par);
+  OUT.target.addScaledVector(_right, f.pointer.cx * 0.05 * par).addScaledVector(_up, f.pointer.cy * 0.03 * par);
+  if (!reduced) {
+    // Speed banks the view a hair and opens the lens a little (felt more than seen).
+    OUT.roll += Math.max(-0.008, Math.min(0.008, -f.cVel * 0.004)) * (1 - f.focus);
+    OUT.fov += Math.min(1.4, Math.abs(f.cVel) * 1.1) * (1 - f.focus);
+  }
   const pull = clamp01(f.pull / PULL_EXIT);
   if (pull > 0) {
     OUT.pos.addScaledVector(_fwd, -1.8 * pull * pull);

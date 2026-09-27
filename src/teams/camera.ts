@@ -19,7 +19,8 @@ import { Vector3 } from 'three';
 import { CAMERA_STATES } from '@/config/camera';
 import { PORTAL } from '@/config/world';
 import { clamp01, easeInOutCubic, easeOutCubic, lerp, lerpAngle, lerpPose, smoothstep, type CameraPose } from '@/systems/camera/pose';
-import { C_ENTRY, C_OUTRO, C_FINAL, ENTRY_Z, cardAngle, cardCenter, cardRadius, cardY, spineAxis, LAST, O, type Composition } from './layout';
+import { C_ENTRY, C_OUTRO, C_FINAL, DWELL_SLOPE, ENTRY_Z, cardAngle, cardCenter, cardRadius, cardY, spineAxis, LAST, O, type Composition } from './layout';
+import { LETTER_DEPTH, letterLayout } from './world/letters';
 
 export interface Shot {
   pos: Vector3;
@@ -62,18 +63,7 @@ const _b = new Vector3();
  * c < 0 is the establishing approach, 0..5 the cards, > 5 the pull-back.
  */
 export function orbitShot(c: number, comp: Composition, out: Shot) {
-  if (c < 0) {
-    // A single reversible dolly through the word space. Letters remain behind us.
-    const u = smoothstep(C_ENTRY, 0, c);
-    const end = comp.radius + comp.orbitDist;
-    const start = ENTRY_Z + Math.max(24, 12 / (Math.tan(comp.fov * Math.PI / 360) * comp.aspect));
-    const framing = 1.7 * (1 - smoothstep(0, 0.6, u));
-    out.pos.set(O.x + framing + Math.sin(u * Math.PI) * 0.13, O.y + comp.lift, O.z + lerp(start, end, u));
-    out.target.set(O.x + framing, O.y + comp.lift + lerp(0, comp.portrait ? 0.12 : 0.16, u), O.z + comp.radius * 0.7);
-    out.fov = comp.fov;
-    out.roll = 0;
-    return out;
-  }
+  if (c < 0) return entryShotAt(c, comp, out);
   const intro = 0;
   const outro = c > C_OUTRO ? easeInOutCubic(clamp01((c - C_OUTRO) / (C_FINAL - C_OUTRO))) : 0;
   const onCards = c >= 0 && c <= LAST ? 1 : 0;
@@ -101,44 +91,245 @@ export function orbitShot(c: number, comp: Composition, out: Shot) {
   return out;
 }
 
-/** In front of card `k`, square to it, the card filling the frame. */
+// ─── THE TEAM: the entrance path (c from C_ENTRY to 0) ──────────────────────
+//
+// Out of the tunnel's mouth the camera stands far enough back to see the whole
+// title, approaches until the letters are enormous, skims the letter faces,
+// flies through the passage between the words (or, in portrait, the slot
+// between the lines), and comes out into the open world to arrive at card 01
+// — landing with exactly the velocity the orbit continues with, so the scroll
+// never feels the hand-over. Keys are interpolated with a C¹ Hermite spline in
+// the scroll coordinate: a pure function of c, so it reverses exactly.
+
+/** Channels per key: position xyz, target xyz, fov, roll. */
+const CH = 8;
+interface EntryPath {
+  u: number[];
+  v: number[][];
+  m: number[][];
+}
+const entryCache = new WeakMap<Composition, EntryPath>();
+const _o0 = makeShot();
+const _o1 = makeShot();
+const channels = (s: Shot) => [s.pos.x, s.pos.y, s.pos.z, s.target.x, s.target.y, s.target.z, s.fov, s.roll];
+
+function entryPath(comp: Composition): EntryPath {
+  const hit = entryCache.get(comp);
+  if (hit) return hit;
+  const L = letterLayout(comp.portrait);
+  const plane = O.z + ENTRY_Z;
+  const face = plane + LETTER_DEPTH / 2;
+  const back = plane - LETTER_DEPTH / 2;
+  const cx = O.x + (L.left + L.right) / 2;
+  const cy = O.y + (L.bottom + L.top) / 2;
+  const px = O.x + L.passX;
+  const py = O.y + L.passY;
+  const tanV = Math.tan((comp.fov * Math.PI) / 360);
+  // Far enough back that the whole title spans ~84% of the frame's width (or 62% of its height).
+  const fit = Math.max((L.right - L.left) / 0.84 / (2 * tanV * comp.aspect), (L.top - L.bottom) / 0.62 / (2 * tanV));
+  const side = comp.portrait ? 0 : 1;
+  orbitShot(0, comp, _o0);
+  orbitShot(0.02, comp, _o1);
+  const keys: [number, number[]][] = [
+    // Out of the tunnel: the whole title, a little above its centre line.
+    [0, [lerp(cx, px, 0.25), cy + 1.5, face + fit + 6, lerp(cx, px, 0.2), cy + 0.25, plane, comp.fov + 2, 0]],
+    // Approaching: the letters fill the frame, the aim drifts towards the passage.
+    [0.3, [lerp(cx, px, 0.62), lerp(cy, py, 0.55) + 0.55, face + fit * 0.42, lerp(cx, px, 0.72), lerp(cy, py, 0.6), plane - 2, comp.fov, 0]],
+    // At the letter faces: the lens opens, the walls stretch past the edges of frame.
+    [0.55, [px + 0.12 * side, py + 0.14, face + 2.4, px, py + 0.04, back - 12, comp.fov + 9, -0.014 * side]],
+    // Through: the letters are behind us.
+    [0.72, [px, py, back - 2, px, py + 0.06, back - 16, comp.fov + 5, 0.004 * side]],
+    // Card 01, in orbit.
+    [1, channels(_o0)],
+  ];
+  const u = keys.map((k) => k[0]);
+  const v = keys.map((k) => k[1]);
+  const n = keys.length;
+  const m = v.map((vi, i) =>
+    vi.map((_, j) => {
+      if (i === 0) return (v[1][j] - v[0][j]) / (u[1] - u[0]);
+      if (i === n - 1) return 0;
+      return 0.5 * ((v[i + 1][j] - v[i][j]) / (u[i + 1] - u[i]) + (v[i][j] - v[i - 1][j]) / (u[i] - u[i - 1]));
+    }),
+  );
+  // Land with the orbit's own velocity: d/du = d/dc · (dc/dr at a dwell) · (dr/du).
+  const o1 = channels(_o1);
+  const o0 = v[n - 1];
+  for (let j = 0; j < CH; j++) m[n - 1][j] = ((o1[j] - o0[j]) / 0.02) * DWELL_SLOPE * -C_ENTRY;
+  const path = { u, v, m };
+  entryCache.set(comp, path);
+  return path;
+}
+
+const _e = new Array<number>(CH).fill(0);
+function entryShotAt(c: number, comp: Composition, out: Shot) {
+  const { u: U, v, m } = entryPath(comp);
+  const u = clamp01((c - C_ENTRY) / -C_ENTRY);
+  let i = 0;
+  while (i < U.length - 2 && u > U[i + 1]) i++;
+  const h = U[i + 1] - U[i];
+  const t = (u - U[i]) / h;
+  const t2 = t * t;
+  const t3 = t2 * t;
+  const h00 = 2 * t3 - 3 * t2 + 1;
+  const h10 = t3 - 2 * t2 + t;
+  const h01 = -2 * t3 + 3 * t2;
+  const h11 = t3 - t2;
+  for (let j = 0; j < CH; j++) _e[j] = h00 * v[i][j] + h10 * h * m[i][j] + h01 * v[i + 1][j] + h11 * h * m[i + 1][j];
+  out.pos.set(_e[0], _e[1], _e[2]);
+  out.target.set(_e[3], _e[4], _e[5]);
+  out.fov = _e[6];
+  out.roll = _e[7];
+  return out;
+}
+
+/**
+ * How far the camera has come into and through the letters: 0 still a little
+ * way in front of their faces → 1 well clear of their backs. The world starts
+ * to show through the passage as the lens reaches the letter faces, so the
+ * spine is the destination seen between the words, not a void behind them.
+ */
+export function letterClearance(camZ: number) {
+  return smoothstep(ENTRY_Z + LETTER_DEPTH / 2 + 2.2, ENTRY_Z - LETTER_DEPTH / 2 - 5, camZ - O.z);
+}
+
+// ─── Entering a domain ───────────────────────────────────────────────────────
+//
+// A chosen card is a threshold: the camera flies through the card's surface,
+// and the domain's people are dealt out of it as a hand of cards (a light
+// DOM layer, ui/MemberHand.tsx) over the world's own dark atmosphere. No room
+// is built behind the card.
+//
+//   commit      the card comes forward and squares up at once, on its own
+//               quicker clock; the eye sets off straight away (no pull-back)
+//   travel      it accelerates, arcing round the spine if it has to, until it
+//               stands square in front of the card
+//   threshold   it closes on the surface; the card's type fills the view and
+//               an aperture opens from the card's centre (DomainCards, uOpen),
+//               the hand rising out of it, and the lens widens a little as it
+//               crosses
+//   settle      it decelerates to rest just past the card, the hand fanned out
+//
+// One continuous path, keyed on the focus scalar (0..1): closing the domain
+// runs the same scalar back, so the return retraces it exactly.
+
+/** How far a chosen card comes forward out of the ring. */
+export const FOCUS_PUSH = 0.55;
+/** Where the eye settles once through: this far past the card's centre plane. */
+export const BEYOND_EYE = 0.9;
+/** The lens once through the card. */
+export const beyondFov = (comp: Composition) => (comp.portrait ? 64 : 52);
+
+/** Settled just through the card, looking on towards the spine. */
 export function focusShot(k: number, comp: Composition, out: Shot) {
-  cardCenter(k, comp, out.target, FOCUS_PUSH);
   const a = cardAngle(k);
-  // End behind the physical surface, still looking into the domain's space.
-  out.pos.set(out.target.x - Math.sin(a) * 0.8, out.target.y, out.target.z - Math.cos(a) * 0.8);
-  out.target.x -= Math.sin(a) * 4;
-  out.target.z -= Math.cos(a) * 4;
-  out.fov = comp.detailFov;
+  cardCenter(k, comp, out.pos, FOCUS_PUSH - BEYOND_EYE);
+  out.target.set(out.pos.x - Math.sin(a) * 4, out.pos.y, out.pos.z - Math.cos(a) * 4);
+  out.fov = beyondFov(comp);
   out.roll = 0;
   return out;
 }
 
-/** How far a chosen card comes forward out of the ring. */
-export const FOCUS_PUSH = 0.55;
+/** Where each key falls on the focus scalar (key 2 moves with the distances: see entryShot). */
+const ENTRY_U = [0, 0.14, 0.5, 0.8, 1];
+/** Per key: angle, radius and height about the spine axis; target xyz; fov; roll. */
+const _k = ENTRY_U.map(() => new Array<number>(8).fill(0));
+const _m = ENTRY_U.map(() => new Array<number>(8).fill(0));
+const _v = new Array<number>(8).fill(0);
+const _n = new Vector3();
+const _cc = new Vector3();
+const _dir = new Vector3();
+const _tgt = new Vector3();
+const _al = new Vector3();
 
-const aligned = makeShot();
-const entered = makeShot();
-/** Align outside the selected plate before advancing through its normal.
- * Reversing the same scalar retraces the exact path without a content cut. */
+function setKey(i: number, px: number, py: number, pz: number, tx: number, ty: number, tz: number, fov: number, roll: number) {
+  const k = _k[i];
+  let th = Math.atan2(px - O.x, pz - O.z);
+  // Unwrap against the previous key so the camera takes the short way round the spine.
+  if (i > 0) th = _k[i - 1][0] + Math.atan2(Math.sin(th - _k[i - 1][0]), Math.cos(th - _k[i - 1][0]));
+  k[0] = th;
+  k[1] = Math.hypot(px - O.x, pz - O.z);
+  k[2] = py;
+  k[3] = tx;
+  k[4] = ty;
+  k[5] = tz;
+  k[6] = fov;
+  k[7] = roll;
+}
+
+/** The entry path: from the orbit shot `from` through card k, at focus 0..1. */
 export function entryShot(from: Shot, k: number, comp: Composition, focus: number, out: Shot) {
-  cardCenter(k, comp, aligned.target, FOCUS_PUSH);
   const a = cardAngle(k);
-  aligned.pos.copy(aligned.target);
-  aligned.pos.x += Math.sin(a) * comp.orbitDist;
-  aligned.pos.z += Math.cos(a) * comp.orbitDist;
-  aligned.fov = comp.fov;
-  aligned.roll = 0;
-  if (focus < 0.28) return blendShots(from, aligned, smoothstep(0, 0.28, focus), out);
-  focusShot(k, comp, entered);
-  const t = smoothstep(0.28, 1, focus);
-  out.pos.lerpVectors(aligned.pos, entered.pos, t);
-  // Constant forward gaze avoids a flip when crossing the plate's plane.
-  out.target.copy(out.pos);
-  out.target.x -= Math.sin(a) * 4;
-  out.target.z -= Math.cos(a) * 4;
-  out.fov = lerp(comp.fov, comp.detailFov, t);
-  out.roll = 0;
+  _n.set(Math.sin(a), 0, Math.cos(a));
+  cardCenter(k, comp, _cc, FOCUS_PUSH);
+  // 0 · where the eye was
+  setKey(0, from.pos.x, from.pos.y, from.pos.z, from.target.x, from.target.y, from.target.z, from.fov, from.roll);
+  // Where the eye will stand square in front of the card.
+  const d = comp.orbitDist * 0.84;
+  _al.set(_cc.x + _n.x * d, _cc.y, _cc.z + _n.z * d);
+  // 1 · already moving: the eye commits the moment the card does (no pull-back)
+  _dir.subVectors(_al, from.pos);
+  _tgt.lerpVectors(from.target, _cc, 0.12);
+  setKey(1, from.pos.x + _dir.x * 0.1, from.pos.y + _dir.y * 0.1, from.pos.z + _dir.z * 0.1, _tgt.x, _tgt.y, _tgt.z, from.fov, from.roll * 0.5);
+  // 2 · square in front of the card
+  setKey(2, _al.x, _al.y, _al.z, _cc.x, _cc.y, _cc.z, comp.fov, 0);
+  // The squaring-up takes its share of the path by distance: a card already
+  // in front of the eye is squared almost at once and the travel starts
+  // straight away; one round the ring takes longer to reach.
+  const toSquare = _al.distanceTo(from.pos);
+  const through = _al.distanceTo(_cc) + BEYOND_EYE;
+  ENTRY_U[2] = Math.min(0.5, Math.max(0.2, 0.12 + (0.5 * toSquare) / (toSquare + through)));
+  ENTRY_U[1] = ENTRY_U[2] * 0.3;
+  // 3 · through its surface, the lens opened a little by the speed
+  setKey(3, _cc.x - _n.x * 0.12, _cc.y, _cc.z - _n.z * 0.12, _cc.x - _n.x * 4, _cc.y, _cc.z - _n.z * 4, beyondFov(comp) + 4, 0);
+  // 4 · at rest just through it
+  const e = BEYOND_EYE;
+  setKey(4, _cc.x - _n.x * e, _cc.y, _cc.z - _n.z * e, _cc.x - _n.x * (e + 4), _cc.y, _cc.z - _n.z * (e + 4), beyondFov(comp), 0);
+  // C¹ through the keys, at rest at both ends, and monotone between them
+  // (Fritsch–Carlson): the eye never drifts back before it goes forward, and
+  // never overshoots the rest.
+  const U = ENTRY_U;
+  const n = U.length;
+  for (let j = 0; j < 8; j++) {
+    _m[0][j] = 0;
+    _m[n - 1][j] = 0;
+    for (let i = 1; i < n - 1; i++) {
+      const a = (_k[i][j] - _k[i - 1][j]) / (U[i] - U[i - 1]);
+      const b = (_k[i + 1][j] - _k[i][j]) / (U[i + 1] - U[i]);
+      _m[i][j] = a * b <= 0 ? 0 : 0.5 * (a + b);
+    }
+    for (let i = 0; i < n - 1; i++) {
+      const dk = (_k[i + 1][j] - _k[i][j]) / (U[i + 1] - U[i]);
+      if (Math.abs(dk) < 1e-9) {
+        _m[i][j] = _m[i + 1][j] = 0;
+        continue;
+      }
+      const al = _m[i][j] / dk;
+      const be = _m[i + 1][j] / dk;
+      const hh = al * al + be * be;
+      if (hh > 9) {
+        const tau = 3 / Math.sqrt(hh);
+        _m[i][j] = tau * al * dk;
+        _m[i + 1][j] = tau * be * dk;
+      }
+    }
+  }
+  const u = clamp01(focus);
+  let i = 0;
+  while (i < n - 2 && u > U[i + 1]) i++;
+  const h = U[i + 1] - U[i];
+  const t = (u - U[i]) / h;
+  const t2 = t * t;
+  const t3 = t2 * t;
+  const h00 = 2 * t3 - 3 * t2 + 1;
+  const h10 = t3 - 2 * t2 + t;
+  const h01 = -2 * t3 + 3 * t2;
+  const h11 = t3 - t2;
+  for (let j = 0; j < 8; j++) _v[j] = h00 * _k[i][j] + h10 * h * _m[i][j] + h01 * _k[i + 1][j] + h11 * h * _m[i + 1][j];
+  out.pos.set(O.x + Math.sin(_v[0]) * _v[1], _v[2], O.z + Math.cos(_v[0]) * _v[1]);
+  out.target.set(_v[3], _v[4], _v[5]);
+  out.fov = _v[6];
+  out.roll = _v[7];
   return out;
 }
 
@@ -176,24 +367,22 @@ export interface TunnelFrame {
 export const makeTunnel = (): TunnelFrame => ({ start: new Vector3(), exit: new Vector3(), dir: new Vector3() });
 
 const _entry = makeShot();
-/** The tunnel lies on the line from the establishing view outwards, opening a little above and behind it. */
+/**
+ * The tunnel opens exactly where the entrance path begins (the floor of the
+ * world's scroll), on the line of the camera's first look at THE TEAM — so the
+ * travel hands straight over to scroll, with no timed glide in between.
+ */
 export function tunnelFor(comp: Composition, out: TunnelFrame) {
   orbitShot(C_ENTRY, comp, _entry);
-  out.dir.set(O.x - _entry.pos.x, 0, O.z - _entry.pos.z).normalize();
-  out.exit.copy(_entry.pos).addScaledVector(out.dir, -16);
-  out.exit.y += 2.4;
+  out.dir.set(_entry.target.x - _entry.pos.x, 0, _entry.target.z - _entry.pos.z).normalize();
+  out.exit.copy(_entry.pos);
   out.start.copy(out.exit).addScaledVector(out.dir, -TUNNEL_LENGTH);
   return out;
 }
 
-/** The first frame after the tunnel: out of its mouth, looking at where the spine will be. */
-export function arrivalStartShot(tunnel: TunnelFrame, comp: Composition, out: Shot) {
-  out.pos.copy(tunnel.exit);
-  out.target.copy(tunnel.exit).addScaledVector(tunnel.dir, 12);
-  out.target.y = O.y + comp.lift - 0.4;
-  out.fov = 44;
-  out.roll = 0;
-  return out;
+/** The first frame out of the tunnel: the entrance path's first pose. */
+export function arrivalStartShot(_tunnel: TunnelFrame, comp: Composition, out: Shot) {
+  return orbitShot(C_ENTRY, comp, out);
 }
 
 // ─── The portal ──────────────────────────────────────────────────────────────
@@ -253,11 +442,11 @@ export function travelInPose(t: number, from: CameraPose, tunnel: TunnelFrame, c
   const s = 1 - Math.pow(1 - u, 1.7);
   _t.pos.lerpVectors(tunnel.start, tunnel.exit, s);
   _t.target.copy(_t.pos).addScaledVector(tunnel.dir, 10);
-  // In the last stretch the eye drops to where the spine will be.
+  // In the last stretch the eye settles on THE TEAM, the entrance path's first look.
   arrivalStartShot(tunnel, comp, _entry);
   _t.target.lerp(_entry.target, smoothstep(0.7, 1, u));
   // Wide at speed, compressed towards the exit.
-  _t.fov = u < 0.35 ? lerp(104, 86, u / 0.35) : lerp(86, 44, easeOutCubic((u - 0.35) / 0.65));
+  _t.fov = u < 0.35 ? lerp(104, 86, u / 0.35) : lerp(86, _entry.fov, easeOutCubic((u - 0.35) / 0.65));
   _t.roll = Math.sin(u * Math.PI) * 0.05;
   return shotToPose(_t, out);
 }

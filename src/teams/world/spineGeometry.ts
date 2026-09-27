@@ -35,7 +35,9 @@ const TWIST_DROP = 3.2;
 export { spineAxis } from '../layout';
 
 /** Vertebra size along the column: finer above, heavier below. */
-const sizeAt = (y: number) => 1.32 + 0.3 * Math.cos(y * 0.19);
+// About twice the old column: the spine is the world's structure, read at a glance
+// from the orbit (its body spans roughly an eighth of the frame, its processes a third).
+const sizeAt = (y: number) => 2.35 + 0.45 * Math.cos(y * 0.19);
 
 /** Smooth organic noise (sums of warped sines — cheap, deterministic). */
 function organic(x: number, y: number, z: number) {

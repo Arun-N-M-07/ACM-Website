@@ -9,7 +9,7 @@ import { CAMERA_STATES as S } from '@/config/camera';
 import { EVENT_STATION_WEIGHTS, PORTAL_DWELL, PORTAL_GATE, SEGMENTS, segmentAt, segmentProgress, progressForRoom } from '@/config/timeline';
 import { progressAtIntroTime } from '@/intro/controller';
 import { STILLS } from '@/intro/timeline';
-import { progressForDomain } from '@/teams/layout';
+import { teamsStops } from '@/teams/layout';
 import { CORRIDOR, EYE_Y } from '@/config/world';
 import {
   angleDelta,
@@ -148,7 +148,7 @@ export const REDUCED_MOTION_STOPS: number[] = [
   ...CORRIDOR.rooms.map((_, i) => progressForRoom(i)),
   PORTAL_GATE - 0.0002,
   // Inside the Teams world (the gate keeps these out of reach until the portal is entered).
-  ...[0, 1, 2, 3, 4, 5].map((i) => progressForDomain(i)),
+  ...teamsStops(),
 ];
 
 export function nearestStop(p: number) {

@@ -494,3 +494,248 @@ Production build, headless Chrome, Apple silicon: 60 fps with zero frames over 3
 ### Viewports checked
 
 1920×1080, 1440×900, 1280×800, 1280×720, 1180×820, 1024×768, 800×600, 768×1024, 390×844 and 375×812.
+
+---
+
+## 7 · Second pass (September 2026): one physical world
+
+This pass kept every system above: the single `CameraRig` camera owner, the one Lenis + ScrollTrigger scroll track, the `teamsFrame` / `useTeams` split, the state machine, card picking, streaming, `useDisposable` and the quality tiers. It reworked what those systems draw and how they move.
+
+### What changed
+
+| Area | Before | Now |
+|---|---|---|
+| **THE TEAM** | Hand-drawn blocky outlines; a straight dolly at constant height and FOV; the letters never hidden (they showed behind later cards) | Glyphs traced from the site's own Archivo (expanded, bold) into exact polygons (`world/letters.ts`), extruded 1.3 m with bevels, in a bone satin material with a clearcoat. The camera follows a keyed C¹ Hermite path (`camera.ts`, `entryShotAt`): from the tunnel mouth, framing the whole title, it approaches, skims the letter faces with the lens opening, passes between the words and lands on card 01 at the orbit's own velocity. Portrait stacks THE above TEAM, and the camera flies through the slot between the lines. The letters stop drawing once the orbit is under way. |
+| **Arrival** | A 1.8 s timed glide with scroll locked (`teamsEntering`) | The tunnel ends exactly on the entrance path's first pose, and scroll takes over at once (`travel.ts`, `arrive`). The world's light comes up on a non-blocking tween. `teamsEntering` is no longer entered. |
+| **Rest pose** | Rested on the portal gate, so the top bar read "07 The Portal" | `TEAMS_FLOOR` is a few pixels inside the Teams segment. |
+| **Composition** | A thin spine (about 7 % of the frame), 3.2 × 2.2 × 0.11 cards on a 3.65 m ring, a uniform starfield | The spine is about twice as thick (body about 12 % of the frame, processes about a third). The cards are 3.4 × 2.32 × 0.16 on a 4.4 m ring (portrait 2.3 × 3.1 on 3.25 m). The ambient dust sits in the air round the column and along the entrance path. |
+| **Cards** | Nearly clear transmission, and the lettering on a separate plane 15 mm above the glass | Frosted physical transmission (roughness about 0.6–0.7, IOR 1.5, per-card frost variation) under a glossy clearcoat. The lettering is printed into the glass material, front face only, inside the clearcoat. Wider bevels. Every tier frosts: the low tier renders transmission at half resolution. |
+| **Scroll response** | Three stacked tails (Lenis → 5.5/s → glide 4.2/s) | A critically damped follower (ω = 20/s) on the Lenis-smoothed target. Measured at 1440×900: one notch settles in 0.82 s (was 1.46 s), a burst in 1.07 s (was 1.92 s), a reversal in 1.03 s (was 1.84 s), and the orbit turns 0.17 s after reversed input. There are no direction changes after stopping. |
+| **Layered motion** | Everything followed one coordinate | Camera (the spring, and bank / FOV at 6/s) → cards (7/s: the near ones trail and settle forward) → spine (3.2/s: a torsional twist about its curved axis; the anchors stay fixed) → dust (6/s in, 3.2/s out). |
+| **Cursor** | Parallax on a 2.6/s tail; the lean popped on leave; proximity invisible | Parallax at 4.5/s. Hover eases in at 12/s and out at 6/s, using the last point held (no pop). A velocity-aware press, and a local sheen (smoother, slightly brighter) at the point touched. The pointer light is kept faint. |
+| **Card entry** | A focus blend, then a cut to a flat page | A quick commit (the card comes forward and squares up), then one continuous camera path keyed on the focus scalar: a breath back, travel (arcing round the spine), square to the card, through its surface (the lens opens a little), and settle inside. The other cards recede in order of distance, and the spine fades and turns slightly. Near the surface the chosen card's frost clears and its print fades: it becomes the threshold. |
+| **Open domain** | A transparent text plane in a void | A room behind the card (`world/DomainInterior.tsx`): an opaque shell in the domain's tone, with ribs converging on a lit screen that carries the content. It is opaque, so it is already visible, blurred, through the frosted card. The DOM detail (screen-reader article plus controls) stays. Pointer parallax is active inside the room. |
+| **Return** | Reverse of the focus blend | The same scalar run back: the room recedes behind the glass as it frosts again, and the card, the other cards and the spine restore to the exact orbit position (checked: `c` is identical before and after). |
+| **Exit pull** | Counted any upward scroll at the floor, so one hard fling could exit | Counts only after 0.4 s at rest at the entrance. |
+| **Content** | "DOMAIN DIRECTORS" label; reduced motion stopped at six domains; card faces drawn before the fonts loaded | "MEMBERS". Reduced-motion stills come from the content (the entrance plus all seven). Faces redraw after `fontsReady()`. Room titles fit without clipping. |
+
+### Verified (browser, headless Chrome with GPU, `scripts/qa/teams.mjs`)
+
+- **Journey:** portal hold → tunnel → hand-over at the floor → wheel scrolling through THE TEAM → orbit → click a card → room → Escape → the same orbit position → scroll back to the floor → deliberate pull → back at the portal. A long fling back to the entrance stops there.
+- **Entry path:** checked frame by frame with `pose:<i>:<focus>` for CORE, Web and App, Competitive Programming, Events, Contents and Design, and Marketing.
+- **Portrait (390×844, DPR 2):** the stacked entrance, the orbit, frosted cards, the entry, and the room for CORE, Web and App, Competitive Programming and Events.
+- **Reduced motion:** framed stills (the entrance, then each domain); a nav button opens a domain instantly with focus on its heading; → hops; Escape closes and returns focus to the domain's nav button.
+- **Frame times (headless, Apple silicon, 60 Hz cap):** 16.7 ms average with 0 frames over 33 ms during orbit scrolling, card entry and the room, at DPR 1 and DPR 2. Portrait had one 50 ms frame at the start of a touch swipe. Renderer memory was flat across three select/close cycles (21–23 geometries, 26–27 textures, 35–37 programs).
+- **QA harness additions:**
+  - the intro film is skipped before Teams steps;
+  - `trace:<label>:<ms>:<n>` samples motion;
+  - `pose:<i>:<focus>` holds the entry;
+  - `teamsDebug.camera()` and `teamsDebug.pose(i, focus)` back those steps.
+
+### Still open
+
+- Frame times were only measured in headless Chrome on Apple silicon; a real mid-range phone is untested.
+- Touch was exercised with emulated touch events (swipe, tap), not on a device.
+- The open domain's copy is display type on a WebGL screen; the readable, accessible version is the screen-reader article (and the text version), so the visible screen text can't be zoomed or selected.
+- Dead code remains in `post/PostProcessing.tsx` (`uBarrel` / `dive`, `uDim` / `uRect` / `cardRect`) and in `cardFace.ts` (the decoding / glitched title modes).
+- The master worktree has uncommitted edits to several of the same Teams files; merging dev and master will need them reconciled by hand.
+
+---
+
+## 8 · Refinement pass: touch, enter, people (September 2026)
+
+The goal of this pass: "I touched this physical object and entered it", not "I clicked a card and a page opened". The architecture is unchanged:
+- one camera writer (`CameraRig`);
+- one scroll pipeline (Lenis + one ScrollTrigger);
+- one pointer channel (`teamsFrame.pointer`, fed by `TeamsInput`);
+- one post stack.
+
+### One physics language (`src/teams/pointer.ts`)
+
+- **`stepSpring`:** a critically damped spring that is quick towards a new target and slower back to rest. No bounce.
+- **`impulse`:** the response of a damped particle to a kick. It keeps moving briefly, then settles.
+- **`stir`:** a slow-release copy of the pointer's energy, plus the pointer's last direction of movement.
+
+The cards, the dust and the grain all use these.
+
+### Before the click (`world/DomainCards.tsx`, `ui/TeamsInput.tsx`)
+
+- **Springs:** each card is a plate on its mount, with springs for tilt about both axes and for depth (attack 16/s, release 6/s).
+- **Pointer force:** the pointer presses the side it rests on, and a pointer moving across the card drags it slightly the same way.
+- **The press lands before the click:** on pointer-down or touch-down over a card (`teamsFrame.press`), the plate pushes in, tilts towards the touch, and a clearer, brighter spot gathers in the frost under it.
+- **Material:** the edges brighten near the pointer, and slightly more light passes through the body.
+- **Release:** a drag of more than 12 px releases the press.
+
+### Entering (`focus.ts`, `camera.ts`)
+
+- **Commit:** the card comes forward at once (0.4 s). The pointer's force hands over to the commit, so the plate straightens.
+- **Timing curve:** the camera follows an authored monotone curve: acceleration, travel, a slower beat while the frosted surface fills the whole view, a quicker crossing, then the settle. Closing is its exact time reverse.
+- **Path:** monotone (Fritsch–Carlson) tangents, so the camera never drifts back before it goes forward. The squaring-up takes its share of the path by distance: a centred card is entered almost at once, while a side card arcs round the ring first.
+- **Traced (CORE):** no reverse travel; about 5.5 m/s at the peak of travel, about 4 m/s while the surface fills the view, the crossing at about 1.75 s, settled by about 2.3 s.
+- **Selecting mid-scroll:** the orbit glides to where its momentum would stop (`c + v/ω`, no reversal), and the scroll is moved there. Closing returns to exactly that place (traced: `c` 1.7682 before and after).
+- **The world responds:**
+  - neighbours part to either side, and far cards sink and dim in order of distance;
+  - the spine's band at the card's level lifts slightly while the rest recedes, then the column fades;
+  - the pooled light turns towards the chosen card;
+  - a soft puff of dust leaves the card.
+- **Threshold:** the glass clears only in the last metre (from about 1.1 m to 0.15 m), so the frosted surface fills the view for a beat first.
+
+### The domain room (`world/DomainInterior.tsx`)
+
+- **No screen:** the screen panel is gone.
+- **Label:** a small architectural label ("ACM CEG · 0N / 07", plus the domain name) sits on the far wall.
+- **People:** each person is a role in small caps where the chapter gives one (CORE only), then the name in large type. Each stands on its own plate at its own depth, stepping down and forward through the room, so the parallax separates them.
+- **Arrival:** they come in one after another as the camera crosses, and recede in reverse.
+- **Layout:** a measured flow layout that wraps without orphaned words and scales to fit the wall.
+- **CORE chamber:** a slightly larger room, stronger courses, and an inset frame on the far wall.
+- **Roll numbers are no longer rendered** in the room or in the screen-reader article. They stay in `src/content/teams.ts`.
+
+### Dust and grain (`src/teams/dust.ts`, `world/ParticleField.tsx`, `post/PostProcessing.tsx`)
+
+- **Force field:** while the pointer moves, a stroke is recorded every 80 ms in world space, 3.2 m in front of the eye, with the pointer's velocity carried to that depth (capped at 4 m/s). The ring holds 16 impulses.
+- **Shader response:** every mote near a stroke is kicked along it and slightly outward. The falloff is an ellipsoid of radius 0.9 m, reaching about 2.7 m either way along the view. The kick carries on and settles (ω 5.5/s, gone in about 1.5 s). Nothing stays displaced (checked: 7 impulses live straight after a sweep, 0 two seconds later).
+- **Air layer:** a new layer of fine motes (2400 / 1500 / 800 by tier), world-fixed but wrapped round the space in front of the camera, so there is always air between the eye and the cards.
+- **Grain:** it follows the image's brightness. Near the pointer it streaks along the direction of motion and relaxes on the slow `stir` channel.
+
+### Verified
+
+- **All seven domains**, by real click: the correct people; no 10-digit number anywhere on the page; Escape returns to the identical `c`; hover picks the card again afterwards.
+- **Motion edge cases:**
+  - select while scrolling;
+  - Escape mid-entry (a smooth reversal);
+  - press then drag off (no selection);
+  - clicks during a close (ignored until it finishes).
+- **Touch (390×844):** a finger-down press response, tap to enter, tap to return.
+- **Reduced motion:** a direct open and close, with no dust forces.
+- **Frame times:** 16.7 ms average with 0 frames over 33 ms, with pointer sweeps plus scroll, entry and room, at DPR 1 and 2 (headless Chrome, Apple silicon, 60 Hz cap).
+- **Memory:** renderer memory did not grow over repeated open/close cycles.
+- **Build:** the typecheck and `next build` pass.
+- **QA additions:**
+  - harness steps: `mdown` / `mup`, `tdown` / `tup` and `sweep`;
+  - debug hooks: `teamsDebug.still()`, `teamsDebug.dust()` and `teamsDebug.dustGain()`.
+
+### Still open
+
+- The dust response is deliberately subtle. It was confirmed from the recorded impulses and before/after crops, but it is hard to judge from stills: judge it live.
+- A small reflection of the commit light can show near the chosen card's top edge.
+- Performance on a real mid-range phone is still unmeasured.
+
+## 9 · Card → domain entry and domain interior (September 2026)
+
+The brief: the entry felt slow, awkward and generic, and the room felt like a game level. Now the card is a threshold you dive through, and the room is an editorial gallery. The architecture is unchanged (one camera writer, one scroll pipeline, one pointer channel, one post stack). This pass targets desktop; the phone rooms were left as they were at the user's request.
+
+### The entry (`focus.ts`, `camera.ts`, `world/DomainCards.tsx`)
+
+- **Duration:** open 1.35 s (from about 2.3 s), close 1.1 s, and the card's commit 0.28 s.
+- **Timing curve:** a new monotone timing curve (`BEATS`). The eye gathers momentum almost at once, travels, crosses the surface about two thirds of the way through, and decelerates into the room. The close runs the same curve in reverse (`exitEase`).
+- **Path:**
+  - no pull-back: the first key moves 10 % towards the squared-up pose;
+  - the squared-up key sits 0.84 of the orbit distance in front of the pushed card, and its place along the path is proportional to distance, so a centred card is entered almost at once;
+  - the crossing is 0.12 m past the surface with the lens 4° wider;
+  - the settle is 0.9 m inside the room.
+- **Threshold:** as the eye reaches the card, its type fills the view, then an aperture opens from the card's centre. Inside it the ink and the coat's reflection are removed, so the room shows through the opening with a thin rim, and the camera passes through it. The card is never faded out or swapped.
+- **Traced (real click, desktop):**
+  - entry: first movement about 94 ms after the click, settled at about 1.33 s;
+  - Escape: first movement about 124 ms, back at about 1.10 s, at the same orbit position, with focus on the domain's nav button.
+
+### The room (`world/DomainInterior.tsx`, `world/domainPieces.ts`)
+
+- **Shell:** matte plaster. A light slot in the ceiling just before the back wall washes the far wall from above. The side walls, ceiling and floor fall into shade towards the entrance, and a soft pool of light lies on the floor. The corners are soft, with no hard seams, and there is no grid and no glow.
+- **Name:** signage on the back wall in the cards' own type (Archivo, expanded): the index ("0N / 07"), the name in up to three lines, a rule, and the count ("N MEMBERS" / "N OFFICERS"). On desktop it is set left and never runs behind the centrepiece.
+- **People:** a freestanding frosted pane in the card's own material:
+  - a "MEMBERS" label and hairline, then a quiet index and each name in the site's serif;
+  - the pane is only as tall as its names need;
+  - it stands to the left of the axis, placed from the window's aspect so it is never cut off by the frame.
+- **CORE:** a symmetrical chamber. Four frosted steles, one per office (role in mono small caps, name in large serif), line a converging nave on an axis inlaid in the floor. It has no centrepiece: its officers are its architecture.
+- **Centrepieces**, one per domain. Each is abstract and says nothing factual about the domain:
+  - **Web and App:** three device frames, one with a frosted pane;
+  - **Competitive Programming:** a search tree with one solution path in the domain's colour;
+  - **Events:** a programme of stages stepping out of the far end of the room and towards the viewer, with one of them marked "now";
+  - **Contents and Design:** a layout sheet (image block, headline, columns, swatch);
+  - **HR and Logistics:** a knotted line with a bead where it is held;
+  - **Marketing:** ripples spreading from one source.
+- **Arrival:** the room's light comes up over everything in it together, so nothing appears as a black cut-out. After that the name inks in, the centrepiece settles into place, and the people ink in. It is all keyed on the focus scalar, so leaving reverses it exactly.
+- **Glass:** the room glass has a satin coat (clearcoat roughness 0.34). The sharper coat focused the room's key light into a hot point on the pane's edge.
+
+### Light
+
+- **Room key:** it now sits above and just ahead of the eye, so its highlight falls away from the lens.
+- **Pointer light:** it is lifted well above the pointer ray, so its reflection in the cards' coat rides their top edge. Before, it showed as a spot on the card's index text.
+
+### Verified (desktop, headless Chrome with the GPU, 1440×900)
+
+- **Rooms:** all seven, with the correct people (CORE: roles and names; Prithvi in Web and App; Varshhaa in HR and Logistics) and no roll numbers.
+- **Entry, frame by frame:** posed for a side card (Contents and Design from Events) and a centred card (Web and App): swing and squaring up, approach, type filling the view, aperture, crossing, arrival, settled room.
+- **Real input:** hover, press, click, the room, then Escape back to the same card with focus on its nav button.
+- **Reduced motion:** a direct cut into the room and back, ArrowRight to the next domain, focus restored.
+- **Frames:** 916 across real opens, closes, a next step and pointer moves in the rooms: 16.7 ms average, max 16.8 ms, 0 over 33 ms, at DPR 1 and 2. This is capped at 60 Hz, so it shows no stalls, not headroom.
+- **Memory:** the JS heap ended lower than it started.
+- **Build:** the typecheck and `next build` pass.
+
+### Still open
+
+- **Phone rooms (390×844):** they need their own layout. The pane and the outer CORE steles are cut off at the frame edge. This was deferred at the user's request.
+- **Room type:** it is drawn into the 3D scene, so it can't be selected. The accessible copy is the DOM article.
+- **Edge line:** a faint dashed highlight can show along the top edge of a room pane at DPR 1.
+
+## 10 · The domain interior replaced by a hand of member cards (September 2026)
+
+This supersedes the room design in §9. The rooms were visually overbuilt for what they communicate: walls, floor, props and panels around a few names. An open domain is now its people, dealt out of its card as a small hand of physical cards. The 3D world stays for exploring: carousel, spine, cards, atmosphere, pointer and scroll.
+
+### What was removed
+
+- **Deleted:** `world/DomainInterior.tsx` and `world/domainPieces.ts`:
+  - seven always-mounted rooms (shell, signage, panes, CORE's steles);
+  - the six centrepieces;
+  - their three custom shader programs (shell, signage, printed pane);
+  - about seventeen canvas textures.
+- **Room key light:** removed from `TeamsWorld`.
+- **Camera constants:** `roomSize` is removed; `ROOM_EYE` / `roomFov` are now `BEYOND_EYE` / `beyondFov`, since the eye still settles just through the card.
+
+### The handover (unchanged path, new destination)
+
+- **Unchanged:** the entry path of §9 (commit, travel, type filling the view, the aperture opening, the crossing).
+- **Behind the card:** only the Teams atmosphere. The spine is already gone at that point, the ring has given way, and the dust is kept at 22 % (it was 10 %) as a depth field.
+- **The deal:** the member cards rise out of the aperture as a stack and fan out while the camera settles (focus 0.66 → 1). The domain's identity arrives with them, and the controls come last.
+- **Reversible:** it is all keyed on the focus scalar, so closing collapses the hand back into the opening, and Next / Previous collapse one hand and deal the next.
+
+### The hand (`ui/MemberHand.tsx`, styles in `ui/teams.css`)
+
+- **Cards:** DOM and CSS 3D, no WebGL. Each is a dark, faintly tinted coated surface with:
+  - a thin body plate behind it (a turned card shows its edge);
+  - a thin edge, brightest along the top;
+  - a shadow it throws on the cards beneath;
+  - light that slides across the coat from the pointer.
+- **Typography:** the CORE language: a short rule, ROLE in mono, NAME in Instrument Serif. Members have no role in the data, so they read MEMBER. Each name is measured in the loaded serif and set as large as its card allows, with no lone initial on a line. The foot carries "0N / 0N"; a drawn card also shows the domain's name. No roll numbers, nothing invented.
+- **Composition by count:**
+  - **one card** (Marketing): the hero, slightly off-axis;
+  - **two**: an overlapping pair;
+  - **four** (CORE): a fan with the Chairperson standing slightly proud.
+  - Every fan is stacked in depth with the top card nearest (36 px apart, so turned neighbours never cut through each other), with fixed small irregularities. Every name sits in the part of its card that stays visible.
+- **Pointer** (the Teams pointer channel). Hover is decided from the hand's rest geometry, with a little hysteresis, so a moving card never flickers its own hover.
+  - Approaching turns the nearest card slightly.
+  - Reaching it pulls it out: +95 px forward, up, a little towards its own open side, squared to the eye, tilting a few degrees with the pointer.
+  - The cards above it make room (0.14 of a card width), the cards below give a little, and the outer cards sink back.
+  - Springs are critically damped (ω 24 out, 15 back; no overshoot).
+- **Click (or Enter):** draws the card to the centre, square, at 1.22×, and the rest recede and dim. Escape or a click beside the hand puts it back; a second one leaves the domain. `teamsFrame.member` carries this; `TeamsInput` stays the only input handler.
+- **Accessibility:**
+  - the cards are buttons with real text, so they are the accessible copy;
+  - `aria-pressed` marks the drawn card;
+  - keyboard focus lifts a card like hover does;
+  - the domain name is the focused heading on open.
+- **Reduced motion:** the hand appears and responds without travel or tilt.
+
+### Verified (desktop 1440×900, headless Chrome with the GPU)
+
+- **Real clicks:** CORE (four), Web and App and Competitive Programming (pairs) and Marketing (one): hover pull, neighbours giving way, drawing, putting back, closing.
+- **The handover, posed frame by frame:** type filling the view, the first card rising in the aperture, the fan opening, the identity arriving.
+- **Keyboard:** Tab to a card, Enter draws it (`aria-pressed` true on that card only), Escape puts it back with the domain still open, ArrowRight moves to the next domain, and Escape leaves.
+- **Data:** no 10-digit number on the page.
+- **Reduced motion:** open, then close with focus restored.
+- **Frames:** 1,133 at DPR 1 and 1,142 at DPR 2 through open, hover sweeps, draw, put back, next and close. All at 16.7 ms, max 16.8 ms, none over 33 ms (headless, 60 Hz cap). The JS heap ended lower than it started.
+- **Checks:** the typecheck passes.
+
+### Still open
+
+- **Phone (390×844):** the pair fits, but CORE's four-card fan runs off both sides. The phone layout was deferred at the user's request.
+- **Real device:** not yet measured on a real device.

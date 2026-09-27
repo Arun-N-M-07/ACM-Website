@@ -37,7 +37,7 @@ export type TeamsState =
 
 interface TeamsStore {
   state: TeamsState;
-  /** Card nearest the centre of the orbit (0..5), for the index and labels. */
+  /** Card nearest the centre of the orbit (0..DOMAIN_COUNT-1), for the index and labels. */
   current: number;
   /** The chosen card while focused / open. */
   selected: number | null;
@@ -82,6 +82,8 @@ export const teamsFrame = {
   pressure: 0,
   /** Upward scroll pressure at the start of the world: sustained, it takes you back out. */
   pull: 0,
+  /** Seconds the camera has been at rest at the floor of the world (the pull only counts after a moment). */
+  floorRest: 0,
 
   // ── Travel (written by the travel timeline) ───────────────────────────────
   travel: {
@@ -111,17 +113,27 @@ export const teamsFrame = {
   focus: 0,
   /** The dive into a card as it opens (0..1, peaks mid-flight): drives the lens surge. */
   dive: 0,
+  /** A chosen card's acknowledgement (0..1, quick): it comes forward and squares up at once. */
+  commit: 0,
   /** The card the focus shot is on — continuous, so card-to-card moves arc between them. */
   focusK: 0,
 
   // ── Orbit ─────────────────────────────────────────────────────────────────
-  /** Damped carousel coordinate: 0 = card 01 centred … 5 = card 06, beyond = outro. */
+  /** The orbit coordinate: < 0 the entrance (THE TEAM), 0 = card 01 centred … 6 = card 07, beyond = outro. */
   c: -0.35,
-  /** dc/dt (cards per second), smoothed. */
+  /** dc/dt (cards per second), smoothed at the camera's rate (bank, particles). */
   cVel: 0,
+  /** The orbit follower's own velocity (critically damped; the primary response). */
+  cV: 0,
+  /** Orbit velocity as the cards feel it (a little later than the camera). */
+  cardVel: 0,
+  /** Orbit velocity as the spine feels it (heavier still: it trails and catches up). */
+  spineVel: 0,
 
   // ── Pointer (NDC, −1..1, +y up) ───────────────────────────────────────────
-  pointer: { x: 0, y: 0, sx: 0, sy: 0, active: false, dx: 0, dy: 0, vx: 0, vy: 0, fx: 0, fy: 0, fvx: 0, fvy: 0, energy: 0 },
+  pointer: { x: 0, y: 0, sx: 0, sy: 0, cx: 0, cy: 0, active: false, dx: 0, dy: 0, vx: 0, vy: 0, fx: 0, fy: 0, fvx: 0, fvy: 0, energy: 0, stir: 0, dirX: 1, dirY: 0 },
+  /** The card being pressed (pointer or finger down on it, −1 none) and where, in its plane: the touch lands before the click. */
+  press: { card: -1, x: 0, y: 0 },
   /** Card under the pointer (−1 none). */
   hover: -1,
   /** Where the pointer is on that card (metres from its centre, in its plane), eased. */
@@ -132,6 +144,8 @@ export const teamsFrame = {
   touchCard: -1,
   /** Visibility of content physically behind the chosen card. */
   domainReveal: 0,
+  /** In an open domain, the member card drawn from the hand (−1: the hand at rest). */
+  member: -1,
 
   /** The selected card's rectangle on screen (CSS px) — the detail layer is laid out inside it. */
   cardRect: { x: 0, y: 0, w: 0, h: 0, visible: false } as ScreenRect,

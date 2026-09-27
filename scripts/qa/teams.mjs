@@ -6,6 +6,8 @@
 // Steps (comma-separated):
 //   portal[:f]           jump to stand before the portal (f = fraction of the portal segment, default .9)
 //   at:<c>               place the camera inside the world at orbit coordinate c (no travel)
+//   pose:<i>:<focus>     hold the entry into card i at focus 0..1 (the path, frame by frame)
+//   trace:<l>:<ms>:<n>   sample orbit, scroll and camera every ms, n times (writes <l>.json)
 //   p:<progress>         jump to raw progress
 //   hold:<ms>            press the portal (pointer on its button), hold ms, release
 //   touchhold:<ms>       the same with a touch (needs MOBILE=1)
@@ -14,6 +16,9 @@
 //   wheels:<dy>:<n>:<ms> n wheel events, ms apart
 //   move:<x>:<y>         move the mouse (fractions of the viewport, 0..1)
 //   click:<x>:<y>        click at fractions of the viewport
+//   mdown:<x>:<y> / mup  press the mouse there and hold it / release it
+//   tdown:<x>:<y> / tup  a finger down there and held / lifted (MOBILE=1)
+//   sweep:<x0>:<y0>:<x1>:<y1>:<ms>  move the mouse across in real time
 //   tap:<x>:<y>          touch tap at fractions of the viewport (MOBILE=1)
 //   swipe:<dy>           touch swipe (px, + = content moves up / scroll down)
 //   card:<i>             click the centre of card i on screen
@@ -54,6 +59,14 @@ await page.waitForSelector('.loader[data-state="ready"]', { timeout: 180000 });
 await sleep(800);
 await page.click('.loader-enter button[aria-label="Enter silently"]');
 await sleep(1800);
+// The opening film owns the camera while it runs; the Teams steps below place
+// the journey directly, so end the film first (no-op when it isn't playing).
+await page.evaluate(() => {
+  const intro = window.__acm?.intro;
+  if (intro?.snapshot?.().active) intro.skip?.();
+});
+// The film's handoff pins the scroll position for 1.5 s (placeScroll); let it expire.
+await sleep(1800);
 
 let vw = W;
 let vh = H;
@@ -83,6 +96,10 @@ for (const step of steps.split(',').filter(Boolean)) {
     } else if (op === 'at') {
       await page.evaluate((c) => window.__acm.teams.at(c), Number(a[0]));
       await sleep(Number(process.env.SETTLE ?? 2400));
+    } else if (op === 'pose') {
+      // pose:<card>:<focus> — hold the entry into a card at a point on its path.
+      await page.evaluate((i, f) => window.__acm.teams.pose(i, f), Number(a[0]), Number(a[1]));
+      await sleep(Number(process.env.POSE_SETTLE ?? 500));
     } else if (op === 'p') {
       await page.evaluate((p) => window.__acm.jump(p), Number(a[0]));
       await sleep(2800);
@@ -108,6 +125,20 @@ for (const step of steps.split(',').filter(Boolean)) {
       for (let i = 0; i < Number(a[1]); i++) { await page.mouse.wheel({ deltaY: Number(a[0]) }); await sleep(Number(a[2])); }
     } else if (op === 'move') {
       await page.mouse.move(Number(a[0]) * vw, Number(a[1]) * vh, { steps: 10 });
+    } else if (op === 'mdown') {
+      // mdown:<x>:<y> — move there and press the mouse (held until mup).
+      await page.mouse.move(Number(a[0]) * vw, Number(a[1]) * vh, { steps: 4 });
+      await page.mouse.down();
+    } else if (op === 'mup') {
+      await page.mouse.up();
+    } else if (op === 'sweep') {
+      // sweep:<x0>:<y0>:<x1>:<y1>:<ms> — move the mouse across in real time.
+      const [x0, y0, x1, y1, ms] = a.map(Number);
+      const n = Math.max(2, Math.round(ms / 16));
+      for (let k = 0; k <= n; k++) {
+        await page.mouse.move((x0 + ((x1 - x0) * k) / n) * vw, (y0 + ((y1 - y0) * k) / n) * vh);
+        await sleep(ms / n);
+      }
     } else if (op === 'click') {
       await page.mouse.click(Number(a[0]) * vw, Number(a[1]) * vh);
     } else if (op === 'tap') {
@@ -116,6 +147,11 @@ for (const step of steps.split(',').filter(Boolean)) {
       await touch('touchStart', x, y);
       await sleep(60);
       await touch('touchEnd', x, y);
+    } else if (op === 'tdown') {
+      // tdown:<x>:<y> — a finger down there (held until tup).
+      await touch('touchStart', Number(a[0]) * vw, Number(a[1]) * vh);
+    } else if (op === 'tup') {
+      await touch('touchEnd', 0, 0);
     } else if (op === 'swipe') {
       const dy = Number(a[0]);
       const x = vw / 2;
@@ -144,6 +180,24 @@ for (const step of steps.split(',').filter(Boolean)) {
       }
     } else if (op === 'state') {
       await snap(a[0]);
+    } else if (op === 'trace') {
+      // trace:<label>:<everyMs>:<n> — sample the orbit, scroll and camera on
+      // the page's own clock (for settle time, overshoot, reversal lag).
+      const [label = 'trace', every = '50', n = '40'] = a;
+      const rows = await page.evaluate(async (every, n) => {
+        const out = [];
+        const t0 = performance.now();
+        for (let i = 0; i < n; i++) {
+          const s = window.__acm.teams.snapshot();
+          const p = window.__acm.progress;
+          out.push({ t: Math.round(performance.now() - t0), c: s.c, cVel: s.cVel, pt: +p.target.toFixed(5), pv: +p.value.toFixed(5), focus: s.focus, cam: window.__acm.teams.camera?.() });
+          await new Promise((r) => setTimeout(r, every));
+        }
+        return out;
+      }, Number(every), Number(n));
+      writeFileSync(`${out}/${label}.json`, JSON.stringify(rows));
+      const settle = rows.findIndex((r, i) => i > 0 && rows.slice(i).every((q) => Math.abs(q.c - rows[rows.length - 1].c) < 0.002));
+      logs.push(`[trace] ${label} n=${rows.length} c ${rows[0].c}→${rows[rows.length - 1].c} settled≈${settle >= 0 ? rows[settle].t : '—'}ms`);
     } else if (op === 'fstart') {
       await page.evaluate(() => {
         window.__ft = [];

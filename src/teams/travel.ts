@@ -6,9 +6,11 @@
  * the camera, the post pass and the tunnel each frame.
  *
  *   enter:  hold completes → plunge into the ring → [crossing, hidden by a
- *           bloom-out] → streak tunnel → out of the mouth into darkness
- *           → arrival (the world reveals itself; the camera glides in)
- *           → teamsActive, scroll handed back exactly where the glide ends
+ *           bloom-out] → streak tunnel → out of the mouth, facing THE TEAM
+ *           → teamsActive at once: the tunnel ends exactly on the entrance
+ *           path's first pose, so scroll takes over with no timed glide.
+ *           The world's light comes up over the next moment (ambient only —
+ *           it never holds the scroll or moves the camera).
  *
  *   exit:   sustained scroll back at the start of the world → back out of
  *           the mouth and up the tunnel → [crossing] → out of the membrane
@@ -25,10 +27,10 @@ import { smoothstep } from '@/systems/camera/pose';
 import { progress } from '@/systems/scroll/progress';
 import { placeScroll } from '@/systems/scroll/ScrollTimeline';
 import { ENTER_CROSS, EXIT_CROSS } from './camera';
-import { C_ENTRY, carouselAt, progressForCarousel } from './layout';
+import { TEAMS_FLOOR, carouselAt } from './layout';
 import { teams, teamsFrame } from './state';
 
-const DUR = { enter: 2.3, arrival: 1.8, exit: 2.1 };
+const DUR = { enter: 2.3, arrival: 1.6, exit: 2.1 };
 
 let tl: gsap.core.Timeline | null = null;
 
@@ -39,7 +41,7 @@ function kill() {
 
 /** Scroll walls: outside, the portal gate is a ceiling; inside, it's a floor. */
 export function applyScrollLock() {
-  progress.lock = teamsFrame.inside ? { min: PORTAL_GATE, max: 1 } : { min: 0, max: PORTAL_GATE };
+  progress.lock = teamsFrame.inside ? { min: TEAMS_FLOOR, max: 1 } : { min: 0, max: PORTAL_GATE };
 }
 
 /** Cross between worlds (always behind a flash or a fade). */
@@ -49,12 +51,8 @@ function setInside(inside: boolean) {
   applyScrollLock();
 }
 
-/**
- * The progress value the arrival settles on: card 01 centred, as the
- * reference's work opens on its first project. (The establishing view lies
- * between it and the gate; scrolling back up from card 01 passes through it.)
- */
-const REST_P = progressForCarousel(C_ENTRY);
+/** The progress value the arrival settles on: the floor of the world, facing THE TEAM. */
+const REST_P = TEAMS_FLOOR;
 
 function resetTravel(dir: 1 | -1) {
   const tr = teamsFrame.travel;
@@ -130,31 +128,30 @@ export function onArrival(cb: () => void) {
   arrivalCallback = cb;
 }
 
-function finishArrival(ownsTimeline = true) {
-  teamsFrame.arrival = 1;
+/** The world's light coming up after the crossing — ambient, never blocking input. */
+let glow: gsap.core.Tween | null = null;
+function killGlow() {
+  glow?.kill();
+  glow = null;
+}
+
+/** Out of the tunnel: hand straight over to scroll at the floor of the world. */
+function arrive(reduced: boolean) {
+  teamsFrame.c = carouselAt(REST_P);
+  teamsFrame.cV = teamsFrame.cVel = teamsFrame.cardVel = teamsFrame.spineVel = 0;
+  killGlow();
+  if (reduced) teamsFrame.arrival = 1;
+  else {
+    teamsFrame.arrival = 0;
+    glow = gsap.to(teamsFrame, { arrival: 1, duration: DUR.arrival, ease: 'power2.out', onComplete: () => void (glow = null) });
+  }
   teams().set({ state: 'teamsActive' });
   experience().set({ phase: 'cinematic' });
   placeScroll(REST_P);
-  // (The reduced-motion cut calls this from inside its own fade timeline — leave that running.)
-  if (ownsTimeline) kill();
   const cb = arrivalCallback;
   arrivalCallback = null;
   // After the scroll position has been placed (placeScroll settles over a few frames).
   if (cb) window.setTimeout(cb, 120);
-}
-
-function beginArrival(reduced: boolean) {
-  teams().set({ state: 'teamsEntering' });
-  teamsFrame.arrival = 0;
-  teamsFrame.c = carouselAt(REST_P);
-  teamsFrame.cVel = 0;
-  if (reduced) {
-    teamsFrame.arrival = 1;
-    finishArrival(false);
-    return;
-  }
-  tl = gsap.timeline({ onComplete: () => finishArrival() });
-  tl.to(teamsFrame, { arrival: 1, duration: DUR.arrival, ease: 'none' });
 }
 
 /** The hold completed (or navigation asked to enter): go through. */
@@ -173,7 +170,7 @@ export function enterTeams(opts: { reduced: boolean }) {
         teamsFrame.hold = 0;
         setInside(true);
         teamsFrame.travel.t = 1;
-        beginArrival(true);
+        arrive(true);
       })
       .to(fx, { fade: 0, duration: 0.6, ease: 'power1.out' });
     return;
@@ -192,7 +189,7 @@ export function enterTeams(opts: { reduced: boolean }) {
     },
     onComplete: () => {
       tl = null;
-      beginArrival(false);
+      arrive(false);
     },
   });
 }
@@ -202,6 +199,7 @@ export function exitTeams(opts: { reduced: boolean }) {
   const s = teams().state;
   if (!teamsFrame.inside || s === 'portalExiting' || s === 'portalEntering') return;
   kill();
+  killGlow();
   experience().set({ phase: 'travel', menuOpen: false });
   teams().set({ state: 'portalExiting', selected: null });
   teamsFrame.focus = 0;
@@ -211,6 +209,7 @@ export function exitTeams(opts: { reduced: boolean }) {
     tl = null;
     teamsFrame.hold = 0;
     teamsFrame.heldFor = 0;
+    teamsFrame.arrival = 0;
     teams().set({ state: 'portalIdle' });
     experience().set({ phase: 'cinematic' });
     placeScroll(PORTAL_GATE - 0.0002);
@@ -244,18 +243,20 @@ export function exitTeams(opts: { reduced: boolean }) {
  */
 export function placeInside(p: number) {
   kill();
+  killGlow();
   setInside(true);
   teamsFrame.hold = 0;
   teamsFrame.arrival = 1;
   teamsFrame.focus = 0;
   teams().set({ state: 'teamsActive', selected: null });
   experience().set({ phase: 'cinematic' });
-  return Math.max(PORTAL_GATE, p);
+  return Math.max(TEAMS_FLOOR, p);
 }
 
 /** Leave the world instantly (a jump back to an earlier chapter). */
 export function placeOutside() {
   kill();
+  killGlow();
   arrivalCallback = null;
   setInside(false);
   teamsFrame.hold = 0;
