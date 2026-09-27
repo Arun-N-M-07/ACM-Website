@@ -8,7 +8,7 @@ CEG red building → drone ascent → the campus → straight down the light-wel
 → travel through it → the Teams world: an orbit of six domain cards around a spine
 ```
 
-The event rooms are walk-in installations that perform their event as you scroll (columns that sort themselves for Head First, balloons rising over a contest for CodeX, a machine that boots for Bell Labs…). The corridor ends at a portal: press and hold it (mouse, touch or keyboard) and the world reacts stage by stage for two seconds, then carries you through a tunnel of light into the **Teams world** — a central organic spine with the chapter's six domains on frosted-glass cards around it. Scroll orbits the spine card by card; choose any card and the camera flies to it and it opens: the domain, its members, and room for what's still to be written. See [docs/TEAMS_WORLD.md](docs/TEAMS_WORLD.md).
+The event rooms are walk-in installations that perform their event as you scroll (columns that sort themselves for Head Start, balloons rising over a contest for CodeX, a system design that draws itself for C.O.D.E…). The corridor ends at a portal: press and hold it (mouse, touch or keyboard) and the world reacts stage by stage for two seconds, then carries you through a tunnel of light into the **Teams world** — a central organic spine with the chapter's six domains on frosted-glass cards around it. Scroll orbits the spine card by card; choose any card and the camera flies to it and it opens: the domain, its members, and room for what's still to be written. See [docs/TEAMS_WORLD.md](docs/TEAMS_WORLD.md).
 
 Content is never loose text over the 3D: every piece is a **plate** — a crisp HTML card that lifts out of the thing it describes (the clock tower, a room's title wall, the portal) and stays tied to it with a leader line and a pin; in the Teams world an open domain becomes a screen in a darkened room, its details typed in beside it. The facility has a split-flap departures board of every programme.
 
@@ -42,7 +42,7 @@ src/
   experience/             canvas root, chapter streaming (SceneDirector), shader warm-up
   scenes/
     campus/               sky, the CEG building (cegModel.ts), grounds, fountains + light-well, OSM campus
-    underground/          material kit, descent shaft, facility hall
+    underground/          material kit, the light-well's descent shaft
     events/               corridor, EventRoom (walk-in installation), exhibits/ (walls + centrepieces)
     shared/               atmosphere, world lights, signal thread, canvas panels, props, model slots, error boundary
   teams/                  the portal and the Teams world (docs/TEAMS_WORLD.md)
@@ -52,7 +52,7 @@ src/
     ui/                   PortalHold, TeamsHud, DomainDetail, TeamsInput, TypeIn, teams.css (mounted by TeamsExperience)
     state · layout · camera · travel · focus · controller   state machine, composition, shots, timelines
   systems/
-    camera/               pose math, drone flight, cinematic shots, effects, CameraRig (the one camera owner)
+    camera/               pose math, cinematic shots, effects, CameraRig (the one camera owner)
     scroll/               progress channel (with the portal walls), Lenis + ScrollTrigger timeline
     lighting/             pooled point lights
     textures/             canvas typesetting, procedural surfaces

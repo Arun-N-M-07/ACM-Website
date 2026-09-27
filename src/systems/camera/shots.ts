@@ -1,11 +1,14 @@
 /**
  * Cinematic shots: a pure, deterministic function from scroll progress to a
  * camera pose. Each segment's first pose equals the previous segment's last
- * pose, so the whole journey is one continuous move. The journey opens at the
- * corridor mouth — where the opening cinematic (src/intro) hands over.
+ * pose, so the whole journey is one continuous move. The opening's segments
+ * are shot by src/intro/camera.ts (its last pose is `facilityEnd`, where the
+ * Events segment begins).
  */
 import { CAMERA_STATES as S } from '@/config/camera';
 import { EVENT_STATION_WEIGHTS, PORTAL_DWELL, PORTAL_GATE, SEGMENTS, segmentAt, segmentProgress, progressForRoom } from '@/config/timeline';
+import { progressAtIntroTime } from '@/intro/controller';
+import { STILLS } from '@/intro/timeline';
 import { progressForDomain } from '@/teams/layout';
 import { CORRIDOR, EYE_Y } from '@/config/world';
 import {
@@ -126,6 +129,9 @@ export function evaluateCinematic(p: number, out: CameraPose): CameraPose {
       // Only reachable through the portal (the Teams camera takes over there);
       // outside it, the gate keeps you standing before the ring.
       return copyPose(S.portalStand, out);
+    default:
+      // The opening (its own camera — src/intro/camera.ts — shoots it).
+      return copyPose(S.facilityEnd, out);
   }
 }
 
@@ -136,6 +142,8 @@ export function evaluateCinematic(p: number, out: CameraPose): CameraPose {
  * Each is a progress value whose pose frames a chapter well.
  */
 export const REDUCED_MOTION_STOPS: number[] = [
+  // The opening's framed stills.
+  ...STILLS.map(progressAtIntroTime),
   SEGMENTS.events.start,
   ...CORRIDOR.rooms.map((_, i) => progressForRoom(i)),
   PORTAL_GATE - 0.0002,

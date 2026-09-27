@@ -1,7 +1,7 @@
 'use client';
 /**
  * A light inlaid into the route. Its position and revealed length rewind with
- * scroll. It picks up where the opening cinematic's tunnel line leaves off, at
+ * scroll. It picks up where the opening's lobby hands over, at
  * the corridor mouth, and ends in the portal — and while the portal is held,
  * it floods towards it.
  */
@@ -23,7 +23,7 @@ const within = (segment: keyof typeof SEGMENTS, f: number) => SEGMENTS[segment].
 const key = (p: number, x: number, y: number, z: number) => ({ p, at: new Vector3(x, y, z) });
 
 export const SIGNAL_KEYS = (() => {
-  // From the corridor mouth (where the tunnel's line ends), room by room.
+  // From the corridor mouth (just beyond the lobby's door), room by room.
   const keys = [key(SEGMENTS.events.start, 0, Y, UNDERGROUND.hall.north + 2)];
   for (const r of CORRIDOR.rooms) {
     const [a, b] = roomDwellRange(r.index);
@@ -77,8 +77,8 @@ export function SignalThread() {
   useFrame(() => {
     const p = progress.value;
     const t = signalFraction(p);
-    // During the film it waits in the dark until the tunnel reaches it.
-    if (group.current) group.current.visible = !teamsFrame.inside && (!introFrame.active || introFrame.t > T.tunnel - 0.6);
+    // During the opening it waits beyond the lobby's door until the door opens onto it.
+    if (group.current) group.current.visible = !teamsFrame.inside && (!introFrame.active || introFrame.t > T.door);
     // The hold pulls the rest of the thread into the ring.
     const h = smoothstep(0.45, 1, teamsFrame.hold);
     const shown = t + (1 - t) * h;

@@ -1,9 +1,9 @@
 'use client';
 /**
  * The events corridor: a long concrete spine running north under the red
- * building, with event rooms alternating left and right, the two flagships
- * facing each other in a taller transept, and a tall vestibule ending at the
- * portal to the Teams world.
+ * building, with event rooms alternating left and right in the lineup's
+ * order, the ceiling rising into a taller transept over the flagships, and a
+ * tall vestibule ending at the portal to the Teams world.
  *
  * Rooms stream: only those within `roomWindow` of the camera's current station
  * are mounted (their canvases and geometry are disposed when they leave).
@@ -30,14 +30,8 @@ import { Portal } from '@/teams/portal/Portal';
 const hw = UNDERGROUND.corridor.halfWidth;
 const LOW = UNDERGROUND.corridor.height;
 const rooms = CORRIDOR.rooms;
-const flagships = rooms.filter((r) => r.event.flagship);
-const TRANSEPT = flagships.length
-  ? {
-      z0: Math.max(...flagships.map((r) => r.z + r.length / 2)) + 1,
-      z1: Math.min(...flagships.map((r) => r.z - r.length / 2)) - 1,
-      height: Math.max(...flagships.map((r) => r.height)),
-    }
-  : null;
+/** The raised stretch over the flagships (config/world). */
+const TRANSEPT = CORRIDOR.transept;
 export const VESTIBULE = { z0: TRANSEPT ? TRANSEPT.z1 : DOOR.z + 12, z1: DOOR.z, height: 9 };
 const WALL_H = VESTIBULE.height;
 

@@ -22,19 +22,13 @@ export const CHAPTER = {
     'Our mission is to inspire students to learn and master computer science tools, cultivating a genuine passion for the discipline. We are dedicated to removing obstacles, offering clear guidance, and empowering students to achieve their goals.',
 
   whatWeDo:
-    'We organize a variety of events, including CODHER, which promotes female representation in technology, and PRODIGY, which fosters a passion for computer science among school students. We also host webinars and alumni talks to offer insights into new technologies and provide career guidance.',
+    'We organize a variety of events, including CODHER, which promotes female representation in technology, and PRODIGY, which fosters a passion for computer science among school students.',
 
   membership: {
     openTo: 'Anyone from any department can be a part of this club.',
     fee: 'There is no membership fee to join.',
     howToJoin: 'An open call is conducted annually during the even semesters. Those who attend can become a part of the club.',
   },
-
-  /** Programmes listed in the site FAQ that do not have their own event card. */
-  alsoRuns: [
-    { name: 'Periodic Sessions', text: 'Cover emerging technologies.' },
-    { name: 'Webinars & Alumni Talks', text: 'Insights into new technologies and career guidance.' },
-  ],
 
   /** Email and phone contacts: the chapter's 2026–27 "For further queries" card. */
   contact: {

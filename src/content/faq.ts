@@ -25,14 +25,14 @@ export const FAQ: { q: string; a: string }[] = [
   },
   {
     q: 'How can one access the information posted, particularly regarding opportunities?',
-    a: 'Information is disseminated through the club\'s newsletter. You can subscribe with your email to receive updates on events and opportunities. The "Offcamp" program, which shares off-campus opportunities like scholarships, internships, and jobs, is accessible through Instagram and LinkedIn.',
+    a: 'Information is disseminated through the club\'s newsletter. You can subscribe with your email to receive updates on events and opportunities.',
   },
   {
     q: 'What do we do?',
-    a: 'We organize a variety of events, including CODHER, which promotes female representation in technology, and PRODIGY, which fosters a passion for computer science among school students. We also host webinars and alumni talks to offer insights into new technologies and provide career guidance.',
+    a: 'We organize a variety of events, including CODHER, which promotes female representation in technology, and PRODIGY, which fosters a passion for computer science among school students.',
   },
   {
     q: 'What programs/sessions do we conduct?',
-    a: 'C.O.D.E: Supports pre-final and final year students with interview and placement preparation. HEADFIRST: Guides first-year students on the fundamentals of data structures and algorithms for competitive programming. Periodic Sessions: Cover emerging technologies. CODEX: A series of competitive programming contests. The Bell Labs: In-depth sessions on operating systems and related concepts. Masterclass: Interactive sessions with alumni about pursuing higher studies.',
+    a: 'C.O.D.E: Supports pre-final and final year students with interview and placement preparation. MasterClass: Interactive sessions with alumni about pursuing higher studies. Head Start: Guides first-year students on the fundamentals of data structures and algorithms for competitive programming. CodeX: A series of competitive programming contests. Prodigy: An annual state-level technical event for school students in grades 9–12. CodHer: A women-only hackathon. The 2026 lineup also includes Tech Talks, PatternX and the Open Source Mentorship Program.',
   },
 ];

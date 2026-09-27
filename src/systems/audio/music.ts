@@ -3,9 +3,8 @@
  * as the journey goes underground and opens again inside — so the song feels
  * like it is playing in the room you are in. No other sound is made.
  *
- * The intro drives it as a clock: it starts the score at an exact point
- * (`playFrom`), reads its position back (`time`), and lets it breathe out and
- * back in when the film comes to rest (`hold`, `setLevel`).
+ * Entering with sound starts the score at a chosen point (`playFrom`) from
+ * inside the click; from then on it plays on, whatever the scroll does.
  *
  * Everything is wrapped defensively: a missing file, a blocked AudioContext or
  * a codec the browser dislikes must never break the journey.
@@ -102,8 +101,10 @@ class MusicPlayer {
     window.clearTimeout(this.holdTimer);
     this.holding = false;
     try {
+      // play() first, synchronously inside the gesture (Safari needs that), then the context.
+      const playing = el.play();
       await this.ctx?.resume();
-      await el.play();
+      await playing;
       this.state = 'playing';
       this.message = '';
       this.fadeTo(MUSIC.volume * this.level, MUSIC.fade);
@@ -136,8 +137,9 @@ class MusicPlayer {
     else el.addEventListener('loadedmetadata', seek, { once: true });
     this.silence();
     try {
+      const playing = el.play();
       await this.ctx?.resume();
-      await el.play();
+      await playing;
       this.state = 'playing';
       this.message = '';
       this.fadeTo(MUSIC.volume * this.level, fade);

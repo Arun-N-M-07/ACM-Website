@@ -9,6 +9,7 @@ import { PORTAL_DWELL, SEGMENTS, type SegmentId } from '@/config/timeline';
 import { CORRIDOR } from '@/config/world';
 import { useExperience } from '@/store/experience';
 import { roomDwellRange } from '@/systems/camera/shots';
+import { dossierOrigin } from './dossierOrigin';
 import { Plate, PlateFacts } from './Plate';
 
 const at = (seg: SegmentId, t: number) => SEGMENTS[seg].start + (SEGMENTS[seg].end - SEGMENTS[seg].start) * t;
@@ -51,7 +52,13 @@ export function Plates() {
             <p className="plate-body">{e.summary}</p>
             {e.facts.length > 0 && <PlateFacts facts={e.facts.slice(0, 3).map((f) => ({ label: f.label, value: f.value }))} />}
             <div className="plate-actions">
-              <button className="plate-btn" onClick={() => set({ dossier: e.slug })}>
+              <button
+                className="plate-btn"
+                onClick={(ev) => {
+                  dossierOrigin.rect = ev.currentTarget.closest('.plate-card')?.getBoundingClientRect() ?? null;
+                  set({ dossier: e.slug });
+                }}
+              >
                 Full dossier →
               </button>
               {e.links.slice(0, 1).map((l) => (

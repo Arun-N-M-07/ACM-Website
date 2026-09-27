@@ -5,7 +5,7 @@ export const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? CHAPTER.siteUrl;
 export const SITE_TITLE = 'ACM-CEG Student Chapter | Anna University';
 
 export const SITE_DESCRIPTION =
-  'The ACM-CEG Student Chapter at the College of Engineering Guindy, Anna University — since 2004. Travel from the red building to the heart of the chapter: Prodigy, CodHer, C.O.D.E, CodeX, Head First, Bell Labs, MasterClass and the team behind them.';
+  'The ACM-CEG Student Chapter at the College of Engineering Guindy, Anna University — since 2004. Travel from the red building to the heart of the chapter: C.O.D.E, Tech Talks, MasterClass, Head Start, PatternX, CodeX, Prodigy, the Open Source Mentorship Program, CodHer and the team behind them.';
 
 export const KEYWORDS = [
   'ACM CEG',

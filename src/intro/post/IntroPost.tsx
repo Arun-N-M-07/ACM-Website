@@ -1,7 +1,7 @@
 'use client';
 /**
  * The film's lens: bloom where light is bright enough to bloom (lamps in the
- * mist, the sun, embers, the tunnel's light, EVENTS catching it), and a grade
+ * mist, the sun, embers, the name's chrome, the door's light), and a grade
  * that follows the colour script — colour arriving with the light.
  *
  * Built from three's own passes, like the Teams world's (no new dependency):

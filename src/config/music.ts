@@ -2,14 +2,14 @@
  * The soundtrack. One track, and no sound effects: the experience is either
  * music or silence.
  *
- * The opening cinematic is scored to this recording — a section of it is
- * locked to the film (src/intro/timeline.ts: SCORE_IN) — and it carries on
- * quietly under the rest of the journey.
+ * Entering with sound starts it at a chosen point in the recording
+ * (src/intro/timeline.ts: SCORE_IN), inside the Enter click, and it plays on
+ * under the whole journey whatever the scroll does.
  *
  * The audio file is NOT part of this repository. Drop your own copy at
  * `public/audio/the-batman.mp3` (see docs/ASSETS.md), and make sure the
  * chapter has the right to use it on a public site before deploying. Without
- * it, the intro plays in silence and the music controls stay hidden.
+ * it, the opening plays in silence and the music controls stay hidden.
  */
 export const MUSIC = {
   title: 'The Batman',

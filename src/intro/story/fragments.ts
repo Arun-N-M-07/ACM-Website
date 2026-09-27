@@ -4,18 +4,20 @@
  * Deliberately little is said. Every fact here is the chapter's own
  * (content/chapter.ts): founded in 2004 — so "22 years ago" is computed, not
  * written — within CEG, a student chapter of the Association for Computing
- * Machinery. The rest is what the chapter says it is for, in as few words as
- * it takes.
+ * Machinery. (The name itself is not written on paper: it stands in the
+ * world, on a stone in the mist — world/AcmStone.tsx.) The rest is what the chapter says it is for,
+ * in as few words as it takes.
  *
  * Each fragment is a physical sheet with its own life: it comes out of the
- * mist on its own path, settles off-centre (the middle of the frame belongs
- * to what the mist is hiding), its ink surfaces, it is read, and it burns —
+ * mist on its own path, settles, its ink surfaces, it is read, and it burns —
  * each from a different place — to ash that the air takes away.
  *
- * Times are film seconds (see ../timeline.ts). The readable windows contain
- * the rest points, so a visitor who stops always stops on a legible page.
+ * Every time here is a beat of the scroll (see ../timeline.ts): a sheet is
+ * exactly as far through its arrival, its ink or its fire as the visitor has
+ * scrolled, and each stays legible across about six beats.
  */
 import { CHAPTER, yearsActive } from '@/content/chapter';
+import { T } from '../timeline';
 
 export type LineStyle = 'display' | 'italic' | 'caps';
 
@@ -31,7 +33,7 @@ export interface Fragment {
   stamp?: string;
   /** Sheet size in metres (width, height). */
   size: [number, number];
-  /** Film times: arrives (from → settled), ink surfaces, burns (ignites → gone). */
+  /** Beats: arrives (from → settled), ink surfaces, burns (ignites → gone). */
   arrive: [number, number];
   ink: [number, number];
   burn: [number, number];
@@ -58,13 +60,13 @@ export const FRAGMENTS: Fragment[] = [
       { text: 'a story began.', style: 'italic' },
     ],
     stamp: `EST. ${CHAPTER.established}`,
-    size: [1.34, 0.9],
-    arrive: [3, 5.4],
-    ink: [4.5, 6.6],
-    burn: [9.3, 12.2],
-    rest: [-0.46, -0.1, 3.05],
-    from: [-2.6, 0.55, 7.5],
-    tilt: [-0.05, 0.2, 0.035],
+    size: [1.74, 1.17],
+    arrive: [4, 9],
+    ink: [7.5, 10.5],
+    burn: [16.5, 20.5],
+    rest: [-0.22, -0.06, 3.1],
+    from: [-4.2, 1.5, 15],
+    tilt: [-0.05, 0.16, 0.03],
     ignite: [0.92, 0.12],
     holes: [[0.3, 0.7]],
     seed: 11,
@@ -74,15 +76,14 @@ export const FRAGMENTS: Fragment[] = [
     lines: [
       { text: 'Within CEG,', style: 'display' },
       { text: 'a community was born.', style: 'italic' },
-      { text: 'Association for Computing Machinery', style: 'caps' },
     ],
-    size: [1.42, 0.98],
-    arrive: [9, 11.4],
-    ink: [10.4, 12.7],
-    burn: [15, 17.8],
-    rest: [0.5, 0.02, 3.2],
-    from: [2.8, -0.35, 6.2],
-    tilt: [0.04, -0.24, -0.05],
+    size: [1.8, 1.14],
+    arrive: [19, 24],
+    ink: [22.5, 25.5],
+    burn: [31.5, 35.5],
+    rest: [0.24, 0.02, 3.2],
+    from: [4.4, -0.8, 14],
+    tilt: [0.04, -0.2, -0.045],
     ignite: [0.04, 0.55],
     holes: [[0.62, 0.3], [0.8, 0.78]],
     seed: 23,
@@ -94,14 +95,14 @@ export const FRAGMENTS: Fragment[] = [
       { text: 'To build. To create.', style: 'display' },
       { text: 'To compete. To grow together.', style: 'display' },
     ],
-    size: [1.46, 1.02],
-    arrive: [15.4, 17.8],
-    ink: [16.7, 19.4],
-    burn: [21.6, 24.6],
+    size: [1.9, 1.33],
+    arrive: [55, 60],
+    ink: [58.5, 61.5],
+    burn: [67.5, 71.5],
     // Lower now: the building is beginning to come out of the mist above it.
-    rest: [-0.62, -0.26, 3.35],
-    from: [-1.4, -1.9, 5.8],
-    tilt: [0.07, 0.26, -0.03],
+    rest: [-0.26, -0.2, 3.35],
+    from: [-2.6, -3.2, 13],
+    tilt: [0.07, 0.2, -0.03],
     ignite: [0.5, 0.96],
     holes: [[0.22, 0.28], [0.74, 0.46]],
     seed: 37,
@@ -113,22 +114,32 @@ export const FRAGMENTS: Fragment[] = [
       { text: 'Today,', style: 'display' },
       { text: 'the story continues.', style: 'display' },
     ],
-    size: [1.26, 0.88],
-    arrive: [21.4, 23.6],
-    ink: [22.6, 24.8],
-    burn: [25.8, 27.6],
+    size: [1.72, 1.2],
+    arrive: [70, 75],
+    ink: [73.5, 76.5],
+    burn: [82.5, 86.5],
     // Low and to the side: the building is the subject now.
-    rest: [0.66, -0.36, 3.2],
-    from: [2.4, 0.9, 7.4],
-    tilt: [-0.06, -0.2, 0.045],
+    rest: [0.34, -0.3, 3.25],
+    from: [3.8, 2.2, 15],
+    tilt: [-0.06, -0.16, 0.04],
     ignite: [0.1, 0.05],
     holes: [[0.55, 0.62]],
     seed: 53,
   },
 ];
 
-/** For assistive technology: each fragment's words, and when they can be read. */
-export const STORY_LINES = FRAGMENTS.map((f) => ({
-  text: f.lines.map((l) => l.text).join(' '),
-  readable: [f.ink[1] - 0.4, f.burn[0] + 0.3] as [number, number],
-}));
+/**
+ * For assistive technology: each fragment's words — and the chapter's name,
+ * which is not on paper — and when they can be read.
+ */
+export const STORY_LINES = [
+  ...FRAGMENTS.slice(0, 2).map((f) => ({
+    text: f.lines.map((l) => l.text).join(' '),
+    readable: [f.ink[1] - 0.4, f.burn[0] + 0.3] as [number, number],
+  })),
+  { text: 'Association for Computing Machinery', readable: [T.acm + 2, T.acmOut] as [number, number] },
+  ...FRAGMENTS.slice(2).map((f) => ({
+    text: f.lines.map((l) => l.text).join(' '),
+    readable: [f.ink[1] - 0.4, f.burn[0] + 0.3] as [number, number],
+  })),
+];

@@ -17,8 +17,8 @@
  *           chars, carries a thin ember line (small, never a flame), and
  *           behind it there is no paper. The words go with the paper.
  *
- * Arrival uses a dithered dissolve (no transparency sorting): it comes out of
- * the mist, not out of a fade.
+ * Arrival: it comes out of the mist (and a short presence ramp); the torn edge
+ * and the fire's front are antialiased in the shader.
  */
 import { Color, DoubleSide, MeshStandardMaterial, type Texture, Vector2, Vector4 } from 'three';
 
@@ -60,10 +60,14 @@ vec3 deformSheet(vec2 uv) {
   float edge = max(q.x, q.y);
   z += sin(p.x * 3.4 + uTime * 1.3 + uSeed) * cos(p.y * 2.7 - uTime * 0.9 + uSeed * 0.5) * uFlutter * (0.35 + 0.65 * edge);
   z += sin(p.y * 5.1 + uTime * 2.1 + uSeed * 1.7) * uFlutter * 0.25 * edge;
-  // Fire: behind the front, the paper curls up and away from you.
-  float bt = texture2D(uTex, uv).b;
+  // Fire: behind the front, the paper curls up and away from you. (Nothing
+  // curls before the match is struck, and outside the torn silhouette the
+  // burn channel means nothing — there it burns last — or the cells along
+  // the torn edge would warp into steps.)
+  vec4 tx = texture2D(uTex, uv);
+  float bt = tx.a > 0.02 ? tx.b : 1.0;
   float local = uBurn * 1.28 - bt;
-  float curl = smoothstep(-0.14, 0.06, local);
+  float curl = smoothstep(-0.14, 0.06, local) * smoothstep(0.0, 0.025, uBurn);
   z -= curl * curl * 0.07;
   vec2 pull = normalize(p + 1e-4) * curl * curl * 0.025;
   return vec3(p - pull, z);
@@ -135,12 +139,18 @@ col = mix(col, uChar, charred);
 // would bloom into black blocks.)
 float emberX = (local + 0.002) / 0.009;
 float ember = exp(-emberX * emberX) * lit;
-float gone = step(0.0, local) * lit;
-if (sheet.a < 0.5 || gone > 0.5) discard;
+// Edges — the torn silhouette and the fire's front — antialiased over about a
+// pixel (a hard cut-off would step along every tear).
+float silW = max(fwidth(sheet.a), 0.004) * 0.85;
+float sil = smoothstep(0.5 - silW, 0.5 + silW, sheet.a);
+float fireW = max(fwidth(local), 0.0005);
+float kept = 1.0 - smoothstep(-fireW, fireW, local) * lit;
+float cover = sil * kept;
+if (cover < 0.02) discard;
 if (!gl_FrontFacing) col = paper * 0.62;
 diffuseColor.rgb = col;
 // Arrival: it comes out of the mist (the fog does most of it; this keeps the first moment soft).
-diffuseColor.a = uPresence;
+diffuseColor.a = uPresence * cover;
 `;
 
 const FRAGMENT_EMISSIVE = /* glsl */ `

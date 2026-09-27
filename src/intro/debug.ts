@@ -1,11 +1,12 @@
 /**
  * Test hooks for the visual QA harness (dev builds, or ?debug in production):
- * window.__acm.intro — put the film anywhere, play it, read its state.
+ * window.__acm.intro — put the scroll at any beat of the opening, read its state.
  */
 import { music } from '@/systems/audio/music';
-import { jumpIntro, skipIntro, stepIntro } from './controller';
+import { progress } from '@/systems/scroll/progress';
+import { jumpToProgress, scrollToProgress } from '@/systems/scroll/ScrollTimeline';
+import { progressAtIntroTime, skipIntro } from './controller';
 import { intro, introFrame } from './state';
-import { INTRO_END, SCORE_IN } from './timeline';
 
 export const introDebug = {
   snapshot() {
@@ -14,25 +15,23 @@ export const introDebug = {
     return {
       active: f.active,
       t: Math.round(f.t * 1000) / 1000,
-      v: Math.round(f.v * 1000) / 1000,
-      goal: f.goal,
-      state: s.state,
+      p: Math.round(progress.value * 1e5) / 1e5,
+      target: Math.round(progress.target * 1e5) / 1e5,
       chapter: s.chapter,
       line: s.line,
       hint: s.hint,
-      score: music.running ? Math.round((music.time - SCORE_IN) * 1000) / 1000 : null,
-      locked: f.scoreLocked,
+      music: music.running ? Math.round(music.time * 100) / 100 : null,
     };
   },
-  /** Cut to film time t and rest there. */
+  /** Cut the scroll to beat t. */
   at(t: number) {
-    jumpIntro(t);
+    jumpToProgress(progressAtIntroTime(t));
   },
-  /** Play (at film speed) from wherever the playhead is to film time t. */
-  play(t: number) {
-    introFrame.goal = Math.min(INTRO_END, Math.max(0, t));
-    intro().set({ state: 'playing' });
+  /** Scroll smoothly to beat t (as a long, steady scroll would). */
+  scroll(t: number, seconds = 2) {
+    scrollToProgress(progressAtIntroTime(t), seconds);
   },
-  step: (dir: 1 | -1) => stepIntro(dir),
+  /** The progress of beat t. */
+  progressAt: (t: number) => progressAtIntroTime(t),
   skip: () => skipIntro(),
 };

@@ -13,8 +13,6 @@ export type Phase =
   | 'loading'
   /** World ready, waiting for the visitor to enter. */
   | 'ready'
-  /** The opening cinematic (src/intro): its own input drives the film; the page doesn't scroll. */
-  | 'intro'
   /** Scroll-driven journey — including the orbit of the Teams world. */
   | 'cinematic'
   /** Timed travel through the portal (either direction); scroll is locked. */
@@ -63,7 +61,7 @@ export const useExperience = create<ExperienceState>((set, get) => ({
   loadLabel: 'Initialising',
   campusReady: false,
 
-  segment: 'events',
+  segment: 'arrival',
   chapter: 'arrival',
   activeRoom: -1,
   dossier: null,

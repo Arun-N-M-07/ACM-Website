@@ -1,7 +1,7 @@
 'use client';
 /**
  * What the air is made of, close to the lens: droplets hanging in the mist,
- * wisps in the cloud, streaks in the fall, dust in the tunnel's light.
+ * wisps in the cloud, streaks in the fall, dust in the lobby's light.
  *
  * A field of particles wrapped around the camera (they never run out, and
  * never visibly pop: each fades as it nears the edge of the field). Each is
@@ -28,21 +28,31 @@ const amount = numberTrack([
   [T.build, 0.4],
   [T.reveal, 0.18],
   [T.heroEnd, 0.14],
-  [T.cloudIn, 0.5],
-  [T.cloudDeep, 0.85],
-  [T.descent, 1],
-  [50.4, 0.9],
-  [T.tunnel, 0.45],
-  [T.events, 0.32],
+  [T.hover, 0.12],
+  [T.cloudIn - 1, 0.5],
+  [T.cloudIn + 1.5, 1],
+  [T.cloudOut, 0.6],
+  [T.apex, 0.12],
+  [T.descend, 0.12],
+  [T.cloudTop, 0.8],
+  [T.cloudTop + 2, 1],
+  [T.cloudBase, 0.6],
+  [T.cloudBase + 3, 0.2],
+  [T.plaza, 0.15],
+  [T.shaft, 0.4],
+  [T.lobby, 0.26],
+  [T.door, 0.3],
   [T.end, 0],
 ]);
 const tint = colorTrack([
   [0, '#b8c2cc'],
   [T.reveal, '#ffe2bd'],
   [T.cloudIn, '#f2f5f8'],
-  [T.descent, '#dfe5ea'],
-  [50.2, '#6f7a86'],
-  [T.tunnel, '#ffd6a8'],
+  [T.apex, '#fdf4e6'],
+  [T.cloudTop, '#f2f5f8'],
+  [T.cloudBase, '#e8e2d8'],
+  [T.shaft, '#c8d2e0'],
+  [T.lobby, '#ffd6a8'],
   [T.end, '#ffd6a8'],
 ]);
 

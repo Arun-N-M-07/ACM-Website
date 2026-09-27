@@ -2,7 +2,7 @@
  * A camera move as one smooth curve through authored keys.
  *
  * Position and look target each follow a centripetal Catmull-Rom spline
- * through the keys. Film time is mapped onto the spline with a monotone cubic
+ * through the keys. The beat is mapped onto the spline with a monotone cubic
  * (Fritsch–Carlson) time-warp, so the camera passes each key exactly at its
  * time with continuous velocity — it eases out of a key the way it eased in,
  * never overshoots, and stops only where the keys ask it to (a key repeated,
@@ -71,7 +71,7 @@ export class CameraPath {
     return this.ts[this.ts.length - 1];
   }
 
-  /** Film time → spline parameter (monotone, C1). */
+  /** Beat → spline parameter (monotone, C1). */
   warp(t: number) {
     const { ts, ss, m } = this;
     const n = ts.length;

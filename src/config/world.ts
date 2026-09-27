@@ -68,67 +68,74 @@ export interface RoomLayout {
   height: number;
   /** Room centre in world space. */
   center: Vec3;
+  /** Height of the corridor's ceiling over the room's opening (raised in the transept). */
+  ceiling: number;
   /** Where the camera stands to look into the room. */
   viewpoint: Vec3;
   /** What the camera looks at while in the room. */
   focus: Vec3;
 }
 
-const REGULAR = { pitch: 6.5, length: 11, depth: 10, height: 5.6, firstOffset: 8 };
-const FLAGSHIP = { gapBefore: 11, length: 18, depth: 14, height: 7.2, pairPitch: 22 };
+const REGULAR = { length: 11, depth: 10, height: 5.6, firstOffset: 8 };
+/** Flagship rooms are larger and taller, with a little more corridor around them. */
+const FLAGSHIP = { length: 18, depth: 14, height: 7.2, margin: 3 };
+/** Solid wall kept between two rooms on the same side of the corridor. */
+const ROOM_GAP = 0.8;
 const DOOR_GAP = 14;
 
 export function buildCorridorLayout(events: EventRecord[] = EVENTS) {
   const start = UNDERGROUND.hall.north;
   const hw = UNDERGROUND.corridor.halfWidth;
-  const regular = events.filter((e) => !e.flagship);
-  const flagships = events.filter((e) => e.flagship);
   const rooms: RoomLayout[] = [];
-
-  regular.forEach((event, i) => {
+  // Rooms follow the lineup's order exactly, alternating sides. Each stands a
+  // half-room on from the one before (the regular pitch, generalised to any
+  // mix of sizes), a flagship with a little more room around it, and no room
+  // overlaps the last one on its own side of the corridor.
+  const edge: Record<string, number> = { '-1': Infinity, '1': Infinity };
+  let prev: RoomLayout | null = null;
+  events.forEach((event, i) => {
+    const size = event.flagship ? FLAGSHIP : REGULAR;
     const side: -1 | 1 = i % 2 === 0 ? -1 : 1;
-    const z = start - REGULAR.firstOffset - i * REGULAR.pitch;
-    const cx = side * (hw + REGULAR.depth / 2);
-    rooms.push({
-      index: rooms.length,
+    let z = prev ? prev.z - ((prev.length + size.length) / 4 + 1) : start - REGULAR.firstOffset;
+    if (prev && (event.flagship || prev.event.flagship)) z -= FLAGSHIP.margin;
+    z = Math.min(z, edge[side] - ROOM_GAP - size.length / 2);
+    edge[side] = z - size.length / 2;
+    const cx = side * (hw + size.depth / 2);
+    const room: RoomLayout = {
+      index: i,
       event,
       side,
       z,
-      length: REGULAR.length,
-      depth: REGULAR.depth,
-      height: REGULAR.height,
+      length: size.length,
+      depth: size.depth,
+      height: size.height,
       center: [cx, FLOOR_Y, z],
+      ceiling: UNDERGROUND.corridor.height,
       // At the portal, facing the back wall (the visit steps in from here) —
       // aimed a little off centre so the installation sits to one side and its
       // plate to the other.
-      viewpoint: [side * (hw - 0.4), EYE_Y, z],
-      focus: [side * (hw + REGULAR.depth), EYE_Y - 0.05, z - 1.8],
-    });
+      viewpoint: event.flagship ? [side * (hw - 0.4), EYE_Y + 0.2, z] : [side * (hw - 0.4), EYE_Y, z],
+      focus: event.flagship ? [side * (hw + size.depth), EYE_Y + 0.5, z - 2.6] : [side * (hw + size.depth), EYE_Y - 0.05, z - 1.8],
+    };
+    rooms.push(room);
+    prev = room;
   });
 
-  const lastRegularZ = regular.length ? rooms[rooms.length - 1].z : start;
-  const transeptZ = lastRegularZ - REGULAR.pitch - FLAGSHIP.gapBefore;
-  flagships.forEach((event, j) => {
-    const side: -1 | 1 = j % 2 === 0 ? -1 : 1;
-    const z = transeptZ - Math.floor(j / 2) * FLAGSHIP.pairPitch;
-    const cx = side * (hw + FLAGSHIP.depth / 2);
-    rooms.push({
-      index: rooms.length,
-      event,
-      side,
-      z,
-      length: FLAGSHIP.length,
-      depth: FLAGSHIP.depth,
-      height: FLAGSHIP.height,
-      center: [cx, FLOOR_Y, z],
-      viewpoint: [side * (hw - 0.4), EYE_Y + 0.2, z],
-      focus: [side * (hw + FLAGSHIP.depth), EYE_Y + 0.5, z - 2.6],
-    });
-  });
+  // Where there are flagships the corridor's ceiling rises (the transept) —
+  // over every room between the first and the last of them.
+  const flagships = rooms.filter((r) => r.event.flagship);
+  const transept = flagships.length
+    ? {
+        z0: Math.max(...flagships.map((r) => r.z + r.length / 2)) + 1,
+        z1: Math.min(...flagships.map((r) => r.z - r.length / 2)) - 1,
+        height: Math.max(...flagships.map((r) => r.height)),
+      }
+    : null;
+  if (transept) for (const r of rooms) if (r.z <= transept.z0 && r.z >= transept.z1) r.ceiling = transept.height;
 
   const lastZ = rooms.length ? Math.min(...rooms.map((r) => r.z - r.length / 2)) : start;
   const doorZ = lastZ - DOOR_GAP;
-  return { rooms, start, doorZ, end: doorZ };
+  return { rooms, start, doorZ, end: doorZ, transept };
 }
 
 export const CORRIDOR = buildCorridorLayout();

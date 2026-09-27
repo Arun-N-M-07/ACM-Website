@@ -5,7 +5,7 @@ Everything the chapter changes year to year lives in `src/content/`. Nothing in 
 | File | What it holds |
 |---|---|
 | `chapter.ts` | about, mission, membership, contact people, email, address, socials, alumni stats |
-| `events.ts` | programmes/events — **array order = corridor order** |
+| `events.ts` | this year's lineup (2026) — **array order = corridor order** |
 | `prodigy.ts` | Prodigy sub-events (shown on the puzzle wall) |
 | `teams.ts` | **the six domains and their members** — order = order around the spine in the Teams world |
 | `team.ts` | the founder and faculty (shown in the archive) |
@@ -38,7 +38,7 @@ Each entry is one card in the Teams world:
 
 ## Adding an event
 
-Append to `EVENTS` in `events.ts`:
+Add to `EVENTS` in `events.ts`, where it belongs in the lineup (the corridor visits rooms in array order, alternating sides; flagships are larger rooms and the ceiling rises over them):
 
 ```ts
 {
@@ -53,11 +53,11 @@ Append to `EVENTS` in `events.ts`:
   image: siteMedia('event.new', 'events/new.jpg', 'Alt text'),   // optional
   accent: '#7f9c86',
   artifact: 'blocks',           // which installation the room gets (see scenes/events/exhibits/index.ts)
-  flagship: false,              // true → joins the flagship transept at the end
+  flagship: false,              // true → a larger, taller room; the corridor's ceiling rises over it
 }
 ```
 
-The corridor, scroll length, room numbering, departures board, index menu, archive and sitemap update automatically. To create a new installation, add a wall drawer to `scenes/events/exhibits/walls.ts`, a centrepiece to `exhibits/pieces.tsx`, register both in `exhibits/index.ts`, and add the key to `RoomArtifact`.
+The corridor, scroll length, room numbering, index menu, archive and sitemap update automatically. When a programme is no longer run, remove its entry (and, if nothing else uses it, its installation). To create a new installation, add a wall drawer to `scenes/events/exhibits/walls.ts`, a centrepiece to `exhibits/pieces.tsx`, register both in `exhibits/index.ts`, and add the key to `RoomArtifact`.
 
 ## Items to verify with the chapter
 

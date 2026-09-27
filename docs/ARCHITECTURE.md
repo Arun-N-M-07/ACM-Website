@@ -24,27 +24,27 @@ Scroll is a single normalised **progress** value (0 → 1) over a tall scroll tr
 ScrollTimeline (Lenis + one ScrollTrigger) ──► progress.target
 CameraRig (every frame): damp target → progress.value ──► publish to HTML overlays
                          segmentAt(value) → store.segment / chapter / activeRoom (on change only)
+                         syncIntro(value) → the opening's beat (intro/controller)
                          updateTeams() → portal hold, walls, hover (teams/controller)
-                         evaluateCinematic(value) or evaluateTeamsShot() → camera pose
+                         evaluateIntroShot() | evaluateCinematic(value) | evaluateTeamsShot() → camera pose
 ```
 
 `src/config/timeline.ts` defines segment weights in viewport-heights:
 
 | Segment | Camera | What happens |
 |---|---|---|
-| `arrival` | ARRIVAL_CAMERA | on the pool axis at the fountains, the red building at golden hour |
-| `ascent` | DRONE_CAMERA | a drone rise up the garden, over the porch, up the face of the clock tower |
-| `campus` | CAMPUS_CAMERA | pull back over the tower until the whole campus is in view |
-| `topdown` | CAMPUS_CAMERA | orientation eases to a straight-down view over the light-well |
-| `descent` | DESCENT_CAMERA | drop to 6 m, pause while the glass slides open, plunge down the shaft (depth meter), level out in the hall |
-| `facility` | DESCENT_CAMERA | turn to the departures board, push in, pan past the corridor mouth to the 2004 monument, out into the corridor |
+| `arrival` | intro camera | the garden in pre-dawn mist |
+| `story` | intro camera | four fragments of paper arrive, are read and burn; between the second and third, the chapter's name on a stone in the mist |
+| `ceg` | intro camera | the mist clears on the red building; held; a glide over the pool to hover before the tower |
+| `ascent` | intro camera | straight up the light-well's column, past the tower, through the cloud, above it |
+| `descent` | intro camera | straight down through the cloud onto the light-well, which opens; down the shaft into the lobby; the EVENTS door opens; through into the corridor |
 | `events` | EVENT_CAMERA | per room: walk out of the last portal, down the corridor and to the next portal (52%), then step inside while the installation performs (48%) |
 | `portal` | cinematic | out of the last room, down the vestibule, stand square to the portal; from `PORTAL_DWELL` the camera holds there and scroll is walled at `PORTAL_GATE` until the portal is held |
 | `teams` | Teams camera | the orbit: an establishing view, the six cards one by one around and down the spine, then the pull-back over the whole ring |
 
 Every segment's first pose equals the previous segment's last pose (they share named states in `src/config/camera.ts`), so the move is continuous. Poses are yaw/pitch/roll (Euler YXZ) rather than look-at targets so the camera can interpolate all the way to straight down without flips.
 
-**The drone flight** (`systems/camera/flight.ts`): arrival → ascent → campus → top-down is one flight. Centripetal Catmull-Rom splines carry the camera position and its look target through the `FLIGHT` keys in `config/camera.ts`, and a monotone (Fritsch–Carlson) time-warp keeps the speed smooth with no overshoot, easing in and out at both ends.
+**The opening** (`src/intro/`, **[INTRO.md](INTRO.md)**): its five segments are scrubbed by the same scroll as everything else — the rig hands the damped progress to `intro/controller`, which rescales it onto the opening's beat sheet (`intro/timeline.ts`); the camera (one Catmull-Rom path with a monotone time-warp, `intro/camera.ts`), the light (`intro/look.ts`) and every artefact are functions of that beat. It ends exactly on `facilityEnd`, the Events segment's first pose.
 
 **The portal and the Teams world** (`src/teams/`): standing before the portal the visitor holds it for two seconds; the hold is the first stage of the transition (the world reacts progressively, and releasing early runs it all back). Completing it plays a timed travel (GSAP-clocked, scroll locked) through a streak tunnel into the Teams world, where scroll resumes and drives the orbit. A sustained upward scroll at the start of the world travels back out through the portal. The one `CameraRig` still owns the camera throughout — it calls `teams/controller` for the hold, the walls and the Teams shot. Details, the state machine and the reference study: **[TEAMS_WORLD.md](TEAMS_WORLD.md)**.
 
@@ -56,18 +56,19 @@ Every room is an installation you step into (`scenes/events/EventRoom.tsx`, `sce
 
 | Room | Installation |
 |---|---|
-| Head First | fourteen columns insertion-sort themselves, one swap per scroll step; the wall runs the loop with the live `i`, `j` |
-| CodeX | contest night: standings reshuffle, the clock runs down, a balloon rises over a desk for every solve |
 | C.O.D.E | the whiteboard round: a system design draws itself, the syllabus ticks off, the mock-interview clock runs |
-| Bell Labs | a dark room that boots — POST, bootloader, paging, scheduler — and powers the lights up with it |
-| Machine Learning 101 | gradient descent on a real loss surface while the network trains and the loss curve falls |
-| Schr0ding3r5 | capture the flag: the flag cracks character by character and the box opens |
+| Tech Talks | *signal* — a line of light runs around the room at head height, fed by a cable from the stage's microphone; the speaker's phrases leave the microphone, climb into the wall and travel outward around the room toward the audience; the stage edge and the room's light follow the voice, and the speaker (from the event's facts) is named for a moment |
 | MasterClass | a lecture hall — you sit at the back while the talk runs through its slides, then the questions |
-| OffCamp | opportunities pin themselves to the wall and fly out past you as paper planes |
+| Head Start | fourteen columns insertion-sort themselves, one swap per scroll step; the wall runs the loop with the live `i`, `j` |
+| PatternX | *what comes next?* — four plinths: three terms of a sequence in small cubes, lit in turn as you read them, and an empty fourth; the next is built from the last (a copy lifts across, what's missing drops in) and the wall says the rule in plain words; staying, the sequence changes (steps, squares, doubling) |
+| CodeX | contest night: standings reshuffle, the clock runs down, a balloon rises over a desk for every solve |
 | Prodigy | nine puzzle pieces, one per Prodigy event, fly together into the picture |
+| Open Source Mentorship Program | *contribution → merge* — the repository is a line of light across the room; an issue appears over it, a contribution branches off and grows, waits as a pull request, a reviewer comes down to it on a thread, and the branch converges back into the line, which runs stronger from the merge on; the wall keeps the history and records the merge |
 | CodHer | hack night: the commit wall fills, submissions close, the trophy rises |
 
-Which installation a room gets is its event's `artifact` key (`exhibits/index.ts`). Facts on the walls come from the event record; the rest is illustration.
+**Signature rooms.** Tech Talks, PatternX and the Open Source Mentorship Program don't scrub with the scroll: each has one authored event on its own clock (`useSignature` in `exhibits/common.ts`) — quiet → activity → the moment → hold → settle → a long quiet, and again if you stay (varied by `cycle`). How awake the room is follows the camera: faint next door, waking through the approach, full inside, settling as you walk on; a return from further off starts the event afresh. Scroll still only moves the camera. With reduced motion each holds its clearest moment. An installation can lift the room's light a little through `PieceProps.response`, and its walls read the same state through `signatureOf(index)`. Wall content keeps to the part of the back wall the reading card leaves open (`openSpan`).
+
+The rooms follow the order of `EVENTS` (this year's lineup), alternating sides of the corridor; flagship rooms are larger, and the corridor's ceiling rises over them. Which installation a room gets is its event's `artifact` key (`exhibits/index.ts`). Facts on the walls come from the event record; the rest is illustration.
 
 ## Content: plates attached to the world
 

@@ -8,11 +8,11 @@
  */
 import { PRODIGY_PROGRAMME } from '@/content/prodigy';
 import { fitSize, paragraph, text } from '@/systems/textures/typeset';
-import { BONE, clamp01, DIM, hash, pad2, ramp, roundRect, sstep, titleBand, typed, type WallDraw } from './common';
+import { BONE, clamp01, DIM, hash, openSpan, pad2, ramp, roundRect, sstep, titleBand, typed, type WallDraw } from './common';
 
 const fact = (info: { ev: { facts: { label: string; value: string }[] } }, label: string, fallback = '') => info.ev.facts.find((f) => f.label === label)?.value ?? fallback;
 
-// ─── Head First: sorting, one swap at a time ───────────────────────────────
+// ─── Head Start: sorting, one swap at a time ───────────────────────────────
 
 /** The array the columns sort (distinct values), and every state of an insertion sort. */
 export const SORT = (() => {
@@ -31,7 +31,7 @@ export const SORT = (() => {
 /** Fractional step through the sort for visit progress u. */
 export const sortStep = (u: number) => ramp(u, 0.1, 0.84) * (SORT.states.length - 1);
 
-const headFirst: WallDraw = (ctx, w, h, wall, u, t, info) => {
+const headStart: WallDraw = (ctx, w, h, wall, u, t, info) => {
   ctx.fillStyle = '#0b1018';
   ctx.fillRect(0, 0, w, h);
   const s = h / 100;
@@ -307,240 +307,6 @@ const code: WallDraw = (ctx, w, h, wall, u, t, info) => {
   text(ctx, 'Experienced mentors, throughout.', w * 0.08, h * 0.92, { family: 'serif', italic: true, size: s * 4.6, color: DIM });
 };
 
-// ─── Bell Labs: the machine boots ──────────────────────────────────────────
-
-const BOOT = [
-  'POST ................................ OK',
-  'memory test ................. 16384K OK',
-  'boot device: disk 0',
-  'loading stage 1 bootloader from sector 0',
-  'stage 2: reading kernel image',
-  'switching to 32-bit protected mode',
-  'enabling paging — 4 KiB pages',
-  'memory manager: free lists ready',
-  'IDT loaded · interrupts on',
-  'scheduler: round robin, 10 ms quantum',
-  'mounting root filesystem ........ done',
-  'init: starting session',
-  '',
-  'Welcome to Bell Labs.',
-];
-export const BOOTED = 0.62;
-const AMBER = '#ffb347';
-
-const bellLabs: WallDraw = (ctx, w, h, wall, u, t, info) => {
-  ctx.fillStyle = '#050403';
-  ctx.fillRect(0, 0, w, h);
-  const s = h / 100;
-  const on = u > 0.02;
-  if (!on) {
-    if (wall === 'back' && Math.floor(t * 2) % 2) ctx.fillRect(w * 0.05, h * 0.3, s * 2.4, s * 4);
-    return;
-  }
-  // Scanlines.
-  ctx.fillStyle = 'rgba(255,179,71,0.035)';
-  for (let y = 0; y < h; y += Math.max(3, s * 0.8)) ctx.fillRect(0, y, w, Math.max(1, s * 0.25));
-  if (wall === 'back') {
-    const y0 = titleBand(ctx, w, h, info, AMBER, 'rgba(255,179,71,0.6)');
-    const shown = Math.floor(ramp(u, 0.04, BOOTED) * BOOT.length);
-    BOOT.slice(0, shown).forEach((line, i) => {
-      const last = i === BOOT.length - 1;
-      text(ctx, line, w * 0.05, y0 + s * (5 + i * 4.6), { family: 'mono', weight: last ? 500 : 400, size: s * (last ? 4.4 : 3.3), color: last ? '#ffe2b0' : AMBER });
-    });
-    if (u > BOOTED) {
-      const prompt = `login: ${typed('visitor', u, BOOTED + 0.05, BOOTED + 0.2)}${Math.floor(t * 2) % 2 ? '_' : ''}`;
-      text(ctx, prompt, w * 0.05, y0 + s * (5 + BOOT.length * 4.6 + 2), { family: 'mono', size: s * 3.6, color: '#ffe2b0' });
-    }
-    return;
-  }
-  const live = sstep(u, BOOTED - 0.1, BOOTED + 0.05);
-  ctx.globalAlpha = 0.25 + 0.75 * live;
-  if (wall === 'left') {
-    text(ctx, 'THE PIPELINE', w * 0.08, h * 0.16, { family: 'mono', size: s * 3.2, color: AMBER, tracking: 0.26 });
-    const stages = ['IF', 'ID', 'EX', 'MEM', 'WB'];
-    const cw = (w * 0.84) / stages.length;
-    stages.forEach((st, i) => text(ctx, st, w * 0.08 + cw * (i + 0.5), h * 0.28, { family: 'mono', weight: 500, size: s * 4.4, color: '#ffe2b0', align: 'center' }));
-    for (let row = 0; row < 6; row++) {
-      for (let c = 0; c < stages.length; c++) {
-        const tick = Math.floor(t * 1.6);
-        if ((tick - row) % 7 !== c && (tick - row + 7) % 7 !== c) continue;
-        ctx.fillStyle = `rgba(255,179,71,${0.35 + 0.1 * c})`;
-        ctx.fillRect(w * 0.08 + cw * c + cw * 0.08, h * (0.34 + row * 0.09), cw * 0.84, h * 0.07);
-        text(ctx, `i${row + tick}`, w * 0.08 + cw * (c + 0.5), h * (0.39 + row * 0.09), { family: 'mono', size: s * 3, color: '#050403', align: 'center' });
-      }
-    }
-    text(ctx, fact(info, 'Topics'), w * 0.08, h * 0.95, { family: 'sans', weight: 600, size: s * 4.4, color: '#ffe2b0' });
-  } else {
-    text(ctx, 'VIRTUAL → PHYSICAL', w * 0.08, h * 0.16, { family: 'mono', size: s * 3.2, color: AMBER, tracking: 0.26 });
-    const page = Math.floor(t * 0.8) % 6;
-    for (let i = 0; i < 6; i++) {
-      const y = h * (0.28 + i * 0.1);
-      ctx.fillStyle = i === page ? 'rgba(255,179,71,0.5)' : 'rgba(255,179,71,0.1)';
-      ctx.fillRect(w * 0.08, y, w * 0.3, h * 0.08);
-      text(ctx, `page ${i}`, w * 0.1, y + h * 0.055, { family: 'mono', size: s * 3.2, color: '#ffe2b0' });
-      const frame = (i * 5 + 3) % 8;
-      ctx.fillStyle = i === page ? 'rgba(255,179,71,0.5)' : 'rgba(255,179,71,0.1)';
-      ctx.fillRect(w * 0.6, h * (0.26 + frame * 0.075), w * 0.3, h * 0.06);
-      if (i === page) {
-        ctx.strokeStyle = '#ffe2b0';
-        ctx.lineWidth = s * 0.4;
-        ctx.beginPath();
-        ctx.moveTo(w * 0.38, y + h * 0.04);
-        ctx.lineTo(w * 0.6, h * (0.29 + frame * 0.075));
-        ctx.stroke();
-        text(ctx, `frame ${frame}`, w * 0.62, h * (0.305 + frame * 0.075), { family: 'mono', size: s * 3, color: '#050403' });
-      }
-    }
-    text(ctx, fact(info, 'Deep dives'), w * 0.08, h * 0.95, { family: 'sans', weight: 600, size: s * 4.4, color: '#ffe2b0' });
-  }
-  ctx.globalAlpha = 1;
-};
-
-// ─── Machine Learning 101: learning, visibly ───────────────────────────────
-
-export const epochs = (u: number) => ramp(u, 0.08, 0.9);
-const lossAt = (e: number) => 0.08 + 1.1 * Math.exp(-4.2 * e) + 0.03 * Math.sin(e * 40) * (1 - e);
-
-const ml101: WallDraw = (ctx, w, h, wall, u, t, info) => {
-  ctx.fillStyle = '#0d0b17';
-  ctx.fillRect(0, 0, w, h);
-  const s = h / 100;
-  const e = epochs(u);
-  const accent = '#a79ff0';
-  if (wall === 'back') {
-    const y0 = titleBand(ctx, w, h, info);
-    const layers = [4, 6, 6, 3];
-    const pos = layers.map((n, li) => Array.from({ length: n }, (_, i) => [w * (0.12 + li * 0.25), y0 + (h - y0) * (0.12 + ((i + 0.5) / n) * 0.7)] as const));
-    for (let l = 0; l < pos.length - 1; l++)
-      for (const a of pos[l])
-        for (const b of pos[l + 1]) {
-          ctx.strokeStyle = `rgba(167,159,240,${0.08 + 0.18 * e})`;
-          ctx.lineWidth = s * 0.2;
-          ctx.beginPath();
-          ctx.moveTo(a[0], a[1]);
-          ctx.lineTo(b[0], b[1]);
-          ctx.stroke();
-        }
-    // A pulse sweeping forward through the layers.
-    const sweep = (t * 0.5) % 1;
-    pos.forEach((col, li) =>
-      col.forEach(([x, y], i) => {
-        const near = Math.max(0, 1 - Math.abs(sweep * 3 - li) * 1.4);
-        const act = 0.3 + 0.7 * hash(li * 13 + i + Math.floor(e * 12));
-        ctx.fillStyle = `rgba(167,159,240,${0.25 + 0.75 * near * act})`;
-        ctx.beginPath();
-        ctx.arc(x, y, s * (1.6 + near * 1.2), 0, Math.PI * 2);
-        ctx.fill();
-      }),
-    );
-    text(ctx, `epoch ${Math.max(1, Math.ceil(e * 12))} / 12`, w * 0.955, s * 12, { family: 'mono', size: s * 3.6, color: DIM, align: 'right' });
-    text(ctx, `loss ${lossAt(e).toFixed(3)}`, w * 0.955, s * 20, { family: 'mono', weight: 500, size: s * 6, color: accent, align: 'right' });
-    return;
-  }
-  if (wall === 'left') {
-    text(ctx, 'TRAINING LOSS', w * 0.08, h * 0.16, { family: 'mono', size: s * 3.2, color: DIM, tracking: 0.26 });
-    const x0 = w * 0.08;
-    const x1 = w * 0.92;
-    const yTop = h * 0.24;
-    const yBot = h * 0.86;
-    ctx.strokeStyle = 'rgba(239,233,223,0.25)';
-    ctx.lineWidth = s * 0.3;
-    ctx.beginPath();
-    ctx.moveTo(x0, yTop);
-    ctx.lineTo(x0, yBot);
-    ctx.lineTo(x1, yBot);
-    ctx.stroke();
-    ctx.strokeStyle = accent;
-    ctx.lineWidth = s * 0.7;
-    ctx.beginPath();
-    const n = Math.max(2, Math.floor(e * 120));
-    for (let i = 0; i < n; i++) {
-      const ee = (i / 120) * 1;
-      const x = x0 + (x1 - x0) * ee;
-      const y = yBot - (yBot - yTop) * Math.min(1, lossAt(ee) / 1.2);
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    }
-    ctx.stroke();
-    text(ctx, 'epochs →', x1, yBot + s * 5, { family: 'mono', size: s * 3, color: DIM, align: 'right' });
-    return;
-  }
-  // Right: a decision boundary finding its place between two classes.
-  text(ctx, fact(info, 'Covers', 'Machine learning · deep learning').toUpperCase(), w * 0.08, h * 0.16, { family: 'mono', size: s * 3.2, color: DIM, tracking: 0.2 });
-  const cx = w * 0.5;
-  const cy = h * 0.56;
-  for (let i = 0; i < 60; i++) {
-    const cls = i % 2;
-    const px = cx + (hash(i * 7) - 0.5) * w * 0.7 + (cls ? w * 0.12 : -w * 0.12);
-    const py = cy + (hash(i * 11) - 0.5) * h * 0.55 + (cls ? -h * 0.06 : h * 0.06);
-    ctx.fillStyle = cls ? '#a79ff0' : '#e8c07a';
-    ctx.beginPath();
-    ctx.arc(px, py, s * 1.1, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  const ang = (1 - e) * 1.2 - 0.35;
-  ctx.strokeStyle = BONE;
-  ctx.lineWidth = s * 0.5;
-  ctx.setLineDash([s * 2, s * 1.4]);
-  ctx.beginPath();
-  ctx.moveTo(cx - Math.cos(ang) * w * 0.45, cy - Math.sin(ang) * w * 0.45);
-  ctx.lineTo(cx + Math.cos(ang) * w * 0.45, cy + Math.sin(ang) * w * 0.45);
-  ctx.stroke();
-  ctx.setLineDash([]);
-};
-
-// ─── Schr0ding3r5: capture the flag ────────────────────────────────────────
-
-const FLAG = 'flag{c0mp3t1t1v3_s3cur1ty}';
-export const OPEN_AT = 0.74;
-const TEAL = '#6fd6c8';
-
-const schrodingers: WallDraw = (ctx, w, h, wall, u, t, info) => {
-  ctx.fillStyle = '#040807';
-  ctx.fillRect(0, 0, w, h);
-  const s = h / 100;
-  if (wall === 'back') {
-    const y0 = titleBand(ctx, w, h, info, TEAL, 'rgba(111,214,200,0.6)');
-    const solved = Math.floor(ramp(u, 0.08, OPEN_AT) * FLAG.length);
-    const glyphs = '0123456789abcdef{}_#$%&';
-    let shown = '';
-    for (let i = 0; i < FLAG.length; i++) shown += i < solved ? FLAG[i] : glyphs[Math.floor(hash(i * 31 + Math.floor(t * 18)) * glyphs.length)];
-    const size = fitSize(ctx, FLAG, w * 0.86, { family: 'mono', weight: 500, size: s * 9 }, s * 9);
-    text(ctx, shown, w * 0.05, y0 + s * 22, { family: 'mono', weight: 500, size, color: u >= OPEN_AT ? '#b8fff4' : TEAL });
-    text(ctx, u < OPEN_AT ? 'The box is locked and unlocked — until someone looks.' : 'OBSERVED: UNLOCKED.', w * 0.05, y0 + s * 40, {
-      family: u < OPEN_AT ? 'serif' : 'mono',
-      italic: u < OPEN_AT,
-      weight: u < OPEN_AT ? 400 : 500,
-      size: s * (u < OPEN_AT ? 5.6 : 5),
-      color: u < OPEN_AT ? 'rgba(111,214,200,0.75)' : '#b8fff4',
-      tracking: u < OPEN_AT ? 0 : 0.2,
-    });
-    text(ctx, fact(info, 'Focus').toUpperCase(), w * 0.05, h * 0.94, { family: 'mono', size: s * 3, color: 'rgba(111,214,200,0.55)', tracking: 0.24 });
-    return;
-  }
-  // Hex dump (left) and a disassembly (right), streaming.
-  const rows = 18;
-  const off = Math.floor(t * 6);
-  for (let r = 0; r < rows; r++) {
-    const y = h * (0.1 + r * 0.047);
-    if (wall === 'left') {
-      text(ctx, (0x4000 + (r + off) * 16).toString(16).padStart(8, '0'), w * 0.06, y, { family: 'mono', size: s * 2.6, color: 'rgba(111,214,200,0.5)' });
-      let line = '';
-      for (let b = 0; b < 8; b++) line += Math.floor(hash((r + off) * 16 + b) * 256).toString(16).padStart(2, '0') + ' ';
-      text(ctx, line, w * 0.32, y, { family: 'mono', size: s * 2.6, color: (r + off) % 9 === 0 ? '#b8fff4' : TEAL });
-    } else {
-      const ops = ['mov', 'xor', 'cmp', 'jne', 'call', 'push', 'pop', 'lea', 'ret'];
-      const k = r + off;
-      text(ctx, `0x${(0x1130 + k * 4).toString(16)}`, w * 0.06, y, { family: 'mono', size: s * 2.6, color: 'rgba(111,214,200,0.5)' });
-      text(ctx, `${ops[k % ops.length]}  ${['eax', 'rbx', 'rcx', 'rdi'][k % 4]}, ${k % 3 ? `0x${(k * 37 % 255).toString(16)}` : 'rsi'}`, w * 0.34, y, {
-        family: 'mono',
-        size: s * 2.6,
-        color: r === rows - 3 ? '#b8fff4' : TEAL,
-      });
-    }
-  }
-};
-
 // ─── MasterClass: the lecture ──────────────────────────────────────────────
 
 const masterclass: WallDraw = (ctx, w, h, wall, u, t, info) => {
@@ -582,69 +348,6 @@ const masterclass: WallDraw = (ctx, w, h, wall, u, t, info) => {
   ctx.fillStyle = 'rgba(0,0,0,0.35)';
   ctx.fillRect(0, h * 0.62, w, h * 0.16);
   text(ctx, wall === 'left' ? 'ALUMNI ON THE MASTER’S JOURNEY' : 'GRE PREP · ARTICLES · Q&A', w * 0.06, h * 0.72, { family: 'mono', size: s * 3.8, color: '#e7cfa6', tracking: 0.24 });
-};
-
-// ─── OffCamp: the opportunity wall ─────────────────────────────────────────
-
-const OPPS = ['SCHOLARSHIP', 'INTERNSHIP', 'JOB', 'INTERNSHIP', 'SCHOLARSHIP', 'JOB', 'INTERNSHIP', 'SCHOLARSHIP', 'JOB', 'INTERNSHIP', 'JOB', 'SCHOLARSHIP'];
-const OPP_COLOR: Record<string, string> = { SCHOLARSHIP: '#e8c07a', INTERNSHIP: '#cf7a58', JOB: '#9fd3a8' };
-
-const offcamp: WallDraw = (ctx, w, h, wall, u, t, info) => {
-  const s = h / 100;
-  if (wall === 'back') {
-    ctx.fillStyle = '#8f6c46';
-    ctx.fillRect(0, 0, w, h);
-    for (let i = 0; i < 900; i++) {
-      ctx.fillStyle = `rgba(40,25,10,${0.08 + hash(i) * 0.12})`;
-      ctx.fillRect(hash(i * 3) * w, hash(i * 5) * h, 2, 2);
-    }
-    ctx.fillStyle = 'rgba(12,10,8,0.82)';
-    ctx.fillRect(0, 0, w, h * 0.26);
-    titleBand(ctx, w, h, info);
-    OPPS.forEach((kind, i) => {
-      const k = sstep(u, 0.04 + i * 0.06, 0.1 + i * 0.06);
-      if (k <= 0) return;
-      const c = i % 6;
-      const r = Math.floor(i / 6);
-      ctx.save();
-      ctx.globalAlpha = k;
-      ctx.translate(w * (0.1 + c * 0.155), h * (0.44 + r * 0.3) - (1 - k) * h * 0.05);
-      ctx.rotate(((i * 7) % 5 - 2) * 0.025);
-      ctx.fillStyle = '#f7f2e8';
-      ctx.fillRect(-w * 0.065, -h * 0.12, w * 0.13, h * 0.24);
-      ctx.fillStyle = OPP_COLOR[kind];
-      ctx.fillRect(-w * 0.065, -h * 0.12, w * 0.13, h * 0.05);
-      text(ctx, kind, -w * 0.055, -h * 0.083, { family: 'mono', weight: 500, size: s * 2.4, color: '#1b1b1d', tracking: 0.12 });
-      ctx.fillStyle = 'rgba(27,27,29,0.3)';
-      for (let l = 0; l < 4; l++) ctx.fillRect(-w * 0.055, -h * 0.03 + l * h * 0.035, w * (0.1 - (l % 3) * 0.02), h * 0.012);
-      ctx.fillStyle = '#b5452f';
-      ctx.beginPath();
-      ctx.arc(0, -h * 0.11, s * 0.9, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    });
-    return;
-  }
-  ctx.fillStyle = '#141110';
-  ctx.fillRect(0, 0, w, h);
-  if (wall === 'left') {
-    text(ctx, 'WE SHARE', w * 0.08, h * 0.2, { family: 'mono', size: s * 3.4, color: DIM, tracking: 0.26 });
-    ['Scholarships', 'Internships', 'Jobs', '& more'].forEach((x, i) =>
-      text(ctx, x, w * 0.08, h * (0.36 + i * 0.13), { family: 'serif', italic: i === 3, size: s * 9, color: i === 3 ? DIM : Object.values(OPP_COLOR)[i] ?? BONE }),
-    );
-    return;
-  }
-  text(ctx, 'WHERE', w * 0.08, h * 0.2, { family: 'mono', size: s * 3.4, color: DIM, tracking: 0.26 });
-  text(ctx, fact(info, 'Where', 'Instagram and LinkedIn'), w * 0.08, h * 0.34, { family: 'serif', size: s * 8, color: BONE });
-  // A feed of posts sliding up.
-  for (let i = 0; i < 4; i++) {
-    const y = h * (0.46 + i * 0.13) - ((t * 0.05) % 0.13) * h;
-    ctx.fillStyle = 'rgba(255,255,255,0.06)';
-    ctx.fillRect(w * 0.08, y, w * 0.84, h * 0.1);
-    ctx.fillStyle = OPP_COLOR[OPPS[i]];
-    ctx.fillRect(w * 0.08, y, s * 0.8, h * 0.1);
-    text(ctx, `OffCamp · ${OPPS[(i + Math.floor(t * 0.4)) % OPPS.length].toLowerCase()}`, w * 0.11, y + h * 0.062, { family: 'sans', weight: 600, size: s * 3.6, color: BONE });
-  }
 };
 
 // ─── Prodigy: the puzzle comes together ────────────────────────────────────
@@ -733,5 +436,179 @@ const codher: WallDraw = (ctx, w, h, wall, u, t, info) => {
   text(ctx, left > 0 ? `00:${pad2(Math.floor(left / 60))}:${pad2(left % 60)}` : 'CLOSED', w * 0.08, h * 0.86, { family: 'mono', weight: 500, size: s * 11, color: left > 0 ? BONE : gold });
 };
 
-export const WALLS = { headFirst, codex, code, bellLabs, ml101, schrodingers, masterclass, offcamp, prodigy, codher };
+// ─── Tech Talks: the room the voice travels through ────────────────────────
+// The walls stay dark and architectural: the line the voice runs along is a
+// physical piece of the installation (pieces.tsx). The side walls say, below
+// it, who speaks and on what.
+
+const techTalks: WallDraw = (ctx, w, h, wall, _u, _t, info) => {
+  ctx.fillStyle = '#0d0a08';
+  ctx.fillRect(0, 0, w, h);
+  const s = h / 100;
+  if (wall === 'back') {
+    titleBand(ctx, w, h, info);
+    return;
+  }
+  // Toward the stage end of each side wall (the left wall's canvas runs portal → back, the right's back → portal).
+  const x = wall === 'left' ? w * 0.5 : w * 0.08;
+  if (wall === 'left') {
+    text(ctx, 'CONDUCTED BY', x, h * 0.64, { family: 'mono', size: s * 2.6, color: DIM, tracking: 0.26 });
+    fact(info, 'Speakers')
+      .split('·')
+      .map((v) => v.trim())
+      .forEach((name, i) => text(ctx, name[0].toUpperCase() + name.slice(1), x, h * (0.73 + i * 0.085), { family: 'serif', size: s * 5.6, color: BONE }));
+    return;
+  }
+  text(ctx, 'ON', x, h * 0.64, { family: 'mono', size: s * 2.6, color: DIM, tracking: 0.26 });
+  paragraph(ctx, fact(info, 'Topics'), x, h * 0.73, w * 0.42, s * 6.6, { family: 'serif', size: s * 5.6, color: BONE }, 3);
+};
+
+// ─── PatternX: from scattered to a pattern, and on to CodeX ────────────────
+//
+// One story across the visit, scrubbed by scroll (pieces.tsx builds it in the
+// room): a floor of scattered lit cells; three terms of a sequence on
+// plinths; the cells find the grid, then a path; the fourth term is built
+// from the third; the path leads out, toward CodeX. The back wall writes the
+// sequence out and marks where the reading has got to.
+
+/** The story, as fractions of the visit (u). */
+export const PX_U = { read: 0.06, align: 0.08, ask: 0.18, path: 0.2, copy: 0.24, add: 0.33, solved: 0.42, lead: 0.5, codex: 0.68 };
+/** The four terms on the plinths: steps of 1, 2, 3 and 4 columns. */
+export const STAIRS = [1, 2, 3, 4].map((k) => {
+  const out: [number, number][] = [];
+  for (let c = 0; c < k; c++) for (let r = 0; r <= c; r++) out.push([c, r]);
+  return out;
+});
+/** The reading of it, stage by stage (the room's own framing, not a syllabus). */
+export const PX_STAGES = [
+  { word: 'Observe', at: 0 },
+  { word: 'Identify', at: PX_U.align },
+  { word: 'Understand', at: PX_U.path },
+  { word: 'Solve', at: PX_U.solved - 0.04 },
+  { word: 'CodeX', at: PX_U.codex },
+];
+
+const patternx: WallDraw = (ctx, w, h, wall, u, _t, info) => {
+  ctx.fillStyle = '#0c0a12';
+  ctx.fillRect(0, 0, w, h);
+  const s = h / 100;
+  const accent = info.ev.accent;
+  if (wall === 'back') {
+    titleBand(ctx, w, h, info);
+    const [f0, f1] = openSpan(info.index);
+    const x0 = f0 * w;
+    const span = (f1 - f0) * w;
+    // Where the reading has got to.
+    const railY = h * 0.43;
+    const stage = PX_STAGES.reduce((k, st, i) => (u >= st.at ? i : k), -1);
+    ctx.globalAlpha = 0.5;
+    ctx.fillStyle = BONE;
+    ctx.fillRect(x0, railY, span, s * 0.15);
+    PX_STAGES.forEach((st, i) => {
+      const x = x0 + (span * i) / (PX_STAGES.length - 1);
+      const on = i <= stage && u > -0.05;
+      ctx.globalAlpha = on ? 1 : 0.35;
+      ctx.fillStyle = on ? (i === PX_STAGES.length - 1 ? accent : BONE) : DIM;
+      ctx.beginPath();
+      ctx.arc(x, railY, s * (i === stage ? 0.8 : 0.5), 0, Math.PI * 2);
+      ctx.fill();
+      text(ctx, st.word.toUpperCase(), x, railY - s * 2, { family: 'mono', size: s * 2.1, color: i === stage ? '#ffffff' : on ? BONE : DIM, tracking: 0.2, align: i === 0 ? 'left' : i === PX_STAGES.length - 1 ? 'right' : 'center' });
+    });
+    // The sequence, written out: the fourth term is a question until it's built.
+    const solved = sstep(u, PX_U.solved - 0.03, PX_U.solved + 0.02);
+    const counts = STAIRS.map((t) => String(t.length));
+    const numY = h * 0.57;
+    counts.forEach((n, i) => {
+      const x = x0 + (span * i) / 3.4;
+      const shown = i < 3 ? sstep(u, PX_U.read + i * 0.035, PX_U.read + i * 0.035 + 0.04) : 1;
+      ctx.globalAlpha = 0.25 + 0.75 * shown;
+      const label = i < 3 ? n : solved > 0.5 ? n : '?';
+      text(ctx, label, x, numY, { family: 'serif', size: s * 9, color: i === 3 ? (solved > 0.5 ? accent : '#ffffff') : BONE });
+      if (i < 3) {
+        ctx.globalAlpha = 0.5 * shown;
+        text(ctx, '·', x + span / 3.4 - span * 0.07, numY - s * 2.5, { family: 'serif', size: s * 6, color: DIM });
+      }
+    });
+    const rule = sstep(u, PX_U.solved, PX_U.solved + 0.06);
+    if (rule > 0.01) {
+      ctx.globalAlpha = rule;
+      paragraph(ctx, 'Each term is the last one, with one more column.', x0, h * 0.66, span, s * 5.4, { family: 'serif', italic: true, size: s * 4.4, color: BONE }, 2);
+    }
+    ctx.globalAlpha = 1;
+    return;
+  }
+  // Side walls: who it's for and what it teaches; and, downstream, where it leads (lit once the path gets there).
+  if (wall === 'left') {
+    const x = w * 0.5;
+    text(ctx, 'FOR', x, h * 0.56, { family: 'mono', size: s * 2.6, color: DIM, tracking: 0.26 });
+    text(ctx, fact(info, 'For', 'Beginners'), x, h * 0.64, { family: 'serif', size: s * 6, color: BONE });
+    text(ctx, 'FOCUS', x, h * 0.74, { family: 'mono', size: s * 2.6, color: DIM, tracking: 0.26 });
+    paragraph(ctx, fact(info, 'Focus'), x, h * 0.82, w * 0.45, s * 6.6, { family: 'serif', size: s * 5.6, color: BONE }, 2);
+    return;
+  }
+  const lit = sstep(u, PX_U.codex - 0.04, PX_U.codex + 0.06);
+  const x = w * 0.08;
+  text(ctx, 'A PRECURSOR TO', x, h * 0.56, { family: 'mono', size: s * 2.6, color: DIM, tracking: 0.26 });
+  ctx.globalAlpha = 0.45 + 0.55 * lit;
+  text(ctx, `${fact(info, 'Leads into', 'CodeX')}  →`, x, h * 0.68, { family: 'serif', size: s * 9, color: accent });
+  ctx.globalAlpha = 1;
+};
+
+// ─── Open Source Mentorship Program: the loom ──────────────────────────────
+//
+// Scrubbed by scroll (pieces.tsx builds the loom in the room): a frame held up
+// by ACM-CEG and GDG-AU; the warp hanging from the mentors' beam; the project
+// as a cloth already begun; and the cohort's contributions woven into it, one
+// row at a time — until a light passes up through the finished piece. The
+// back wall carries only the key to the drawing.
+
+/** The weaving, as fractions of the visit (u): the cohort's rows, one `row` apart from `start`; then the light through the whole. */
+export const LOOM_U = { start: -0.12, row: 0.048, rows: 10, sweep: 0.37, whole: 0.45 };
+/** When the cohort's last row is beaten in. */
+export const LOOM_WOVEN = LOOM_U.start + LOOM_U.rows * LOOM_U.row;
+
+const openSource: WallDraw = (ctx, w, h, wall, u, _t, info) => {
+  ctx.fillStyle = '#070d0a';
+  ctx.fillRect(0, 0, w, h);
+  const s = h / 100;
+  const accent = info.ev.accent;
+  if (wall === 'back') {
+    titleBand(ctx, w, h, info);
+    // The key to the loom, low on the wall beside it; and, once the cloth is whole, what it has become.
+    const [, f1] = openSpan(info.index);
+    const xr = (f1 - 0.07) * w;
+    const y = h * 0.8;
+    const key: [string, string][] = [
+      ['WARP', 'THE MENTORS’ GUIDANCE'],
+      ['WEFT', 'THE COHORT’S CONTRIBUTIONS'],
+    ];
+    key.forEach(([term, meaning], i) => {
+      ctx.globalAlpha = 0.8;
+      text(ctx, meaning, xr, y + i * s * 4.4, { family: 'mono', size: s * 2.2, color: BONE, tracking: 0.22, align: 'right' });
+      const mw = ctx.measureText(meaning).width;
+      text(ctx, term, xr - mw - s * 3, y + i * s * 4.4, { family: 'mono', size: s * 2.2, color: accent, tracking: 0.22, align: 'right' });
+    });
+    const whole = sstep(u, LOOM_U.sweep, LOOM_U.whole);
+    if (whole > 0.01) {
+      ctx.globalAlpha = whole;
+      text(ctx, 'Woven into one project.', xr, y - s * 6, { family: 'serif', italic: true, size: s * 4.4, color: '#ffffff', align: 'right' });
+    }
+    ctx.globalAlpha = 1;
+    return;
+  }
+  if (wall === 'left') {
+    const x = w * 0.5;
+    text(ctx, 'A COLLABORATIVE INITIATIVE', x, h * 0.56, { family: 'mono', size: s * 2.6, color: DIM, tracking: 0.26 });
+    text(ctx, 'ACM-CEG', x, h * 0.66, { family: 'serif', size: s * 7, color: BONE });
+    text(ctx, `× ${fact(info, 'With', 'GDG-AU')}`, x, h * 0.76, { family: 'serif', size: s * 7, color: accent });
+    return;
+  }
+  const x = w * 0.08;
+  text(ctx, 'MENTORED BY', x, h * 0.52, { family: 'mono', size: s * 2.6, color: DIM, tracking: 0.26 });
+  paragraph(ctx, fact(info, 'Mentors', 'Former GSoC contributors'), x, h * 0.6, w * 0.42, s * 6.6, { family: 'serif', size: s * 5.6, color: BONE }, 2);
+  text(ctx, 'SO THAT A COHORT LEARNS', x, h * 0.74, { family: 'mono', size: s * 2.6, color: DIM, tracking: 0.26 });
+  paragraph(ctx, fact(info, 'Goal'), x, h * 0.82, w * 0.42, s * 5.6, { family: 'serif', size: s * 4.6, color: BONE }, 3);
+};
+
+export const WALLS = { headStart, codex, code, masterclass, prodigy, codher, techTalks, patternx, openSource };
 export { clamp01 };

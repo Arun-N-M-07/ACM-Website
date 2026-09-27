@@ -1,7 +1,7 @@
 'use client';
 /** Vertical chapter rail with a live progress line; each tick jumps to its chapter. */
 import { useRef } from 'react';
-import { CHAPTERS } from '@/config/timeline';
+import { CHAPTERS, isIntroChapter } from '@/config/timeline';
 import { useExperience } from '@/store/experience';
 import { goToChapter } from './navigation';
 import { useProgressFrame } from './useProgressFrame';
@@ -19,7 +19,7 @@ export function ChapterRail() {
   });
 
   // Nothing competes with the opening film.
-  if (phase === 'loading' || phase === 'ready' || phase === 'intro') return null;
+  if (phase === 'loading' || phase === 'ready' || isIntroChapter(chapter)) return null;
   return (
     <nav className="rail" aria-label="Chapters">
       <span className="rail-line" aria-hidden="true">

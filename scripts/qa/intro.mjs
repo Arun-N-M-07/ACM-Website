@@ -1,22 +1,22 @@
-// Visual / interaction QA for the opening cinematic, driven like a visitor in
-// headless Chrome with the GPU.
+// Visual / interaction QA for the opening, driven like a visitor in headless
+// Chrome with the GPU. The opening is scrubbed by the page's scroll, so steps
+// move the scroll (or read where it has put everything).
 //
 //   node scripts/qa/intro.mjs <url> <out-dir> "<steps>"
 //
 // Steps (comma-separated):
 //   enter / enter:quiet  cross the threshold (with sound if the score exists / without)
-//   at:<t>               cut the film to film time t (s) and rest there
-//   play:<t>             play the film from where it is to film time t (real time)
-//   step / back          one "continue" / "go back" (as a gesture would)
-//   wheel:<dy>           one wheel event at the centre (px; + = continue)
+//   at:<beat>            cut the scroll to that beat of the opening
+//   scroll:<beat>:<s>    scroll smoothly to that beat over s seconds
+//   room:<i>:<visit>     cut to event room i, `visit` (0..1) through its dwell
+//   settle               wait until the camera has caught up with the scroll (and a cut's fade has cleared)
+//   wheel:<dy>           one wheel event at the centre (px; + = forward)
 //   wheels:<dy>:<n>:<ms> n wheel events, ms apart
-//   swipe:<dy>           touch swipe (needs MOBILE=1; + = continue)
+//   swipe:<dy>           touch swipe (needs MOBILE=1; + = forward)
 //   key:<Key>            press a key
 //   shot:<name>          screenshot
 //   burst:<name>:<n>:<ms> n screenshots, ms apart
-//   state[:<label>]      log the intro snapshot
-//   until:<t>            wait until the playhead reaches t (or 60 s)
-//   rest                 wait until the film is at rest (or 60 s)
+//   state[:<label>]      log the opening's snapshot (beat, progress, chapter…)
 //   fstart / fstop:<label>  frame timing between the two
 //   wait:<ms>
 //   resize:<w>:<h>
@@ -63,10 +63,15 @@ for (const step of steps.split(',').map((s) => s.trim()).filter(Boolean)) {
       const sel = a[0] === 'quiet' ? '.loader-enter button[aria-label="Enter silently"]' : '.loader-enter .threshold-enter';
       await page.click(sel);
     } else if (op === 'at') await page.evaluate((t) => window.__acm.intro.at(t), Number(a[0]));
-    else if (op === 'play') await page.evaluate((t) => window.__acm.intro.play(t), Number(a[0]));
-    else if (op === 'step') await page.evaluate(() => window.__acm.intro.step(1));
-    else if (op === 'back') await page.evaluate(() => window.__acm.intro.step(-1));
-    else if (op === 'wheel') {
+    else if (op === 'scroll') await page.evaluate((t, sec) => window.__acm.intro.scroll(t, sec), Number(a[0]), Number(a[1] ?? 2));
+    else if (op === 'room') await page.evaluate((r, v) => window.__acm.jump(window.__acm.roomProgress(r, v)), Number(a[0]), Number(a[1] ?? 0.6));
+    else if (op === 'settle') {
+      const end = Date.now() + 30000;
+      await sleep(200);
+      while (Date.now() < end && (await page.evaluate(() => Math.abs(window.__acm.progress.target - window.__acm.progress.value))) > 2e-5) await sleep(60);
+      // (A jump cuts behind a short fade from black: let it clear.)
+      await sleep(700);
+    } else if (op === 'wheel') {
       await page.mouse.move(W / 2, H / 2);
       await page.mouse.wheel({ deltaY: Number(a[0]) });
     } else if (op === 'wheels') {
@@ -94,15 +99,7 @@ for (const step of steps.split(',').map((s) => s.trim()).filter(Boolean)) {
         await sleep(Number(a[2]));
       }
     } else if (op === 'state') logs.push(`[state] ${a[0] ?? ''} ${JSON.stringify(await snap())}`);
-    else if (op === 'until') {
-      const target = Number(a[0]);
-      const end = Date.now() + 60000;
-      while (Date.now() < end && (await snap()).t < target - 0.001) await sleep(50);
-    } else if (op === 'rest') {
-      const end = Date.now() + 60000;
-      await sleep(300);
-      while (Date.now() < end && (await snap()).state !== 'resting' && (await snap()).state !== 'done') await sleep(80);
-    } else if (op === 'fstart') {
+    else if (op === 'fstart') {
       frameProbe = true;
       await page.evaluate(() => {
         window.__frames = [];

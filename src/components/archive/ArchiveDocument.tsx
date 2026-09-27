@@ -150,14 +150,6 @@ export function ArchiveDocument({ headingLevel = 1 }: { headingLevel?: 1 | 2 }) 
             </li>
           ))}
         </ol>
-        <h3>Also</h3>
-        <ul className="plain">
-          {CHAPTER.alsoRuns.map((a) => (
-            <li key={a.name}>
-              <strong>{a.name}</strong> — {a.text}
-            </li>
-          ))}
-        </ul>
       </section>
 
       <section id="gallery" className="archive-section" aria-labelledby="gallery-h">

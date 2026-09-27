@@ -14,7 +14,7 @@
 import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
 import { AdditiveBlending, CanvasTexture, Color, CylinderGeometry, DoubleSide, MeshBasicMaterial, PlaneGeometry } from 'three';
-import { UNDERGROUND, type RoomLayout } from '@/config/world';
+import { type RoomLayout } from '@/config/world';
 import { merge, metricBox, place } from '@/systems/geometry/build';
 import { useLightAnchor } from '@/systems/lighting/lightPool';
 import { useDisposable } from '@/systems/performance/useDisposable';
@@ -86,7 +86,8 @@ export function EventRoom({ layout, total }: Props) {
   const { Piece } = exhibit;
   const clock = useRoomClock(layout.index);
   const info = useMemo<WallInfo>(() => ({ ev: event, index: layout.index, total }), [event, layout.index, total]);
-  const header = UNDERGROUND.corridor.height - H;
+  // From the room's own ceiling up to the corridor's over its opening.
+  const header = layout.ceiling - H;
 
   const geo = useDisposable(() => {
     const t = 0.35;
@@ -118,11 +119,12 @@ export function EventRoom({ layout, total }: Props) {
   const anchorPos = useMemo(() => toWorld(layout, rotY, 0, H - 0.7, -D * 0.1), [layout, rotY, H, D]);
   const anchor = useLightAnchor(anchorPos, event.flagship ? '#ffd2a2' : '#ffdcb4', event.flagship ? 95 : 65, event.flagship ? 20 : 15);
   const level = useRef(0.5);
+  const response = useRef(1);
   useFrame((_, dt) => {
     const c = clock.current;
     // The shared blue signal takes on this installation's colour as it performs.
     accentMat.color.copy(signalBlue).lerp(roomColor, sstep(c.u, 0, .85)).multiplyScalar(1.25);
-    let target = c.here ? 1.3 : c.near ? 0.7 : 0.45;
+    let target = (c.here ? 1.3 : c.near ? 0.7 : 0.45) * response.current;
     if (exhibit.darkUntil !== undefined) target *= 0.12 + 0.88 * sstep(c.u, 0.04, exhibit.darkUntil);
     level.current += (target - level.current) * (1 - Math.exp(-dt * 4));
     anchor.gain = level.current;
@@ -196,7 +198,7 @@ export function EventRoom({ layout, total }: Props) {
       )}
 
       <ExhibitLight accent={event.accent} height={H} level={level} />
-      <Piece event={event} width={W} depth={D} height={H} clock={clock} />
+      <Piece event={event} index={layout.index} width={W} depth={D} height={H} clock={clock} response={response} />
     </group>
   );
 }

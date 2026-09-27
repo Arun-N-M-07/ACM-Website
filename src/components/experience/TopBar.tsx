@@ -4,7 +4,7 @@
  * and the sound / motion / text-version controls. Stays out of the way —
  * it recedes during camera moves and returns on pointer activity.
  */
-import { CHAPTERS } from '@/config/timeline';
+import { CHAPTERS, isIntroChapter } from '@/config/timeline';
 import { useExperience } from '@/store/experience';
 import { MUSIC } from '@/config/music';
 import { isAvailable } from '@/content/media';
@@ -20,7 +20,7 @@ export function TopBar() {
   const current = CHAPTERS.find((c) => c.id === chapter);
 
   // Nothing competes with the opening film.
-  if (phase === 'loading' || phase === 'ready' || phase === 'intro') return null;
+  if (phase === 'loading' || phase === 'ready' || isIntroChapter(chapter)) return null;
 
   return (
     <header className="topbar">

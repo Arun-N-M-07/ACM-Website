@@ -104,15 +104,14 @@ npm run campus:build   # refresh public/data/campus.json from OpenStreetMap (net
   - Flat layers are stacked ≥1–1.5 cm apart (OSM areas < roads < footpaths < forecourt/lawns/plaza). Keep that spacing, or z-fighting returns.
 - **Facility:** `scenes/underground/FacilityHall.tsx`, `DeparturesBoard.tsx` (split-flap board that flips in with scroll; shows Chennai time), and `hallGraphics.ts` (monument wall).
 - **Event rooms** (`scenes/events/EventRoom.tsx` + `exhibits/`): walk-in installations. Each room has open lit portals, three projection walls (`exhibits/walls.ts`) and a performing centrepiece (`exhibits/pieces.tsx`). Both are driven by the room clock (`exhibits/common.ts`, visit progress 0→1). The registry is keyed by each event's `artifact` (`exhibits/index.ts`):
-  - Head First: columns sort themselves.
-  - CodeX: contest night with a balloon for every solve.
   - C.O.D.E: a system design draws itself on a whiteboard.
-  - Bell Labs: the room boots.
-  - ML 101: gradient descent on a loss surface.
-  - Schr0ding3r5: capture the flag, and the box opens.
+  - Tech Talks: a voice travels from the microphone around the room.
   - MasterClass: a lecture hall.
-  - OffCamp: cards pin up and paper planes fly out.
+  - Head Start: columns sort themselves.
+  - PatternX: what comes next? The next term is built from the last.
+  - CodeX: contest night with a balloon for every solve.
   - Prodigy: nine puzzle pieces assemble.
+  - Open Source Mentorship Program: a contribution branches, is reviewed and merges.
   - CodHer: a commit wall fills and the trophy rises.
 - **The portal and the Teams world** (`src/teams/`): `portal/` (ring, membrane, motes), `world/` (TeamsWorld, Spine, ParticleField, DomainCards, Tunnel, Backdrop), `post/` (composer, only near the portal and inside), `ui/` (PortalHold, TeamsHud, DomainDetail, TeamsInput, TypeIn — mounted by `TeamsExperience.tsx`), plus `state` (Zustand + per-frame channel), `layout`, `camera`, `travel` (GSAP clocks), `focus`, `controller`. Full description: `docs/TEAMS_WORLD.md`.
 - **Music:**
@@ -164,7 +163,6 @@ node scripts/qa/probe.mjs http://localhost:3100 0 1 90                      # fr
 6. **Event rooms** were just rebuilt as installations. Polish each one:
    - CodeX desks are empty (seated contestants?).
    - The MasterClass speaker is absent.
-   - Check that OffCamp's paper planes read clearly.
    - Material and lighting quality (floor reflections, light bloom) without hurting performance.
 7. **Reduced motion:** verify every plate and installation lands on a sensible still (`REDUCED_MOTION_STOPS` in `shots.ts`).
 8. **No git and no ESLint config.** Run `git init` and commit the current state first so every change is reversible. Add lint if useful.

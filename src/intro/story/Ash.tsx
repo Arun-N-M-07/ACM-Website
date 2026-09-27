@@ -7,7 +7,7 @@
  * moment as embers; a few are larger scraps of paper, charred at the edges;
  * all of them cool from char to grey ash and dissolve into the mist.
  *
- * Stateless: every particle's position is a function of film time, so the
+ * Stateless: every particle's position is a function of the beat, so the
  * film can be rewound through a burn and the ash flies back into the page.
  */
 import { useFrame, useThree } from '@react-three/fiber';

@@ -8,7 +8,7 @@ Every photo slot mirrors a path on the current site's `assets/img/` folder. **Co
 
 | Used for | Files (under `public/media/`) |
 |---|---|
-| Event posters, dossiers, event pages | `events/prodigy.jpg`, `events/codher.jpeg`, `events/code.jpeg`, `events/codex.jpeg`, `events/headfirst.png`, `events/offcamp.png`, `events/schrodinger.png`, `events/ml.jpeg`, `events/masterclass.png`, `events/bell_labs.png` |
+| Event posters, dossiers, event pages | `events/prodigy.jpg`, `events/codher.jpeg`, `events/code.jpeg`, `events/codex.jpeg`, `events/headfirst.png` (Head Start), `events/masterclass.png` |
 | Archive gallery | `venue-gallery/1.jpg` … `8.jpg`, `9.jpeg`, `10.jpeg`, `11.png`, `12.png`; `gallery/8.jpg`, `gallery/10.jpg` … `16.jpg`; `about/about1.jpg` |
 | Archive faculty portraits | `team/Faculty/RP_Mam.jpg`, `BAMA_MAM.png`, `ANNIE_MAM.png` |
 | Archive alumni | `alumni/2024-2025/*`, `alumni/2023_2024/directors/*`, `alumni/*.jpg` (see `content/alumni.ts`) |
@@ -18,10 +18,12 @@ Until a file exists, rooms show a typographic poster and the archive shows a cap
 
 ## 2. The soundtrack
 
-The site plays **one track** in music mode — *Pink + White* by Frank Ocean (`src/config/music.ts`) — and nothing else. The audio file is **not** in this repository and must not be committed.
+The site plays **one track** in music mode — *The Batman* by Michael Giacchino (`src/config/music.ts`) — and nothing else. Entering with sound starts it about 1:10 into the recording (`SCORE_IN` in `src/intro/timeline.ts`), from inside the Enter click (the user gesture browsers require), and it plays on under the whole journey. The audio file is **not** in this repository and must not be committed.
 
-1. Put your copy at `public/audio/pink-white.mp3` (`.m4a`/`.ogg` work too — update `MUSIC.src`).
-2. Restart `npm run dev` (or rebuild) so the media scan picks it up. Until then the music buttons are disabled and the loader explains why.
+1. Put your copy at `public/audio/the-batman.mp3` (`public/audio/` is git-ignored).
+2. Restart `npm run dev` (or rebuild) so `scripts/scan-media.mjs` records it. Until then the opening plays in silence and the music controls stay hidden.
+
+Because the file is git-ignored, a fresh clone or a deployment built from the repository has **no soundtrack** until the file is supplied there too.
 
 **Licensing:** playing a commercial recording on a public website needs permission from the rights holders (or a licence). Use it locally for the chapter's review, and clear it — or swap `MUSIC` to a track the chapter has rights to — before deploying.
 
@@ -33,7 +35,6 @@ GLB/GLTF, metres, +y up, facing +z, origin as noted. Draco or Meshopt compressio
 |---|---|---|---|
 | `cegBuilding` | `/models/campus/ceg-building.glb` | modelled red building | ground level, clock tower at world (0.2, 0, 0.6), front facade toward +z (OSM footprint rotated 7.9°; see `scenes/campus/cegModel.ts`); ≤ 150k tris, ≤ 4 materials, 2k textures |
 | `cegCampus` | `/models/campus/ceg-campus.glb` | OpenStreetMap campus + trees | world coordinates as produced by `scripts/build-campus.mjs`; ≤ 300k tris, instanced trees; keep the garden, pool and the light-well (`CAMPUS.well`, z = 46) clear |
-| `facilityHall` | `/models/underground/facility-hall.glb` | hall shell | world coordinates; hall floor at y = −60, x ∈ [−14, 14], z from `UNDERGROUND.hall` (north 20 → south 55), ceiling opening centred on the light-well |
 | `corridor` | `/models/underground/corridor.glb` | corridor shell (not rooms) | world coordinates; must leave the room openings from `buildCorridorLayout()` |
 Content-driven parts (event rooms, signage, the portal, the Teams world's cards) stay procedural so they keep updating from `src/content`. The Teams world's spine is procedural too (`src/teams/world/spineGeometry.ts`); it has no model slot yet.
 

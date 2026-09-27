@@ -6,12 +6,12 @@
  * Mount/unmount decisions are debounced so scrubbing at a boundary doesn't
  * thrash the GPU.
  *
- * The opening cinematic (src/intro) and the Events corridor are both mounted
- * while the world loads, so everything the film will show — the campus, the
- * story's artefacts, the cloud, the tunnel and the corridor it opens into — is
- * built and compiled behind the loader: nothing appears or compiles after
- * Enter. During the film, chunks the camera can't see are hidden (not
- * unmounted) so rewinding never has to rebuild them.
+ * The opening (src/intro) and the Events corridor are both mounted while the
+ * world loads, so everything the opening will show — the campus, the story's
+ * artefacts, the name, the cloud, the shaft, the lobby and the corridor its
+ * door opens into — is built and compiled behind the loader: nothing appears
+ * or compiles after Enter. Within the opening, chunks the camera can't see
+ * are hidden (not unmounted), so scrolling back never has to rebuild them.
  */
 import { useFrame } from '@react-three/fiber';
 import { useRef, useState } from 'react';
@@ -37,13 +37,13 @@ const at = (seg: SegmentId, t: number) => SEGMENTS[seg].start + (SEGMENTS[seg].e
 
 /** The Teams world mounts (and compiles) while you walk down the vestibule. */
 const TEAMS_FROM = at('portal', 0.25);
-/** After the handoff, the film's world stays a moment (in case the visitor turns straight back). */
-const INTRO_UNTIL = at('events', 0.04);
+/** Past the opening, its world stays a while (in case the visitor scrolls straight back). */
+const INTRO_UNTIL = at('events', 0.1);
 
-/** Before the visitor has entered, or while the film runs (or is being rewound into). */
-const inFilm = () => {
+/** Before the visitor has entered (everything compiles behind the loader), or within reach of the opening. */
+const inOpening = (p: number) => {
   const ph = experience().phase;
-  return ph === 'loading' || ph === 'ready' || ph === 'intro' || introFrame.active;
+  return ph === 'loading' || ph === 'ready' || p <= INTRO_UNTIL;
 };
 
 function wanted(p: number): Record<ChunkId, boolean> {
@@ -53,11 +53,11 @@ function wanted(p: number): Record<ChunkId, boolean> {
   const inTeams = teamsFrame.inside;
   const exiting = s === 'portalExiting';
   const travelling = s === 'portalEntering' || exiting;
-  const film = inFilm();
   const out = !inTeams;
+  const opening = out && inOpening(p);
   return {
-    intro: film || (out && p <= INTRO_UNTIL),
-    campus: film,
+    intro: opening,
+    campus: opening,
     corridor: (out && p <= SEGMENTS.portal.end) || exiting,
     teams: inTeams || travelling || (experience().phase !== 'loading' && p >= TEAMS_FROM),
     underground: out || exiting,
@@ -73,12 +73,12 @@ export function SceneDirector() {
   const corridor = useRef<Group>(null);
 
   useFrame((_, dt) => {
-    // What the film's camera can see: the campus until the cloud has swallowed
-    // it, the corridor once the tunnel opens towards it.
+    // What the opening's camera can see: the campus until it is down in the
+    // lobby, the corridor once the door begins to open onto it.
     const film = introFrame.active;
     const t = introFrame.t;
-    if (campus.current) campus.current.visible = !film || t < T.cloudDeep + 0.4;
-    if (corridor.current) corridor.current.visible = !film || t > T.tunnel - 0.6;
+    if (campus.current) campus.current.visible = film && t < T.lobby;
+    if (corridor.current) corridor.current.visible = !film || t > T.door - 0.5;
 
     const want = wanted(progress.value);
     let changed = false;

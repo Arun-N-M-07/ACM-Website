@@ -10,17 +10,14 @@ import { useExperience } from '@/store/experience';
 import { music } from '@/systems/audio/music';
 import { world } from '@/scenes/shared/blend';
 import { useProgressFrame } from './useProgressFrame';
-import { introFrame } from '@/intro/state';
 
 export function MusicDirector() {
   const musicOn = useExperience((s) => s.musicOn);
   const phase = useExperience((s) => s.phase);
 
   useEffect(() => {
-    // While the opening film runs it plays the score itself, in step with the picture.
-    if (musicOn) {
-      if (!introFrame.active) void music.enable();
-    } else music.disable();
+    if (musicOn) void music.enable();
+    else music.disable();
   }, [musicOn]);
 
   // Travelling through the portal ducks the track.

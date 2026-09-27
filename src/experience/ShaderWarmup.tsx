@@ -19,6 +19,9 @@ import {
   Mesh,
   MeshBasicMaterial,
   MeshStandardMaterial,
+  type Object3D,
+  type Texture,
+  WebGLRenderTarget,
 } from 'three';
 import { useKit } from '@/scenes/underground/kit';
 
@@ -69,11 +72,71 @@ export function ShaderWarmup({ onDone }: { onDone: () => void }) {
   useEffect(() => {
     let cancelled = false;
     const run = async () => {
+      // compile() only visits visible objects, and much of what the opening
+      // will show is hidden until the scroll reaches it (the lobby, the door,
+      // the corridor behind it, the name). Show everything for the traversal
+      // — which happens synchronously, inside the call — then put it back.
+      const hidden: Object3D[] = [];
+      scene.traverse((o) => {
+        if (!o.visible) {
+          hidden.push(o);
+          o.visible = true;
+        }
+      });
       try {
         const r = gl as typeof gl & { compileAsync?: (s: typeof scene, c: typeof camera) => Promise<unknown> };
-        if (r.compileAsync) await r.compileAsync(scene, camera);
-        else gl.compile(scene, camera);
+        const pending = r.compileAsync ? r.compileAsync(scene, camera) : (gl.compile(scene, camera), null);
+        hidden.forEach((o) => (o.visible = false));
+        hidden.length = 0;
+        // Upload every texture a material holds now too (a large texture's
+        // first upload is a visible hitch when it waits for its first frame).
+        const seen = new Set<Texture>();
+        const take = (v: unknown) => {
+          const tex = v as Texture | null;
+          if (tex && tex.isTexture && !seen.has(tex) && !(tex as Texture & { isRenderTargetTexture?: boolean }).isRenderTargetTexture) {
+            seen.add(tex);
+            gl.initTexture(tex);
+          }
+        };
+        scene.traverse((o) => {
+          const mats = (o as Mesh).material;
+          if (!mats) return;
+          for (const m of Array.isArray(mats) ? mats : [mats]) {
+            for (const v of Object.values(m as unknown as Record<string, unknown>)) take(v);
+            const uniforms = (m as Material & { uniforms?: Record<string, { value: unknown }> }).uniforms;
+            if (uniforms) for (const u of Object.values(uniforms)) take(u?.value);
+          }
+        });
+        if (pending) await pending;
+        // Then draw the whole world once, everything shown and nothing culled,
+        // into a tiny target: whatever compile() could not foresee compiles
+        // now, and every geometry is uploaded — behind the loader, not on the
+        // frame something first comes into view.
+        const shown: Object3D[] = [];
+        const unculled: Object3D[] = [];
+        scene.traverse((o) => {
+          if (!o.visible) {
+            shown.push(o);
+            o.visible = true;
+          }
+          if (o.frustumCulled) {
+            unculled.push(o);
+            o.frustumCulled = false;
+          }
+        });
+        const target = new WebGLRenderTarget(8, 8);
+        const prev = gl.getRenderTarget();
+        try {
+          gl.setRenderTarget(target);
+          gl.render(scene, camera);
+        } finally {
+          gl.setRenderTarget(prev);
+          target.dispose();
+          shown.forEach((o) => (o.visible = false));
+          unculled.forEach((o) => (o.frustumCulled = true));
+        }
       } catch {
+        hidden.forEach((o) => (o.visible = false));
         // Warm-up is an optimisation; never block entry on it.
       }
       if (!cancelled) onDone();

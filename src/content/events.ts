@@ -2,29 +2,22 @@
  * Events & programmes.
  *
  * Source: https://auceg.acm.org/events.html (cards + "Read More" descriptions),
- * the home page flagship section, the FAQ, and prodigy.html.
+ * the home page flagship section, the FAQ, and prodigy.html; the 2026 lineup
+ * and the Prodigy 2026 programme from the chapter.
  *
- * The ORDER of this array is the order of rooms in the underground corridor.
- * Entries with `flagship: true` are placed as a facing pair ("the transept")
- * at the end of the corridor, right before the door to the team.
+ * `EVENTS` is this year's lineup — the rooms of the underground corridor, the
+ * index, the archive and the /events pages. Its ORDER is the order of the
+ * rooms along the corridor (config/world: buildCorridorLayout); `flagship:
+ * true` rooms are larger and taller, and the corridor's ceiling rises over
+ * them.
  *
- * To add an event: append an object, pick an `artifact` (the physical centrepiece
- * of its room — see scenes/events/artifacts), optionally add a photo to media.ts.
+ * To add an event: add an object to EVENTS where it belongs in the lineup, and
+ * give it an `artifact` — its room's installation (scenes/events/exhibits).
  */
 import { MEDIA, type MediaAsset } from './media';
 import { PRODIGY_PROGRAMME } from './prodigy';
 
-export type RoomArtifact =
-  | 'blocks'
-  | 'leaderboard'
-  | 'interview'
-  | 'memory-stack'
-  | 'neural-net'
-  | 'locked-box'
-  | 'lectern'
-  | 'pinboard'
-  | 'puzzle-wall'
-  | 'hack-tables';
+export type RoomArtifact = 'blocks' | 'leaderboard' | 'interview' | 'lectern' | 'puzzle-wall' | 'hack-tables' | 'voices' | 'sequence' | 'contribution-graph';
 
 export interface EventFact {
   label: string;
@@ -58,43 +51,8 @@ export interface EventRecord {
   programme?: { title: string; text: string }[];
 }
 
+/** The 2026 lineup, in order. */
 export const EVENTS: EventRecord[] = [
-  {
-    slug: 'head-first',
-    title: 'Head First',
-    kind: 'Workshop',
-    cadence: 'Beginner Program',
-    summary: 'A beginner-friendly program for first-year students to learn programming logic and data structures.',
-    description:
-      'Head First is a tailored event designed exclusively for first-year students. Similar to CodeX, this initiative prioritizes the unique needs of beginners, offering challenges and problem sets curated to align with their introductory programming and basic data structure understanding. Through Head First, first-year students are guided through a learning journey that familiarizes them with programming logic and essential data structures. Join us in laying the foundation for a successful coding journey and witness the transformative experience of diving into the world of programming at its very beginning.',
-    facts: [
-      { label: 'For', value: 'First-year students' },
-      { label: 'Focus', value: 'Programming logic · basic data structures' },
-      { label: 'Goal', value: 'Fundamentals of DSA for competitive programming' },
-    ],
-    links: [],
-    image: MEDIA.eventHeadfirst,
-    accent: '#9fb4c9',
-    artifact: 'blocks',
-  },
-  {
-    slug: 'codex',
-    title: 'CodeX',
-    kind: 'Competition',
-    cadence: 'Monthly Series',
-    summary: 'A series of competitive programming contests with editorials and sessions on algorithms and data structures.',
-    description:
-      "CodeX is our dedicated event tailored to enhance students' competitive programming skills. CodeX revolves around a series of challenging contests designed to assess participants' problem-solving abilities. Dive into the world of competitive programming with insightful editorials for each contest, offering valuable perspectives on optimal problem-solving approaches. CodeX goes beyond contests by hosting informative sessions covering the best algorithms, mathematical concepts, and data structures essential for mastering competitive programming. Additionally, gain valuable insights into the prestigious International Collegiate Programming Contest (ICPC) through exclusive information sessions. Join CodeX to sharpen your coding prowess and unlock the secrets to success in the dynamic realm of competitive programming.",
-    facts: [
-      { label: 'Format', value: 'Contest series with editorials' },
-      { label: 'Sessions', value: 'Algorithms · mathematics · data structures' },
-      { label: 'Also', value: 'ICPC information sessions' },
-    ],
-    links: [],
-    image: MEDIA.eventCodex,
-    accent: '#3d7be0',
-    artifact: 'leaderboard',
-  },
   {
     slug: 'code',
     title: 'C.O.D.E',
@@ -114,56 +72,19 @@ export const EVENTS: EventRecord[] = [
     artifact: 'interview',
   },
   {
-    slug: 'bell-labs',
-    title: 'Bell Labs',
-    kind: 'Workshop',
-    cadence: 'Advanced Series',
-    summary: 'In-depth sessions on operating systems, memory management, and architectures.',
-    description:
-      "Immerse yourself in the core of computing with \"Bell Labs,\" an event dedicated to exploring the fundamental aspects of operating systems, memory management, and the intricate logic behind them. Dive into detailed sessions led by experienced students, where you'll unravel the complexities of architectures, delve into the development of bootloaders, and gain a profound understanding of the essential components that power operating systems. Bell Labs is your gateway to a comprehensive exploration of the foundational elements that drive computing systems. Join us on this enlightening journey and deepen your knowledge of operating systems and their critical functionalities.",
+    slug: 'tech-talks',
+    title: 'Tech Talks',
+    kind: 'Talk',
+    cadence: 'Session Series',
+    summary: 'A series of sessions conducted by alumni, industry experts and researchers on varied topics in Computer Science.',
+    description: 'Tech Talks is a series of sessions conducted by alumni, industry experts and researchers on varied topics in Computer Science.',
     facts: [
-      { label: 'Topics', value: 'Operating systems · memory management' },
-      { label: 'Deep dives', value: 'Architectures · bootloaders' },
-      { label: 'Led by', value: 'Experienced students' },
+      { label: 'Speakers', value: 'Alumni · industry experts · researchers' },
+      { label: 'Topics', value: 'Varied topics in Computer Science' },
     ],
     links: [],
-    image: MEDIA.eventBellLabs,
-    accent: '#b8743f',
-    artifact: 'memory-stack',
-  },
-  {
-    slug: 'machine-learning-101',
-    title: 'Machine Learning 101',
-    kind: 'Workshop',
-    cadence: 'Sessions',
-    summary: 'Immersive sessions exploring machine learning and deep learning concepts.',
-    description:
-      'Dive into the realm of artificial intelligence with "Machine Learning 101," an immersive event focused on unraveling the intricacies of machine learning and deep learning. Delve into comprehensive sessions where experienced students guide you through various ML and deep learning concepts, providing a detailed understanding of this cutting-edge technology. Explore the foundations of machine learning, grasp the nuances of deep learning, and gain valuable insights into the practical applications of these concepts. Join us for a journey through the fascinating world of Machine Learning 101 and unlock the potential of these transformative technologies.',
-    facts: [
-      { label: 'Covers', value: 'Machine learning · deep learning' },
-      { label: 'Led by', value: 'Experienced students' },
-    ],
-    links: [],
-    image: MEDIA.eventMl,
-    accent: '#8c83c4',
-    artifact: 'neural-net',
-  },
-  {
-    slug: 'schr0ding3r5',
-    title: 'Schr0ding3r5',
-    kind: 'Cybersecurity',
-    cadence: 'Ongoing',
-    summary: 'A cybersecurity initiative to raise awareness and build skills among students.',
-    description:
-      "Step into the realm of cybersecurity with Schr0ding3r5, the cybersecurity wing of ACM-CEG. Our mission is to spread awareness about competitive security and enhance the overall perception of cybersecurity among students. Engage in events crafted to bring together cybersecurity enthusiasts in the college, fostering a community that actively contributes to the evolving landscape of digital security. Join us in exploring the fascinating world of Schr0ding3r5, where we strive to empower students with knowledge, skills, and a passion for competitive security. Together, let's fortify our understanding of cybersecurity and contribute to a safer digital future.",
-    facts: [
-      { label: 'What', value: 'The cybersecurity wing of ACM-CEG' },
-      { label: 'Focus', value: 'Competitive security awareness' },
-    ],
-    links: [],
-    image: MEDIA.eventSchrodinger,
-    accent: '#4f9d95',
-    artifact: 'locked-box',
+    accent: '#d9774a',
+    artifact: 'voices',
   },
   {
     slug: 'masterclass',
@@ -184,24 +105,56 @@ export const EVENTS: EventRecord[] = [
     artifact: 'lectern',
   },
   {
-    slug: 'offcamp',
-    title: 'OffCamp',
-    kind: 'Program',
-    cadence: 'Ongoing',
-    summary: 'A dynamic program connecting students with scholarships, internships, and job opportunities.',
+    slug: 'head-start',
+    title: 'Head Start',
+    kind: 'Workshop',
+    cadence: 'Beginner Program',
+    summary: 'A beginner-friendly program for first-year students to learn programming logic and data structures.',
     description:
-      'Unlock a world of opportunities with OffCamp, a dynamic program designed to actively connect students with a plethora of opportunities. Dive into a rich pool of scholarships, internships, job openings, and more by becoming a part of our OffCamp community. This initiative serves as your gateway to easily access a diverse range of opportunities tailored to your academic and professional journey. Join OffCamp and stay ahead in your pursuit of success, as we strive to empower you with the latest and most relevant openings in the realms of scholarships, internships, and job opportunities. Seize the chance to enhance your academic and professional growth with OffCamp.',
+      'Head Start is a tailored event designed exclusively for first-year students. Similar to CodeX, this initiative prioritizes the unique needs of beginners, offering challenges and problem sets curated to align with their introductory programming and basic data structure understanding. Through Head Start, first-year students are guided through a learning journey that familiarizes them with programming logic and essential data structures. Join us in laying the foundation for a successful coding journey and witness the transformative experience of diving into the world of programming at its very beginning.',
     facts: [
-      { label: 'Shares', value: 'Scholarships · internships · jobs' },
-      { label: 'Where', value: 'Instagram and LinkedIn' },
+      { label: 'For', value: 'First-year students' },
+      { label: 'Focus', value: 'Programming logic · basic data structures' },
+      { label: 'Goal', value: 'Fundamentals of DSA for competitive programming' },
     ],
-    links: [
-      { label: 'Instagram', href: 'https://www.instagram.com/acmceg/' },
-      { label: 'LinkedIn', href: 'https://www.linkedin.com/in/acm-ceg/' },
+    links: [],
+    image: MEDIA.eventHeadStart,
+    accent: '#9fb4c9',
+    artifact: 'blocks',
+  },
+  {
+    slug: 'patternx',
+    title: 'PatternX',
+    kind: 'Training',
+    cadence: 'Beginner Series',
+    summary: 'A beginner series conducted as a precursor to CodeX, guiding students on how to find patterns and problem solve.',
+    description: 'PatternX is a beginner series conducted as a precursor to CodeX, to guide students on how to find patterns and problem solve.',
+    facts: [
+      { label: 'For', value: 'Beginners' },
+      { label: 'Focus', value: 'Finding patterns · problem solving' },
+      { label: 'Leads into', value: 'CodeX' },
     ],
-    image: MEDIA.eventOffcamp,
-    accent: '#cf7a58',
-    artifact: 'pinboard',
+    links: [],
+    accent: '#a98ad6',
+    artifact: 'sequence',
+  },
+  {
+    slug: 'codex',
+    title: 'CodeX',
+    kind: 'Competition',
+    cadence: 'Monthly Series',
+    summary: 'A series of competitive programming contests with editorials and sessions on algorithms and data structures.',
+    description:
+      "CodeX is our dedicated event tailored to enhance students' competitive programming skills. CodeX revolves around a series of challenging contests designed to assess participants' problem-solving abilities. Dive into the world of competitive programming with insightful editorials for each contest, offering valuable perspectives on optimal problem-solving approaches. CodeX goes beyond contests by hosting informative sessions covering the best algorithms, mathematical concepts, and data structures essential for mastering competitive programming. Additionally, gain valuable insights into the prestigious International Collegiate Programming Contest (ICPC) through exclusive information sessions. Join CodeX to sharpen your coding prowess and unlock the secrets to success in the dynamic realm of competitive programming.",
+    facts: [
+      { label: 'Format', value: 'Contest series with editorials' },
+      { label: 'Sessions', value: 'Algorithms · mathematics · data structures' },
+      { label: 'Also', value: 'ICPC information sessions' },
+    ],
+    links: [],
+    image: MEDIA.eventCodex,
+    accent: '#3d7be0',
+    artifact: 'leaderboard',
   },
   {
     slug: 'prodigy',
@@ -226,6 +179,23 @@ export const EVENTS: EventRecord[] = [
     accent: '#b5452f',
     artifact: 'puzzle-wall',
     programme: PRODIGY_PROGRAMME,
+  },
+  {
+    slug: 'open-source-mentorship-program',
+    title: 'Open Source Mentorship Program',
+    kind: 'Mentorship',
+    cadence: 'Cohort Program',
+    summary: 'A collaborative initiative with GDG-AU where former GSoC contributors mentor a cohort of students in open source.',
+    description:
+      'The Open Source Mentorship Program is a collaborative initiative with GDG-AU where former GSoC contributors mentor a cohort of students on how to contribute to open source and apply for prestigious programs such as GSoC.',
+    facts: [
+      { label: 'With', value: 'GDG-AU' },
+      { label: 'Mentors', value: 'Former GSoC contributors' },
+      { label: 'Goal', value: 'Contributing to open source · applying to programs such as GSoC' },
+    ],
+    links: [],
+    accent: '#5fb58a',
+    artifact: 'contribution-graph',
   },
   {
     slug: 'codher',

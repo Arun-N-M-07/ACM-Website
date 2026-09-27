@@ -42,6 +42,8 @@ import { progress } from '@/systems/scroll/progress';
 import { lawnTexture } from '@/systems/textures/surfaces';
 import { makeCanvas, toTexture } from '@/systems/textures/typeset';
 import { look } from '@/intro/look';
+import { introFrame } from '@/intro/state';
+import { wellOpenAmount } from '@/intro/timeline';
 import { world } from '../shared/blend';
 
 const LAMP = new Color('#ffd49a').multiplyScalar(1.4);
@@ -362,9 +364,13 @@ export function Grounds() {
   }, [res]);
 
   useFrame((_, dt) => {
-    // Lamps burn before dawn and go out as the day arrives (the opening film).
+    // Lamps burn before dawn and go out as the day arrives (the opening).
     res.mLamp.color.copy(LAMP_OFF).lerp(LAMP, 1 + (look.practicals - 1) * world.intro);
-    // (The light-well's glass stays closed: the way down is the opening film's now.)
+    // The light-well's glass slides open as the opening's camera stands over it.
+    const open = introFrame.active ? wellOpenAmount(introFrame.t) : 0;
+    const slide = open * (W.r + 0.8);
+    if (left.current) left.current.position.x = W.x - slide;
+    if (right.current) right.current.position.x = W.x + slide;
     const n = water.current?.normalMap;
     if (n) {
       n.offset.x += dt * 0.02;

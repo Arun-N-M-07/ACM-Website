@@ -1,13 +1,15 @@
 'use client';
 /**
- * The cloud the camera rises into.
+ * The cloud the drone rises through, and comes back down through.
  *
- * A layer of cloud lies over the campus (its base a little above where the
- * camera is still looking down at the building). As the camera climbs into
- * it, masses of cloud slide in between the lens and the ground — the campus
- * softens, loses contrast and is gone — and inside, the camera is surrounded:
- * bright above, greyer below, drifting past. Diving out of the bottom, the
- * same masses go by overhead and the light goes with them.
+ * A layer of cloud lies high over the campus, centred on the drone's column
+ * (the light-well). Rising, the camera looks down at the building as masses
+ * of cloud slide in between the lens and the ground — the campus softens,
+ * loses contrast and is gone — and inside, it is surrounded: bright above,
+ * greyer below, drifting past; above, it is a sea of cloud tops under a
+ * clear sky. Coming straight back down, the tops come up to meet it, it is
+ * swallowed, and out of the base the campus is below again, the well at the
+ * centre of the frame.
  *
  * Each mass is a soft, lit billboard (noise-shaped, brighter on its sunward
  * top, greyer underneath), sorted back to front every frame so their soft
@@ -19,14 +21,18 @@ import { useMemo, useRef } from 'react';
 import { Color, DynamicDrawUsage, InstancedBufferAttribute, type InstancedMesh, Object3D, PlaneGeometry, ShaderMaterial, Vector3 } from 'three';
 import { useExperience } from '@/store/experience';
 import { useDisposable } from '@/systems/performance/useDisposable';
+import { CAMPUS } from '@/config/world';
 import { look } from '../look';
 import { introFrame } from '../state';
 import { T } from '../timeline';
 import { hash, noiseTexture } from './noise';
 
 /** The cloud layer's base and top (m). */
-export const CLOUD_BASE = 104;
-export const CLOUD_TOP = 222;
+export const CLOUD_BASE = 155;
+export const CLOUD_TOP = 218;
+/** Its centre: the drone's column. */
+const CX = CAMPUS.well.x;
+const CZ = CAMPUS.well.z;
 
 interface Mass {
   p: Vector3;
@@ -34,25 +40,37 @@ interface Mass {
   seed: number;
 }
 
-function makeMasses(count: number): Mass[] {
+function makeMasses(count: number, far: number): Mass[] {
   const out: Mass[] = [];
+  // Out to the horizon: a sparse ring of big masses near the layer's top, so
+  // from above the sea of cloud runs on into the haze instead of ending.
+  for (let i = 0; i < far; i++) {
+    const r = 300 + Math.pow(hash(i, 21), 0.8) * 900;
+    const a = hash(i, 22) * Math.PI * 2;
+    const y = CLOUD_TOP - 26 + hash(i, 23) * 18;
+    out.push({ p: new Vector3(CX + Math.cos(a) * r, y, CZ + Math.sin(a) * r), size: 150 + hash(i, 24) * 190, seed: hash(i, 25) * 100 });
+  }
   for (let i = 0; i < count; i++) {
-    // Concentrated around the path (x ≈ 0, z 110–200), thinning outward.
-    const r = Math.pow(hash(i, 1), 0.7);
+    // Dense around the column, a wide sea thinning outward; a few right on
+    // the column so the camera passes through them both ways.
+    const onColumn = i < 10;
+    const r = onColumn ? 4 + hash(i, 1) * 22 : Math.pow(hash(i, 1), 0.62) * 300;
     const a = hash(i, 2) * Math.PI * 2;
-    const x = Math.cos(a) * r * 190;
-    const z = 150 + Math.sin(a) * r * 150;
-    const y = CLOUD_BASE + 8 + Math.pow(hash(i, 3), 1.2) * (CLOUD_TOP - CLOUD_BASE - 20);
-    out.push({ p: new Vector3(x, y, z), size: 36 + hash(i, 4) * 64, seed: hash(i, 5) * 100 });
+    const x = CX + Math.cos(a) * r;
+    const z = CZ + Math.sin(a) * r * 0.9;
+    const y = CLOUD_BASE + 6 + Math.pow(hash(i, 3), 1.1) * (CLOUD_TOP - CLOUD_BASE - 12);
+    out.push({ p: new Vector3(x, y, z), size: (onColumn ? 30 : 40) + hash(i, 4) * 70, seed: hash(i, 5) * 100 });
   }
   return out;
 }
 
 export function Clouds() {
   const quality = useExperience((s) => s.quality);
-  const count = quality === 'high' ? 150 : quality === 'medium' ? 100 : 60;
+  const near = quality === 'high' ? 150 : quality === 'medium' ? 100 : 60;
+  const far = quality === 'high' ? 70 : quality === 'medium' ? 50 : 30;
+  const count = near + far;
   const mesh = useRef<InstancedMesh>(null);
-  const masses = useMemo(() => makeMasses(count), [count]);
+  const masses = useMemo(() => makeMasses(near, far), [near, far]);
 
   const res = useDisposable(() => {
     const geo = new PlaneGeometry(1, 1);
@@ -129,8 +147,8 @@ export function Clouds() {
     const m = mesh.current;
     if (!m) return;
     const t = introFrame.t;
-    // Around the cloud only (and hidden once the dark has taken over).
-    const on = introFrame.active && t > T.cloudIn - 4 && t < T.tunnel + 0.5;
+    // From the rise until the camera is well below it again.
+    const on = introFrame.active && t > T.rise + 3 && t < T.cloudBase + 6;
     m.visible = on;
     if (!on) return;
     // Back to front, so soft edges layer properly.
@@ -149,11 +167,14 @@ export function Clouds() {
     res.seeds.needsUpdate = true;
     const u = res.mat.uniforms;
     u.uTime.value = clock.elapsedTime;
-    // Present from just before the camera reaches the layer; darkening as it dives out below.
-    u.uAmount.value = Math.min(1, Math.max(0, (t - (T.cloudIn - 2.5)) / 2)) * (1 - look.dark);
-    const dim = 1 - Math.min(1, Math.max(0, (t - T.descent) / 2.2)) * 0.75;
-    (u.uLit.value as Color).setScalar(1.0 * dim).lerp(look.sun.color, 0.08);
-    (u.uShade.value as Color).set('#7e8892').multiplyScalar(0.55 + 0.45 * dim);
+    u.uAmount.value = Math.min(1, Math.max(0, (t - (T.rise + 3)) / 2));
+    // Seen from below, the masses are their shaded bellies.
+    const under = Math.min(1, Math.max(0, (CLOUD_BASE + 12 - cp.y) / 45));
+    // Seen from below, the masses are their shaded bellies.
+    // From above, in the open sun, the tops are bright.
+    const above = Math.min(1, Math.max(0, (cp.y - CLOUD_TOP + 8) / 30));
+    (u.uLit.value as Color).setScalar(1.1 - 0.2 * under + 0.4 * above).lerp(look.sun.color, 0.1 + 0.1 * above);
+    (u.uShade.value as Color).set('#98a1aa').multiplyScalar(1 - 0.25 * under + 0.3 * above);
     (u.uFog.value as Color).copy(look.fogColor);
     u.uFogDensity.value = look.fogDensity;
   });

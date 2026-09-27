@@ -48,12 +48,8 @@ export const MEDIA = {
   eventCodher: fromSite('event.codher', 'events/codher.jpeg', 'CodHer hackathon'),
   eventCode: fromSite('event.code', 'events/code.jpeg', 'C.O.D.E programme'),
   eventCodex: fromSite('event.codex', 'events/codex.jpeg', 'CodeX contest series'),
-  eventHeadfirst: fromSite('event.headfirst', 'events/headfirst.png', 'Head First programme'),
-  eventOffcamp: fromSite('event.offcamp', 'events/offcamp.png', 'OffCamp opportunities programme'),
-  eventSchrodinger: fromSite('event.schrodinger', 'events/schrodinger.png', 'Schr0ding3r5 cybersecurity wing'),
-  eventMl: fromSite('event.ml', 'events/ml.jpeg', 'Machine Learning 101 sessions'),
+  eventHeadStart: fromSite('event.headstart', 'events/headfirst.png', 'Head Start programme'),
   eventMasterclass: fromSite('event.masterclass', 'events/masterclass.png', 'MasterClass sessions'),
-  eventBellLabs: fromSite('event.belllabs', 'events/bell_labs.png', 'Bell Labs sessions'),
 } as const satisfies Record<string, MediaAsset>;
 
 export type MediaId = keyof typeof MEDIA;

@@ -124,7 +124,7 @@ export function WorldLights() {
         sky.current.intensity += (look.sky.intensity - sky.current.intensity) * k;
       }
     }
-    // The opening film's tunnel is darker than the facility (its own light is
+    // The opening's shaft and lobby are darker than the facility (the door's light is
     // the story there); the factor is back to 1 at the handoff.
     if (world.intro > 0 && u > 0) {
       const g = 1 + (look.tunnelAmbient - 1) * world.intro;

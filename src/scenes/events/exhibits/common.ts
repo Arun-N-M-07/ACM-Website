@@ -5,7 +5,9 @@
  */
 import { useFrame } from '@react-three/fiber';
 import { type ComponentType, type MutableRefObject, useRef } from 'react';
+import { type PerspectiveCamera, Vector3 } from 'three';
 import { SEGMENTS } from '@/config/timeline';
+import { CORRIDOR } from '@/config/world';
 import type { EventRecord } from '@/content/events';
 import { PALETTE } from '@/config/palette';
 import { eventStationAt } from '@/systems/camera/shots';
@@ -22,6 +24,12 @@ export interface RoomClock {
   here: boolean;
   /** Within one room either side: worth animating. */
   near: boolean;
+  /**
+   * How present the room is to the visitor, 0 → 1, from where the camera is:
+   * faint next door, waking through the approach, full inside, easing out as
+   * the camera walks on. Continuous with scroll (the camera is damped).
+   */
+  presence: number;
 }
 
 export function readRoomClock(index: number, out: RoomClock) {
@@ -35,17 +43,56 @@ export function readRoomClock(index: number, out: RoomClock) {
     out.here = false;
     out.u = p > SEGMENTS.events.end || (inEvents && st.index > index) ? 1 : -0.3;
   }
-  out.near = (inEvents && Math.abs(st.index - index) <= 1) || (p > SEGMENTS.events.end && p < SEGMENTS.portal.end && index >= 8);
+  // (Walking on to the portal, the last rooms stay awake behind you.)
+  out.near = (inEvents && Math.abs(st.index - index) <= 1) || (p > SEGMENTS.events.end && p < SEGMENTS.portal.end && index >= CORRIDOR.rooms.length - 2);
+  if (out.here) out.presence = out.u < 0 ? 0.2 + ((out.u + 0.3) / 0.3) * 0.8 : 1;
+  else if (inEvents && st.index === index + 1) out.presence = 1 - 0.85 * st.travel;
+  else out.presence = out.near ? 0.15 : 0;
   return out;
 }
 
 export function useRoomClock(index: number) {
-  const clock = useRef<RoomClock>({ u: -0.3, here: false, near: false });
+  const clock = useRef<RoomClock>({ u: -0.3, here: false, near: false, presence: 0 });
   useFrame(() => {
     readRoomClock(index, clock.current);
   });
   return clock;
 }
+
+// ─── Pointer proximity ─────────────────────────────────────────────────────
+
+const pointer = { x: 0, y: 0, live: false };
+let listening = false;
+const _ndc = new Vector3();
+
+/**
+ * How close the (mouse) pointer is to a world point on screen: 1 over it,
+ * easing to 0 at `radius` (in screen heights). Touch doesn't hover, so it
+ * stays 0 there; nothing depends on it — it only lets an artifact answer.
+ */
+export function pointerNear(point: Vector3, camera: PerspectiveCamera, radius = 0.16) {
+  if (!listening && typeof window !== 'undefined') {
+    listening = true;
+    window.addEventListener(
+      'pointermove',
+      (e) => {
+        if (e.pointerType === 'touch') return;
+        pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+        pointer.y = 1 - (e.clientY / window.innerHeight) * 2;
+        pointer.live = true;
+      },
+      { passive: true },
+    );
+  }
+  if (!pointer.live) return 0;
+  _ndc.copy(point).project(camera);
+  if (_ndc.z > 1) return 0;
+  const d = Math.hypot((_ndc.x - pointer.x) * camera.aspect, _ndc.y - pointer.y) / 2;
+  return 1 - sstep(d, radius * 0.35, radius);
+}
+
+/** Up across [a, b] and back down across [c, d]. */
+export const swell = (s: number, a: number, b: number, c: number, d: number) => sstep(s, a, b) * (1 - sstep(s, c, d));
 
 export type Wall = 'back' | 'left' | 'right';
 
@@ -60,6 +107,10 @@ export type WallDraw = (ctx: CanvasRenderingContext2D, w: number, h: number, wal
 
 export interface PieceProps {
   event: EventRecord;
+  /** The room's place in the corridor. */
+  index: number;
+  /** Multiplier on the room's light (1 = as the room sets it): an installation can let the room respond. */
+  response: MutableRefObject<number>;
   width: number;
   depth: number;
   height: number;
@@ -71,7 +122,7 @@ export interface Exhibit {
   idea: string;
   walls: WallDraw;
   Piece: ComponentType<PieceProps>;
-  /** Room light level before the visit starts (Bell Labs is dark until it boots). */
+  /** Room light level before the visit starts (a room can stay dark until its installation lights it). */
   darkUntil?: number;
 }
 
@@ -92,6 +143,21 @@ export const hash = (n: number) => {
   const s = Math.sin(n * 127.1 + 311.7) * 43758.5453;
   return s - Math.floor(s);
 };
+
+/**
+ * The part of a back wall the room's reading card leaves open (and in view),
+ * as fractions of its width. The card docks to the side of the screen away
+ * from the wall's anchor — which side depends on the room's side of the
+ * corridor — and covers more of a narrower screen; on phones it is a sheet
+ * along the bottom and the view sees the middle of the wall.
+ */
+export function openSpan(index: number): [number, number] {
+  const w = typeof window === 'undefined' ? 1440 : window.innerWidth;
+  const right = CORRIDOR.rooms[index]?.side === -1;
+  if (w <= 760) return [0.3, 0.74];
+  if (w <= 1080) return right ? [0.2, 0.42] : [0.58, 0.8];
+  return right ? [0.05, 0.58] : [0.42, 0.95];
+}
 
 /** The exhibit's title, painted across the top of its back wall. Returns the y where the installation can start. */
 export function titleBand(ctx: CanvasRenderingContext2D, w: number, h: number, info: WallInfo, ink: string = BONE, dim: string = DIM) {

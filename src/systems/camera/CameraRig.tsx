@@ -6,21 +6,22 @@
  *
  * Every frame:
  *   1. damp raw scroll progress → progress.value, publish to overlays
- *   2. derive segment / chapter / active room → store (on change); run the
- *      Teams controller (portal hold, walls, hover)
- *   3. evaluate the shot: the opening cinematic's film camera (src/intro —
- *      its own playhead, not scroll), the scroll-driven cinematic (with the
- *      portal hold's pull and dolly layered on), or — travelling or inside —
- *      the Teams shot
+ *   2. derive segment / chapter / active room → store (on change); hand the
+ *      progress to the opening (src/intro: its beat is progress, rescaled);
+ *      run the Teams controller (portal hold, walls, hover)
+ *   3. evaluate the shot: within the opening, its camera at that beat; after
+ *      it, the scroll-driven cinematic (with the portal hold's pull and dolly
+ *      layered on); or — travelling or inside — the Teams shot
  *   4. layer hand-held drift, apply
  */
 import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useRef } from 'react';
 import type { PerspectiveCamera } from 'three';
 import { CAMERA_RESPONSE } from '@/config/camera';
-import { chapterForSegment, segmentAt } from '@/config/timeline';
+import { chapterForSegment, INTRO_PROGRESS_END, segmentAt } from '@/config/timeline';
+import { INTRO_END, INTRO_MAX_BEATS_PER_SECOND } from '@/intro/timeline';
 import { evaluateIntroShot } from '@/intro/camera';
-import { updateIntro } from '@/intro/controller';
+import { syncIntro } from '@/intro/controller';
 import { introFrame } from '@/intro/state';
 import { experience } from '@/store/experience';
 import { world } from '@/scenes/shared/blend';
@@ -31,6 +32,9 @@ import { teamsFrame } from '@/teams/state';
 import { fx } from './effects';
 import { copyPose, emptyPose } from './pose';
 import { eventStationAt, evaluateCinematic, nearestStop } from './shots';
+
+/** The opening's fastest follow rate, in progress units per second. */
+const INTRO_MAX_RATE = (INTRO_MAX_BEATS_PER_SECOND / INTRO_END) * INTRO_PROGRESS_END;
 
 export function CameraRig() {
   const camera = useThree((s) => s.camera) as PerspectiveCamera;
@@ -80,22 +84,27 @@ export function CameraRig() {
         fx.fade = 1;
       }
       const k = 1 - Math.exp(-dt * CAMERA_RESPONSE.progressDamping);
-      progress.value += (progress.target - progress.value) * k;
+      let step = (progress.target - progress.value) * k;
+      // Within the opening the camera follows the scroll no faster than a
+      // cinematic maximum, so even a hard fling reads as a move.
+      if (progress.value < INTRO_PROGRESS_END && progress.target < INTRO_PROGRESS_END + 0.02) {
+        const cap = INTRO_MAX_RATE * dt;
+        step = Math.max(-cap, Math.min(cap, step));
+      }
+      progress.value += step;
       if (Math.abs(progress.target - progress.value) < 1e-6) progress.value = progress.target;
       if (st.phase !== 'travel') fx.fade = Math.max(0, fx.fade - dt * 2.5);
     }
     progress.publish(dt);
 
     // 2 ─ discrete state
-    updateIntro(dt);
+    syncIntro(progress.value);
     const inIntro = introFrame.active;
-    if (!inIntro) {
-      const seg = segmentAt(progress.value);
-      if (seg !== st.segment) st.set({ segment: seg, chapter: chapterForSegment(seg) });
-      const station = eventStationAt(progress.value);
-      const active = seg === 'events' && station.index >= 0 && (station.dwell > 0 || station.travel > 0.8) ? station.index : -1;
-      if (active !== st.activeRoom) st.set({ activeRoom: active });
-    }
+    const seg = segmentAt(progress.value);
+    if (seg !== st.segment) st.set({ segment: seg, chapter: chapterForSegment(seg) });
+    const station = eventStationAt(progress.value);
+    const active = seg === 'events' && station.index >= 0 && (station.dwell > 0 || station.travel > 0.8) ? station.index : -1;
+    if (active !== st.activeRoom) st.set({ activeRoom: active });
     updateTeams(dt, camera);
 
     // 3 ─ shot

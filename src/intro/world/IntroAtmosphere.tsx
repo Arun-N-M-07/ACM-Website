@@ -1,9 +1,9 @@
 'use client';
 /**
- * Once per frame: evaluate the film's colour script at the playhead
+ * Once per frame: evaluate the opening's colour script at the scroll's beat
  * (look.ts) and hand it to the world — the ground mist every patched
- * material shares, the exposure — and hold `world.intro` at 1 while the film
- * (or the threshold before it) is what's on screen. The shared atmosphere,
+ * material shares, the exposure — and hold `world.intro` at 1 while the
+ * opening (or the threshold before it) is what's on screen. The shared atmosphere,
  * lights and sky blend towards the script by that weight, above ground.
  */
 import { useFrame, useThree } from '@react-three/fiber';
@@ -23,7 +23,7 @@ export function IntroAtmosphere() {
 
   useFrame(() => {
     const ph = experience().phase;
-    const film = introFrame.active || ph === 'loading' || ph === 'ready' || ph === 'intro';
+    const film = introFrame.active || ph === 'loading' || ph === 'ready';
     world.intro = film ? 1 : 0;
     evaluateLook(introFrame.t);
 

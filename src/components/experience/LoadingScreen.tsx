@@ -2,12 +2,14 @@
 /**
  * The threshold. While the world is built behind it, a mark and a count — no
  * headline, no map, nothing that explains what is on the other side. When
- * everything the opening film needs is ready (the world, its compiled
- * shaders, the score buffered), one word: Enter. Entering is the user
- * gesture browsers need for sound, and the start of the film.
+ * everything the opening needs is ready (the world, its compiled shaders, the
+ * score buffered), one word: Enter. Entering is the user gesture browsers
+ * need for sound — the score is started right there, inside the click — and
+ * it hands the page's scroll to the visitor: the journey (the opening first)
+ * moves only as they scroll.
  *
- * A deep link (#events, an event, a domain, #teams) skips the film and opens
- * the journey where it points.
+ * A deep link (#events, an event, a domain, #teams) opens the journey where
+ * it points instead.
  */
 import { useEffect, useRef, useState } from 'react';
 import { SEGMENTS } from '@/config/timeline';
@@ -20,8 +22,7 @@ import { TEAM_DOMAINS } from '@/content/teams';
 import { goToChapter, goToDomain, goToRoom } from './navigation';
 import { jumpToProgress } from '@/systems/scroll/ScrollTimeline';
 import { CHAPTER } from '@/content/chapter';
-import { startIntro } from '@/intro/controller';
-import { INTRO_END, SCORE_IN } from '@/intro/timeline';
+import { SCORE_IN } from '@/intro/timeline';
 
 /** Where a deep link points, as an action — or null (no link: the film plays). */
 function deepLink(): (() => void) | null {
@@ -82,15 +83,15 @@ export function LoadingScreen() {
   if (gone) return null;
 
   const enter = (withMusic: boolean) => {
-    if (withMusic) set({ musicOn: true });
+    if (withMusic) {
+      // Inside the click: the gesture every browser needs before it plays sound.
+      void music.playFrom(SCORE_IN, MUSIC.fade);
+      set({ musicOn: true });
+    }
     const link = deepLink();
-    if (link) {
-      // The journey (without the film) begins at the Events; the link then takes it on.
-      set({ phase: 'cinematic', segment: 'events', chapter: 'events' });
-      if (withMusic) void music.playFrom(SCORE_IN + INTRO_END, MUSIC.fade);
-    } else startIntro(withMusic);
+    set({ phase: 'cinematic' });
     // Keyboard focus must not be left on a button, or Space would press it
-    // instead of moving the film / the journey.
+    // instead of scrolling the journey.
     requestAnimationFrame(() => {
       (document.activeElement as HTMLElement | null)?.blur();
       document.querySelector<HTMLElement>('.stage')?.focus({ preventScroll: true });

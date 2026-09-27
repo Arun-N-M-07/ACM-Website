@@ -31,6 +31,9 @@ try {
     await page.keyboard.press('n');
     await settle();
     assert.ok(await page.evaluate(() => window.__acm.progress.value > 0), 'N moves to the next stop');
+    // The opening keeps the page's chrome out of the way; skipping it lands in the Events, where the top bar is.
+    await page.click('.intro-skip');
+    await settle();
     await page.click('.ctl-index');
     await page.waitForSelector('.index');
     await page.screenshot({ path: `${out}/${name}-index.png` });
@@ -87,7 +90,7 @@ try {
     await page.keyboard.press('t');
     await settle(700);
     assert.equal(await page.evaluate(() => document.documentElement.dataset.archive), 'open');
-    assert.ok(await page.$eval('#archive', (el) => el.textContent.includes('Head First')));
+    assert.ok(await page.$eval('#archive', (el) => el.textContent.includes('Head Start')));
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
     results.push(`${name}: entrance, navigation, focus, dossier, exact signal rewind, portal gate, Teams outro, reduced motion and archive passed`);
     await page.close();
@@ -105,8 +108,8 @@ try {
   await fallback.setJavaScriptEnabled(false);
   await fallback.goto(`${base}/archive`, { waitUntil: 'domcontentloaded' });
   assert.ok((await fallback.$$eval('h1', (els) => els.map((el) => el.textContent).join(' '))).includes('ACM'));
-  await fallback.goto(`${base}/events/head-first`, { waitUntil: 'domcontentloaded' });
-  assert.ok((await fallback.$$eval('h1', (els) => els.map((el) => el.textContent).join(' '))).includes('Head First'));
+  await fallback.goto(`${base}/events/head-start`, { waitUntil: 'domcontentloaded' });
+  assert.ok((await fallback.$$eval('h1', (els) => els.map((el) => el.textContent).join(' '))).includes('Head Start'));
   results.push('WebGL failure, no-JavaScript archive and event page passed');
   assert.deepEqual(errors, [], 'No browser errors or failed requests');
   console.log(results.join('\n'));
