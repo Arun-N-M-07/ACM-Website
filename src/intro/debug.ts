@@ -6,6 +6,7 @@ import { music } from '@/systems/audio/music';
 import { progress } from '@/systems/scroll/progress';
 import { jumpToProgress, scrollToProgress } from '@/systems/scroll/ScrollTimeline';
 import { progressAtIntroTime, skipIntro } from './controller';
+import { introCameraAt } from './camera';
 import { intro, introFrame } from './state';
 
 export const introDebug = {
@@ -34,4 +35,9 @@ export const introDebug = {
   /** The progress of beat t. */
   progressAt: (t: number) => progressAtIntroTime(t),
   skip: () => skipIntro(),
+  /** The camera's path at beat t (no breath): position, look target, lens. */
+  cameraAt(t: number) {
+    const c = introCameraAt(t);
+    return [c.pos.x, c.pos.y, c.pos.z, c.look.x, c.look.y, c.look.z, c.fov];
+  },
 };

@@ -9,7 +9,10 @@
  * moves only as they scroll.
  *
  * A deep link (#events, an event, a domain, #teams) opens the journey where
- * it points instead.
+ * it points instead — once: the hash is consumed as it is followed, so the
+ * address bar no longer carries it and a refresh is a normal entry again.
+ * Without one, Enter always starts the opening from its first frame, whatever
+ * the browser remembered (a restored scroll offset, a stale dossier…).
  */
 import { useEffect, useRef, useState } from 'react';
 import { SEGMENTS } from '@/config/timeline';
@@ -28,6 +31,8 @@ import { SCORE_IN } from '@/intro/timeline';
 function deepLink(): (() => void) | null {
   const hash = window.location.hash.replace('#', '');
   if (!hash || hash === 'archive') return null;
+  // Followed once: take it out of the address bar (a later refresh is a normal entry).
+  history.replaceState(history.state, '', window.location.pathname + window.location.search);
   if (hash === 'team' || hash === 'teams') return () => goToChapter('teams');
   const domain = TEAM_DOMAINS.findIndex((d) => d.slug === hash);
   if (domain >= 0) return () => goToDomain(domain);
@@ -89,7 +94,10 @@ export function LoadingScreen() {
       set({ musicOn: true });
     }
     const link = deepLink();
-    set({ phase: 'cinematic' });
+    // A normal entry starts the journey at its beginning, deterministically: the scroll, the
+    // camera's progress, and anything left open, whatever the browser restored.
+    set({ phase: 'cinematic', dossier: null, menuOpen: false, activeRoom: -1 });
+    if (!link) jumpToProgress(0);
     // Keyboard focus must not be left on a button, or Space would press it
     // instead of scrolling the journey.
     requestAnimationFrame(() => {

@@ -42,7 +42,7 @@ export const ROLL_AXLE = { x: -ROLL_DIR.z, z: ROLL_DIR.x } as const;
 
 /** The words, and the plane they form in (world). */
 export const WORDS = `${yearsActive()} YEARS AGO`;
-export const LETTERS = { x: PX + 0.1, y: 1.35, z: 160.2 } as const;
+export const LETTERS = { x: PX + 0.1, y: 1.55, z: 155 } as const;
 
 export interface RollState {
   /** Metres travelled along the path. */
@@ -99,13 +99,20 @@ export function rollAt(t: number, out: RollState): RollState {
 export const pressureAt = (t: number) => ease(t, T.pressure, T.release - 0.2) * (1 - ease(t, T.release + 0.3, T.release + 3));
 /** Beats since the release (negative before it). */
 export const sinceRelease = (t: number) => t - T.release;
-/** How far the gas has spread (m): fast at first, slowing as the pressure is spent. */
-export const gasRadius = (t: number) => {
+/** How far the smog has flooded from the canister (m): fast at first, then on past everything in view. */
+export const floodRadius = (t: number) => {
   const a = sinceRelease(t);
-  return a <= 0 ? 0 : 3.3 * (1 - Math.exp(-a / 1.7));
+  return a <= 0 ? 0 : 42 * (1 - Math.exp(-a / 3.4));
 };
-/** How much gas there is (0..1): released, then thinning into the mist. */
-export const gasAmount = (t: number) => ease(t, T.release, T.release + 0.5) * (1 - 0.85 * ease(t, T.dissolve, T.mixed + 1)) * (1 - ease(t, T.mixed, T.story1 + 1));
+/**
+ * How much smog there is (0..1): released; dense while it becomes words; then
+ * thinner, an atmosphere the first two sheets are read in; then clearing — as
+ * the second sheet burns and the stone comes — to nothing.
+ */
+export const gasAmount = (t: number) =>
+  ease(t, T.release, T.release + 0.6) * (1 - 0.55 * ease(t, T.dissolve, T.story1)) * (1 - ease(t, T.acmTurn - 1, T.acm + 7));
+/** Is there any smog to draw at beat t. */
+export const smogOn = (t: number) => t > T.release - 0.5 && t < T.acm + 7.5;
 /**
  * The words: how formed they are (0 → 1, from the first word to the last),
  * and how far they have come apart again (0 → 1).

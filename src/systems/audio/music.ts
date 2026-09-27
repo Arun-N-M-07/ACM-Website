@@ -52,7 +52,8 @@ class MusicPlayer {
       const src = ctx.createMediaElementSource(this.el);
       const filter = ctx.createBiquadFilter();
       filter.type = 'lowpass';
-      filter.frequency.value = 20000;
+      // (Open: as high as this context can go — some outputs run at 16 kHz, where 20 kHz is out of range.)
+      filter.frequency.value = Math.min(20000, ctx.sampleRate * 0.45);
       filter.Q.value = 0.4;
       const gain = ctx.createGain();
       gain.gain.value = 0;
@@ -228,7 +229,8 @@ class MusicPlayer {
     const f = this.filter;
     const ctx = this.ctx;
     if (!f || !ctx) return;
-    const hz = 20000 * Math.pow(1200 / 20000, Math.min(1, Math.max(0, amount)));
+    const open = Math.min(20000, ctx.sampleRate * 0.45);
+    const hz = open * Math.pow(1200 / open, Math.min(1, Math.max(0, amount)));
     f.frequency.setTargetAtTime(hz, ctx.currentTime, 0.35);
   }
 

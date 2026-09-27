@@ -8,15 +8,16 @@
  * world, on a stone in the mist — world/AcmStone.tsx.) The rest is what the chapter says it is for,
  * in as few words as it takes.
  *
- * Each fragment is a physical sheet with its own life: it comes out of the
- * mist on its own path, settles, its ink surfaces, it is read, and it burns —
- * each from a different place — to ash that the air takes away.
+ * Each fragment is a physical sheet with its own life: the air brings it in
+ * from one side or the other, rolled like a scroll, and it unfurls in front of
+ * you (flight.ts); its ink surfaces, it is read, and it burns — each from a
+ * different place — to ash that the air takes away.
  *
  * Every time here is a beat of the scroll (see ../timeline.ts): a sheet is
  * exactly as far through its arrival, its ink or its fire as the visitor has
  * scrolled, and each stays legible across about six beats.
  */
-import { CHAPTER, yearsActive } from '@/content/chapter';
+import { yearsActive } from '@/content/chapter';
 import { T } from '../timeline';
 
 export type LineStyle = 'display' | 'italic' | 'caps';
@@ -39,8 +40,8 @@ export interface Fragment {
   burn: [number, number];
   /** Where it settles, relative to the camera: x right, y up, z forward (m). */
   rest: [number, number, number];
-  /** Where it comes from (same frame). */
-  from: [number, number, number];
+  /** Which side the air brings it in from: −1 the left, +1 the right (they alternate). */
+  side: -1 | 1;
   /** Settled tilt (radians: x pitch, y yaw, z roll). */
   tilt: [number, number, number];
   /** Where the fire starts, in sheet UV. */
@@ -55,17 +56,14 @@ const years = yearsActive();
 export const FRAGMENTS: Fragment[] = [
   {
     id: 'began',
-    lines: [
-      { text: `${years} years ago,`, style: 'display' },
-      { text: 'a story began.', style: 'italic' },
-    ],
-    stamp: `EST. ${CHAPTER.established}`,
+    // (The years are said once, by the smog itself — prologue/ — never again on paper.)
+    lines: [{ text: 'A story began.', style: 'display' }],
     size: [1.74, 1.17],
     arrive: [4, 9],
     ink: [7.5, 10.5],
     burn: [16.5, 20.5],
     rest: [-0.22, -0.06, 3.1],
-    from: [-4.2, 1.5, 15],
+    side: -1,
     tilt: [-0.05, 0.16, 0.03],
     ignite: [0.92, 0.12],
     holes: [[0.3, 0.7]],
@@ -82,7 +80,7 @@ export const FRAGMENTS: Fragment[] = [
     ink: [22.5, 25.5],
     burn: [31.5, 35.5],
     rest: [0.24, 0.02, 3.2],
-    from: [4.4, -0.8, 14],
+    side: 1,
     tilt: [0.04, -0.2, -0.045],
     ignite: [0.04, 0.55],
     holes: [[0.62, 0.3], [0.8, 0.78]],
@@ -101,7 +99,7 @@ export const FRAGMENTS: Fragment[] = [
     burn: [67.5, 71.5],
     // Lower now: the building is beginning to come out of the mist above it.
     rest: [-0.26, -0.2, 3.35],
-    from: [-2.6, -3.2, 13],
+    side: -1,
     tilt: [0.07, 0.2, -0.03],
     ignite: [0.5, 0.96],
     holes: [[0.22, 0.28], [0.74, 0.46]],
@@ -122,7 +120,7 @@ export const FRAGMENTS: Fragment[] = [
     // Over the tower: it burns from the middle outwards, and the opening it leaves frames the
     // building as the mist clears behind it — the words become the place.
     rest: [0.02, 0.14, 3.3],
-    from: [0.3, 0.6, 15],
+    side: 1,
     tilt: [-0.03, -0.05, 0.015],
     ignite: [0.52, 0.56],
     holes: [[0.4, 0.62], [0.6, 0.5]],

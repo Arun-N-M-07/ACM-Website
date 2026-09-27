@@ -121,7 +121,8 @@ export function AcmStone() {
     );
 
     const noise = noiseTexture(128);
-    const stoneMat = new MeshStandardMaterial({ color: '#1f2023', roughness: 0.72, metalness: 0.05 });
+    // Dark basalt, so the steel letters stand clear of it.
+    const stoneMat = new MeshStandardMaterial({ color: '#141518', roughness: 0.78, metalness: 0.05 });
     stoneMat.onBeforeCompile = (shader) => {
       shader.uniforms.uStoneNoise = { value: noise };
       shader.vertexShader = shader.vertexShader
@@ -171,13 +172,13 @@ export function AcmStone() {
     const c = Math.cos(STONE_YAW);
     const s = Math.sin(STONE_YAW);
     const local = new Vector3(0, STONE.plinth + 0.5, STONE.depth / 2 + 1.1);
+    // A key from above and in front of the face (a lamp on the path), raking down the letters: their
+    // top edges and faces catch it, the stone between them doesn't.
+    const key = new Vector3(0.6, STONE.plinth + STONE.height + 1.6, STONE.depth / 2 + 2.6);
+    const world = (v: Vector3) => new Vector3(STONE.x + v.x * c + v.z * s, v.y, STONE.z - v.x * s + v.z * c);
     return [
-      {
-        position: new Vector3(STONE.x + local.x * c + local.z * s, local.y, STONE.z - local.x * s + local.z * c),
-        color: new Color('#ffcf9e'),
-        intensity: 16,
-        distance: 8,
-      },
+      { position: world(local), color: new Color('#ffcf9e'), intensity: 16, distance: 8 },
+      { position: world(key), color: new Color('#f1eee8'), intensity: 70, distance: 12 },
     ];
   }, []);
   const anchors = useGainedLightAnchors(anchorList);
@@ -191,6 +192,7 @@ export function AcmStone() {
     const on = film && t < T.clearing + 6;
     g.visible = on;
     anchors[0].gain = on ? ease(t, T.acm - 1, T.acmLit) : 0;
+    anchors[1].gain = on ? ease(t, T.acmTurn, T.acm + 2) * (1 - ease(t, T.acmGone, T.acmGone + 6)) : 0;
     if (!on) return;
     // The uplight wakes as the camera comes to the stone, and stays on.
     const lamp = ease(t, T.acm - 1, T.acmLit);
@@ -201,7 +203,7 @@ export function AcmStone() {
     const sweep = span(t, T.acmLit - 0.5, T.acmHold + 1.5);
     u.uSweep.value = -res.width - 0.8 + sweep * (2 * res.width + 1.6);
     u.uSweepAmt.value = Math.sin(Math.PI * sweep) * 0.55;
-    res.letterMat.envMapIntensity = 0.34 + 0.7 * lamp;
+    res.letterMat.envMapIntensity = 0.5 + 1.0 * lamp;
   });
 
   return (

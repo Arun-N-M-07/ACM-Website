@@ -21,9 +21,14 @@
 
   --gutter: clamp(16px, 3.6vw, 52px);
   --ease: cubic-bezier(0.2, 0.7, 0.1, 1);
-  --serif: var(--font-serif), Georgia, 'Times New Roman', serif;
-  --sans: var(--font-sans), 'Helvetica Neue', Arial, sans-serif;
-  --mono: var(--font-mono), 'SFMono-Regular', Menlo, monospace;
+  /* Typography: one family, Bodoni Moda, in three roles (display, text, label) — see layout.tsx.
+     The --font-* names are what the in-world canvases read (systems/textures/typeset). */
+  --font-serif: var(--font-bodoni);
+  --font-sans: var(--font-bodoni);
+  --font-mono: var(--font-bodoni);
+  --serif: var(--font-bodoni), 'Bodoni 72', Didot, 'Bodoni MT', Georgia, serif;
+  --sans: var(--font-bodoni), 'Bodoni 72', Didot, 'Bodoni MT', Georgia, serif;
+  --mono: var(--font-bodoni), 'Bodoni 72', Didot, 'Bodoni MT', Georgia, serif;
   color-scheme: dark;
 }
 
@@ -46,7 +51,9 @@ body {
   color: var(--bone);
   font-family: var(--sans);
   font-size: 16px;
-  line-height: 1.5;
+  line-height: 1.55;
+  font-optical-sizing: auto;
+  font-variant-numeric: lining-nums;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
 }
@@ -73,6 +80,7 @@ img {
 /* ── Type primitives ───────────────────────────────────────────────────── */
 .kicker {
   font-family: var(--mono);
+  font-weight: 500;
   font-size: 11px;
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -99,6 +107,7 @@ img {
 }
 .text-link {
   font-family: var(--mono);
+  font-weight: 500;
   font-size: 12px;
   letter-spacing: 0.06em;
   text-decoration: underline;
@@ -120,6 +129,7 @@ img {
 }
 .kbd {
   font-family: var(--mono);
+  font-weight: 500;
   font-size: 10px;
   letter-spacing: 0.1em;
   border: 1px solid var(--line);
@@ -129,6 +139,7 @@ img {
 }
 .btn {
   font-family: var(--mono);
+  font-weight: 500;
   font-size: 11px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -166,6 +177,7 @@ img {
   background: var(--bone);
   color: var(--ink);
   font-family: var(--mono);
+  font-weight: 500;
   font-size: 12px;
   padding: 10px 14px;
   transform: translateY(-160%);
@@ -325,6 +337,7 @@ html.scroll-locked .experience-canvas {
 }
 .hero-sub {
   font-family: var(--mono);
+  font-weight: 500;
   font-size: 12px;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -352,6 +365,7 @@ html.scroll-locked .experience-canvas {
 }
 .scroll-cue {
   font-family: var(--mono);
+  font-weight: 500;
   font-size: 11px;
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -417,6 +431,7 @@ html.scroll-locked .experience-canvas {
 .chapter-indicator {
   margin: 0;
   font-family: var(--mono);
+  font-weight: 500;
   font-size: 11px;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -437,6 +452,7 @@ html.scroll-locked .experience-canvas {
 }
 .ctl {
   font-family: var(--mono);
+  font-weight: 500;
   font-size: 11px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -483,21 +499,45 @@ html.scroll-locked .experience-canvas {
 }
 
 .rail {
+  /* One column: label (on hover) · number · tick — the track runs through the ticks. */
+  --rail-row: 34px;
+  --rail-tick: 14px;
   position: fixed;
   right: var(--gutter);
   top: 50%;
   transform: translateY(-50%);
   z-index: 30;
-  display: flex;
-  gap: 14px;
+  transition: opacity 0.6s var(--ease);
 }
-.rail-line {
+.rail[data-film='true'] {
+  opacity: 0.55;
+}
+.rail[data-film='true']:hover,
+.rail[data-film='true']:focus-within {
+  opacity: 1;
+}
+.rail ol {
+  position: relative;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-auto-rows: var(--rail-row);
+}
+.rail li {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+}
+/* The track: from the first tick's centre to the last's, through the ticks. */
+.rail-track {
   position: absolute;
-  right: 3px;
-  top: 6px;
-  bottom: 6px;
+  right: calc(var(--rail-tick) / 2);
+  top: calc(var(--rail-row) / 2);
+  bottom: calc(var(--rail-row) / 2);
   width: 1px;
   background: var(--line);
+  pointer-events: none;
 }
 .rail-fill {
   position: absolute;
@@ -506,37 +546,37 @@ html.scroll-locked .experience-canvas {
   transform-origin: top;
   transform: scaleY(0);
 }
-.rail ol {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
 .rail button {
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 2.2em var(--rail-tick);
   align-items: center;
-  gap: 10px;
-  flex-direction: row-reverse;
-  font-family: var(--mono);
-  font-size: 10px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
+  column-gap: 10px;
+  height: var(--rail-row);
+  padding: 0 0 0 8px;
+  font-family: var(--sans);
+  font-size: 12px;
+  font-weight: 500;
+  font-variant-numeric: lining-nums tabular-nums;
+  letter-spacing: 0.08em;
   color: var(--bone-dim);
-  padding: 8px 14px 8px 8px;
-  position: relative;
 }
-.rail button::after {
-  content: '';
-  position: absolute;
-  right: 0;
-  top: 50%;
-  width: 7px;
+.rail .num {
+  text-align: right;
+}
+.rail .tick {
+  position: relative;
+  justify-self: stretch;
   height: 1px;
   background: var(--bone-dim);
+  transform: scaleX(0.5);
+  transform-origin: right;
+  transition: transform 0.35s var(--ease), background-color 0.35s var(--ease);
 }
 .rail .label {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  white-space: nowrap;
   opacity: 0;
   transform: translateX(6px);
   transition:
@@ -549,13 +589,27 @@ html.scroll-locked .experience-canvas {
   opacity: 1;
   transform: none;
 }
-.rail-percent { position: absolute; right: 0; top: calc(100% + 22px); font: 10px var(--mono); letter-spacing: .05em; color: var(--warm); }
 .rail li.active button {
   color: var(--bone);
 }
-.rail li.active button::after {
-  width: 14px;
+.rail li.active .tick {
   background: var(--warm);
+  transform: scaleX(1);
+}
+.rail-percent {
+  display: block;
+  margin-top: 10px;
+  padding-right: 0;
+  text-align: right;
+  font: 500 11px/1 var(--sans);
+  font-variant-numeric: lining-nums tabular-nums;
+  letter-spacing: 0.08em;
+  color: var(--warm);
+}
+@media (max-height: 640px) {
+  .rail {
+    --rail-row: 26px;
+  }
 }
 
 /* ── Plates: content attached to the world ─────────────────────────────── */
@@ -613,6 +667,7 @@ html.scroll-locked .experience-canvas {
 }
 .plate-pin {
   font-family: var(--mono);
+  font-weight: 500;
   font-size: 10px;
   letter-spacing: 0.2em;
   fill: var(--bone);
@@ -657,6 +712,7 @@ html.scroll-locked .experience-canvas {
 }
 .plate-kicker {
   font-family: var(--mono);
+  font-weight: 500;
   font-size: 9px;
   line-height: 1.8;
   letter-spacing: 0.14em;
@@ -702,6 +758,7 @@ html.scroll-locked .experience-canvas {
 }
 .plate-facts dt {
   font-family: var(--mono);
+  font-weight: 500;
   font-size: 10.5px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -726,6 +783,7 @@ html.scroll-locked .experience-canvas {
   padding: 12px 16px;
   min-height: 44px;
   font-family: var(--mono);
+  font-weight: 500;
   font-size: 11.5px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -788,6 +846,7 @@ html.scroll-locked .experience-canvas {
   margin-bottom: clamp(28px, 5vh, 52px);
   border-bottom: 1px solid var(--line);
   font-family: var(--mono);
+  font-weight: 500;
   font-size: 10px;
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -799,6 +858,7 @@ html.scroll-locked .experience-canvas {
 .dossier-close {
   margin-left: auto;
   font-family: var(--mono);
+  font-weight: 500;
   font-size: 11px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -896,7 +956,8 @@ html.scroll-locked .experience-canvas {
 .fig-branch { stroke: var(--accent); stroke-width: 1.6; fill: none; }
 .fig-thread { stroke: var(--bone-dim); stroke-width: 0.8; fill: none; stroke-dasharray: 2 3; }
 .fig-ring { stroke: var(--bone); stroke-width: 1.4; fill: none; }
-.fig-label { font-family: var(--mono); font-size: 9px; letter-spacing: 0.14em; fill: var(--bone-dim); text-transform: uppercase; }
+.fig-label { font-family: var(--mono);
+  font-weight: 500; font-size: 9px; letter-spacing: 0.14em; fill: var(--bone-dim); text-transform: uppercase; }
 .fig-title { font-family: var(--serif); font-size: 26px; fill: var(--bone); }
 .fig-title-sm { font-family: var(--serif); font-size: 17px; fill: var(--bone); }
 .fig-accent-text { fill: var(--accent); }
@@ -915,6 +976,7 @@ html.scroll-locked .experience-canvas {
 }
 .flow-n {
   font-family: var(--mono);
+  font-weight: 500;
   font-size: 10px;
   letter-spacing: 0.12em;
   color: var(--accent);
@@ -979,6 +1041,7 @@ html.scroll-locked .experience-canvas {
 }
 .dossier-meta dt {
   font-family: var(--mono);
+  font-weight: 500;
   font-size: 9px;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -1032,6 +1095,7 @@ html.scroll-locked .experience-canvas {
 }
 .dossier-related .dossier-visit {
   font-family: var(--mono);
+  font-weight: 500;
   font-size: 10px;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -1066,6 +1130,7 @@ html.scroll-locked .experience-canvas {
 }
 .facts dt {
   font-family: var(--mono);
+  font-weight: 500;
   font-size: 10px;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -1081,6 +1146,7 @@ html.scroll-locked .experience-canvas {
   gap: 18px;
   flex-wrap: wrap;
   font-family: var(--mono);
+  font-weight: 500;
   font-size: 12px;
 }
 .programme {
@@ -1126,6 +1192,7 @@ html.scroll-locked .experience-canvas {
 }
 .descent-value {
   font-family: var(--mono);
+  font-weight: 500;
   font-size: 28px;
   letter-spacing: 0.02em;
 }
@@ -1192,6 +1259,7 @@ html.scroll-locked .experience-canvas {
   display: flex;
   justify-content: space-between;
   font-family: var(--mono);
+  font-weight: 500;
   font-size: 11px;
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -1216,6 +1284,7 @@ html.scroll-locked .experience-canvas {
   flex-basis: 100%;
   margin: 6px 0 0;
   font-family: var(--mono);
+  font-weight: 500;
   font-size: 11px;
   letter-spacing: 0.1em;
   color: var(--bone-2);
@@ -1225,6 +1294,7 @@ html.scroll-locked .experience-canvas {
 }
 .loader-track code {
   font-family: var(--mono);
+  font-weight: 500;
   color: var(--warm);
 }
 .ctl-music .note {
@@ -1249,6 +1319,7 @@ html.scroll-locked .experience-canvas {
 }
 .loader-foot {
   font-family: var(--mono);
+  font-weight: 500;
   font-size: 11px;
   letter-spacing: 0.08em;
   color: var(--bone-dim);
@@ -1267,7 +1338,7 @@ html.scroll-locked .experience-canvas {
   display: flex;
   justify-content: space-between;
   gap: 20px;
-  font: 10px/1.8 var(--mono);
+  font: 500 10px/1.8 var(--mono);
   letter-spacing: .13em;
   text-transform: uppercase;
   color: var(--bone-dim);
@@ -1282,7 +1353,8 @@ html.scroll-locked .experience-canvas {
 .loader-atlas { position: absolute; right: 3vw; width: min(50vw, 790px); top: 50%; transform: translateY(-50%); color: #c3c6c6; }
 .world-map { display: block; width: 100%; overflow: visible; }
 .map-plane { fill: url(#map-plane); stroke: #a6bdd2; stroke-opacity: .25; }
-.map-annotations { font-family: var(--mono); font-size: 8px; letter-spacing: 1.4px; }
+.map-annotations { font-family: var(--mono);
+  font-weight: 500; font-size: 8px; letter-spacing: 1.4px; }
 .map-signal { stroke: #ffb86b; stroke-width: 1.8; stroke-dasharray: 500; stroke-dashoffset: 500; transition: stroke-dashoffset 2.8s var(--ease); }
 .loader[data-state='ready'] .map-signal { stroke-dashoffset: 0; }
 .map-core { filter: drop-shadow(0 0 8px #ffb86b); }
@@ -1294,12 +1366,12 @@ html.scroll-locked .experience-canvas {
 .finale-heading { font: 400 clamp(40px, 4.5vw, 72px)/.98 var(--serif); letter-spacing: -.025em; margin: 25px 0; }
 .finale-heading em { color: #ceb397; }
 .finale-membership { color: var(--bone-dim); font-size: 13px; line-height: 1.7; margin: 0; }
-.finale-route { display: flex; align-items: center; gap: 8px; margin: 24px 0; color: var(--bone-2); font: 9px var(--mono); text-transform: uppercase; letter-spacing: .1em; }
+.finale-route { display: flex; align-items: center; gap: 8px; margin: 24px 0; color: var(--bone-2); font: 500 9px var(--mono); text-transform: uppercase; letter-spacing: .1em; }
 .finale-route i { flex: 1; height: 1px; background: linear-gradient(90deg, #81baff, #e8b487); }
 .finale-route span::before { content: ''; display: inline-block; width: 4px; height: 4px; margin: 0 6px 2px 0; background: var(--warm); border-radius: 50%; }
-.finale-socials { display: flex; gap: 20px; margin-top: 22px; font: 10px var(--mono); color: var(--bone-dim); }
+.finale-socials { display: flex; gap: 20px; margin-top: 22px; font: 500 10px var(--mono); color: var(--bone-dim); }
 .finale-socials a { text-decoration: none; padding: 8px 0; }
-.finale-replay { display: flex; gap: 12px; align-items: center; margin-top: 16px; min-height: 44px; border-top: 1px solid var(--line); width: 100%; font: 10px var(--mono); color: var(--bone-2); text-align: left; }
+.finale-replay { display: flex; gap: 12px; align-items: center; margin-top: 16px; min-height: 44px; border-top: 1px solid var(--line); width: 100%; font: 500 10px var(--mono); color: var(--bone-2); text-align: left; }
 .finale-replay span { font-size: 22px; color: var(--warm); }
 
 /* ── Index ────────────────────────────────────────────────────────────── */
@@ -1331,6 +1403,7 @@ html.scroll-locked .experience-canvas {
   display: block;
   margin: 2px 0 4px;
   font-family: var(--mono);
+  font-weight: 500;
   font-size: 10px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1338,6 +1411,7 @@ html.scroll-locked .experience-canvas {
 }
 .index-more .credit {
   font-family: var(--mono);
+  font-weight: 500;
   font-size: 10px;
   letter-spacing: 0.08em;
   color: var(--bone-dim);
@@ -1369,6 +1443,7 @@ html.scroll-locked .experience-canvas {
 }
 .index-chapters .num {
   font-family: var(--mono);
+  font-weight: 500;
   font-size: 12px;
   color: var(--bone-dim);
 }
@@ -1409,6 +1484,7 @@ html.scroll-locked .experience-canvas {
 .index-rooms em {
   font-style: normal;
   font-family: var(--mono);
+  font-weight: 500;
   font-size: 10px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -1549,6 +1625,7 @@ html[data-fallback='true'] .archive-controls {
   flex-wrap: wrap;
   gap: 8px 22px;
   font-family: var(--mono);
+  font-weight: 500;
   font-size: 12px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -1564,6 +1641,7 @@ html[data-fallback='true'] .archive-controls {
 }
 .section-no {
   font-family: var(--mono);
+  font-weight: 500;
   font-size: 11px;
   letter-spacing: 0.2em;
   color: var(--paper-dim);
@@ -1648,6 +1726,7 @@ html[data-fallback='true'] .archive-controls {
 }
 .archive .stats span {
   font-family: var(--mono);
+  font-weight: 500;
   font-size: 11px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -1704,6 +1783,7 @@ html[data-fallback='true'] .archive-controls {
 }
 .archive figcaption {
   font-family: var(--mono);
+  font-weight: 500;
   font-size: 11px;
   letter-spacing: 0.08em;
   margin-top: 8px;
@@ -1763,6 +1843,7 @@ html[data-fallback='true'] .archive-controls {
 }
 .archive .people a {
   font-family: var(--mono);
+  font-weight: 500;
   font-size: 11px;
 }
 .archive .faculty {
@@ -1780,12 +1861,14 @@ html[data-fallback='true'] .archive-controls {
 .archive .portrait.photo-slot span {
   font-size: 11px;
   font-family: var(--mono);
+  font-weight: 500;
   font-style: normal;
   line-height: 1.1;
 }
 .archive .role {
   display: block;
   font-family: var(--mono);
+  font-weight: 500;
   font-size: 10px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -1820,11 +1903,13 @@ html[data-fallback='true'] .archive-controls {
 }
 .archive .issues time {
   font-family: var(--mono);
+  font-weight: 500;
   font-size: 11px;
   color: var(--paper-dim);
 }
 .archive .badge {
   font-family: var(--mono);
+  font-weight: 500;
   font-size: 10px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -1849,6 +1934,7 @@ html[data-fallback='true'] .archive-controls {
 .archive summary::before {
   content: '+';
   font-family: var(--mono);
+  font-weight: 500;
   display: inline-block;
   width: 1.4em;
   color: var(--paper-dim);
@@ -1866,6 +1952,7 @@ html[data-fallback='true'] .archive-controls {
 .archive-foot {
   padding: 32px 0;
   font-family: var(--mono);
+  font-weight: 500;
   font-size: 11px;
   letter-spacing: 0.08em;
   color: var(--paper-dim);

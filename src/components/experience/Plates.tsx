@@ -1,18 +1,17 @@
 'use client';
 /**
- * Every content plate along the journey, in order: one per event room, and the
- * portal. (The opening cinematic says what it has to say in the world itself —
- * src/intro — and the Teams world has its own interface: src/teams/ui.)
+ * Every content plate along the journey, in order: one per event room. (The
+ * opening cinematic says what it has to say in the world itself — src/intro —
+ * the portal speaks for itself — its sign, THE TEAMS — and the Teams world has
+ * its own interface: src/teams/ui.)
  */
 import { useMemo } from 'react';
-import { PORTAL_DWELL, SEGMENTS, type SegmentId } from '@/config/timeline';
 import { CORRIDOR } from '@/config/world';
 import { useExperience } from '@/store/experience';
 import { roomDwellRange } from '@/systems/camera/shots';
 import { dossierOrigin } from './dossierOrigin';
 import { Plate, PlateFacts } from './Plate';
 
-const at = (seg: SegmentId, t: number) => SEGMENTS[seg].start + (SEGMENTS[seg].end - SEGMENTS[seg].start) * t;
 const pad2 = (n: number) => String(n).padStart(2, '0');
 
 export function Plates() {
@@ -20,7 +19,6 @@ export function Plates() {
   const phase = useExperience((s) => s.phase);
   const ranges = useMemo(
     () => ({
-      portal: [at('portal', 0.2), at('portal', PORTAL_DWELL * 0.94)] as [number, number],
       rooms: CORRIDOR.rooms.map((r) => {
         const [a, b] = roomDwellRange(r.index);
         const len = b - a;
@@ -71,11 +69,6 @@ export function Plates() {
         );
       })}
 
-      <Plate id="portal" side="left" anchor="portalTop" pin="THE PORTAL" range={ranges.portal}>
-        <p className="plate-kicker">07 · End of the corridor</p>
-        <h2 className="plate-title">Beyond the events: the people.</h2>
-        <p className="plate-body">The corridor ends at a portal. Touch and hold it to cross into the Teams — six domains, and the people in them.</p>
-      </Plate>
     </div>
   );
 }

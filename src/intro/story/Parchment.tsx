@@ -8,10 +8,13 @@
  * part of it is a function of the scroll (the arrival's progress `a`), so it
  * can be stopped anywhere and played backwards.
  *
- * It does not fly in. It condenses where it hangs, out of the mist: its torn
- * edge draws itself first, then the fibres fill in from the edges to the
- * middle (parchmentMaterial: uForm), while the sheet settles the last few
- * centimetres into place — creation, the opposite of the fire that ends it.
+ * The arrival (flight.ts): each sheet is carried in on the air from beyond
+ * the edge of the frame — the first from the left, the next from the right,
+ * and so on — rolled up at its leading edge like a scroll, fluttering and
+ * banking on a swooping path with a wake of mist behind it, parting the
+ * smog; slowing, it turns to face you and its roll runs out ahead of it until
+ * it snaps flat in front of you, shaking a little dust off its edge
+ * (UnfurlDust); then its ink surfaces.
  *
  * Settled, it breathes in the air; burning, it lifts on its own heat. The
  * camera it is placed against is the opening's path, not the breathing
@@ -28,28 +31,19 @@ import { introCameraAt } from '../camera';
 import { patchMist } from '../fog';
 import { look } from '../look';
 import { introFrame } from '../state';
+import { gasAmount } from '../prologue/layout';
 import { ease, span } from '../timeline';
 import { Ash } from './Ash';
+import { bankAt, edgeFor, FLY, flightAt, flyAt, pitchAt, rolledAt, START_AHEAD, travelAt, yawAt } from './flight';
 import type { Fragment } from './fragments';
+import { paperOccluder } from './paperOccluders';
+import { UnfurlDust } from './UnfurlDust';
 import { createParchmentMaterial } from './parchmentMaterial';
 import type { ParchmentArt } from './parchmentTexture';
 
-/** The share of the arrival spent hanging in the mist before the air takes it. */
-const HANG = 0.2;
-/** A damped spring from 0 to 1 (starts at rest, overshoots, settles). */
-const damped = (a: number, w: number) => (u: number) => {
-  if (u <= 0) return 0;
-  if (u >= 1) return 1;
-  return 1 - Math.exp(-a * u) * (Math.cos(w * u) + (a / w) * Math.sin(w * u));
-};
-/** The turn: a lively spring (~7% past square, and back). */
-const spring = damped(6.2, 7.4);
-/** The travel: a gentler one (~3% — it comes a touch too close, then settles). */
-const carry = damped(7.5, 6.5);
-/** Quadratic Bézier (extrapolates smoothly past 1, for the overshoot). */
-const bez = (p0: number, p1: number, p2: number, s: number) => (1 - s) * (1 - s) * p0 + 2 * (1 - s) * s * p1 + s * s * p2;
-
 const WAKE = 14;
+/** The smog's own violet (prologue/GasVolume's), for the veil. */
+const VEIL_TINT = new Color('#4a2f78');
 const _f = new Vector3();
 const _r = new Vector3();
 const _u = new Vector3();
@@ -64,6 +58,7 @@ const UP = new Vector3(0, 1, 0);
 export function Parchment({ fragment, art, noise }: { fragment: Fragment; art: ParchmentArt; noise: Texture }) {
   const group = useRef<Group>(null);
   const wake = useRef<Points>(null);
+  const occ = useMemo(() => paperOccluder(fragment.id), [fragment.id]);
   const size = useThree((s) => s.size);
   const f = fragment;
 
@@ -103,39 +98,11 @@ export function Parchment({ fragment, art, noise }: { fragment: Fragment; art: P
     return { geo, material, uniforms, wakeGeo, wakeMat };
   }, [art, noise, f]);
 
-  // How it tumbles on the way in (decays through zero to the settled tilt).
-  const spin = useMemo(() => {
-    const h = (k: number) => {
-      const v = Math.sin(f.seed * (12.9 + k * 4.1)) * 43758.5453;
-      return v - Math.floor(v) - 0.5;
-    };
-    // Mostly a turn over (it arrives back first), a little pitch and roll.
-    return new Vector3(h(1) * 1.1, (h(2) > 0 ? 1 : -1) * (2.5 + Math.abs(h(4))), h(3) * 0.9);
-  }, [f.seed]);
-
   // The camera's walking speed around this fragment (for the ash left behind).
   const speed = useMemo(() => {
     const a = introCameraAt(f.burn[0]).pos.clone();
     const b = introCameraAt(f.burn[1]).pos.clone();
     return a.distanceTo(b) / Math.max(0.1, f.burn[1] - f.burn[0]);
-  }, [f]);
-
-  // Where the sheet is (camera-frame metres) at arrival progress a, without the breath.
-  const arrivalAt = useMemo(() => {
-    const ctrl: [number, number, number] = [
-      (f.from[0] + f.rest[0]) * 0.5 + (f.from[0] > 0 ? 0.9 : -0.9),
-      (f.from[1] + f.rest[1]) * 0.5 + 0.7,
-      (f.from[2] + f.rest[2]) * 0.45,
-    ];
-    return (a: number, out: Vector3) => {
-      // Hanging: drifting a little further off (anticipation).
-      const hang = Math.sin(Math.min(1, a / HANG) * Math.PI * 0.5);
-      const hx = f.from[0] + 0.25 * hang * Math.sign(f.from[0] || 1);
-      const hy = f.from[1] + 0.12 * hang;
-      const hz = f.from[2] + 0.9 * hang;
-      const s = carry((a - HANG) / (1 - HANG));
-      return out.set(bez(hx, ctrl[0], f.rest[0], s), bez(hy, ctrl[1], f.rest[1], s), bez(hz, ctrl[2], f.rest[2], s));
-    };
   }, [f]);
 
   useFrame(({ camera, clock, gl }) => {
@@ -145,7 +112,10 @@ export function Parchment({ fragment, art, noise }: { fragment: Fragment; art: P
     const on = introFrame.active && t >= f.arrive[0] - 0.05 && t <= f.burn[1] + 4.8;
     g.visible = on;
     if (wake.current) wake.current.visible = on;
-    if (!on) return;
+    if (!on) {
+      occ.on = false;
+      return;
+    }
 
     // The camera's frame at this moment of the opening (no breath).
     const S = introCameraAt(t);
@@ -154,12 +124,11 @@ export function Parchment({ fragment, art, noise }: { fragment: Fragment; art: P
     _u.crossVectors(_r, _f).normalize();
 
     const a = span(t, f.arrive[0], f.arrive[1]);
-    // (No tumble: the sheet condenses in place, settling the last few centimetres.)
-    const s = 1;
-    const settle = 1 - ease(a, 0.15, 1);
+    const fly = flyAt(a);
+    const s = travelAt(a);
     let x = f.rest[0];
-    let y = f.rest[1] - 0.05 * settle;
-    let z = f.rest[2] + 0.32 * settle;
+    let y = f.rest[1];
+    let z = f.rest[2];
     // Breathing in the air (the only thing here that runs on its own).
     const w = clock.elapsedTime;
     x += Math.sin(w * 0.47 + f.seed) * 0.022;
@@ -180,6 +149,16 @@ export function Parchment({ fragment, art, noise }: { fragment: Fragment; art: P
       x *= 0.12;
       y += (fit - 1) * 0.1;
     }
+    // The flight: in from beyond the edge of the frame, whatever its shape.
+    const restX = aspect < 1 ? f.rest[0] * 0.12 : f.rest[0];
+    const restY = f.rest[1] + (fit - 1) * 0.1;
+    const restZ = f.rest[2] * fit;
+    const tanHalf = Math.tan((cam.fov * Math.PI) / 360) * aspect;
+    const edge = edgeFor(f.side, restX, restZ + START_AHEAD, tanHalf);
+    flightAt(a, f.side, edge, f.seed, _p);
+    x += _p.x;
+    y += _p.y;
+    z += _p.z;
     const place = (px: number, py: number, pz: number, out: Vector3) => out.copy(S.pos).addScaledVector(_r, px).addScaledVector(_u, py).addScaledVector(_f, pz);
     place(x, y, z, g.position);
 
@@ -187,15 +166,27 @@ export function Parchment({ fragment, art, noise }: { fragment: Fragment; art: P
     _m.lookAt(S.pos, g.position, _u);
     _q.setFromRotationMatrix(_m);
     const k = 1 - s;
-    const hangTurn = 0.06 * settle;
-    _qt.setFromAxisAngle(_ax.set(1, 0, 0), f.tilt[0] + spin.x * k + Math.sin(w * 0.33 + f.seed) * 0.03);
+    // In flight: edgewise into its path, pitching as it flutters and banking as it swoops;
+    // slowing, it turns to face you.
+    _qt.setFromAxisAngle(_ax.set(1, 0, 0), f.tilt[0] + pitchAt(a, f.seed) + Math.sin(w * 0.33 + f.seed) * 0.03);
     _q.multiply(_qt);
-    _qt.setFromAxisAngle(_ax.set(0, 1, 0), f.tilt[1] + spin.y * k + hangTurn + Math.sin(w * 0.27 + f.seed * 2) * 0.035);
+    _qt.setFromAxisAngle(_ax.set(0, 1, 0), f.tilt[1] + yawAt(a, f.side) + Math.sin(w * 0.27 + f.seed * 2) * 0.035);
     _q.multiply(_qt);
-    _qt.setFromAxisAngle(_ax.set(0, 0, 1), f.tilt[2] + spin.z * k);
+    _qt.setFromAxisAngle(_ax.set(0, 0, 1), f.tilt[2] + bankAt(a, f.side));
     _q.multiply(_qt);
     // (Matrix4.lookAt(eye, target) points +z from the sheet to the camera: the face.)
     g.quaternion.copy(_q);
+    // Rolled: the share of the width wound up at its leading edge (the side it travels towards).
+    const W = f.size[0];
+    const rolled = rolledAt(a);
+    const dir = -f.side;
+    const rollX = W / 2 - rolled * W;
+    const rollR = Math.max(0.055, (rolled * W) / (2 * Math.PI * 1.5));
+
+    // For the smog: where this sheet is, so the smog parts around it as it comes (while enough of it stands).
+    occ.on = b < 0.55;
+    occ.center.copy(g.position);
+    occ.presence = ease(a, 0.1, 0.9);
 
     // How squarely its face (or back) meets the lens and the light: it catches
     // the light as it turns through it.
@@ -206,14 +197,22 @@ export function Parchment({ fragment, art, noise }: { fragment: Fragment; art: P
     const u = res.uniforms;
     u.uTime.value = w;
     u.uPresence.value = ease(t, f.arrive[0], f.arrive[0] + 0.6);
-    u.uForm.value = span(t, f.arrive[0], f.arrive[1] - 0.4);
+    u.uForm.value = 1;
+    u.uRollDir.value = dir;
+    u.uRollX.value = rolled > 0.001 ? rollX : 10;
+    u.uRollR.value = rollR;
     u.uReveal.value = span(t, f.ink[0], f.ink[1]);
     u.uBurn.value = b;
-    u.uFlutter.value = 0.011 + 0.026 * k + 0.012 * b;
+    u.uFlutter.value = 0.011 + 0.03 * k + 0.012 * b;
     // Before the sun, the sheet holds what little light there is (so it reads);
     // once the sun is up, the sun lights it. Turning, it flashes as it faces you.
     const base = 0.36 - 0.25 * Math.min(1, look.sun.intensity / 2.2);
     u.uFill.value = base;
+    // The smog between the lens and the sheet (it is drawn over the smog, so it carries its own):
+    // a haze while it is far off in it, next to nothing once it is here — in the clearing it makes.
+    const dist = g.position.distanceTo(S.pos);
+    u.uVeil.value = gasAmount(t) * 0.85 * (1 - Math.exp(-0.3 * Math.max(0, dist - 1.6))) * (1 - 0.55 * occ.presence);
+    (u.uVeilColor.value as Color).copy(look.fogColor).lerp(VEIL_TINT, 0.35).multiplyScalar(1.15);
     res.material.roughness = 0.9;
     void facing;
     void moving;
@@ -223,15 +222,14 @@ export function Parchment({ fragment, art, noise }: { fragment: Fragment; art: P
     if (wk) {
       const pos = res.wakeGeo.getAttribute('position') as BufferAttribute;
       const att = res.wakeGeo.getAttribute('aWake') as BufferAttribute;
-      const carry = Math.sin(Math.PI * Math.min(1, Math.max(0, (a - HANG) / (1 - HANG)) * 1.25));
+      const carry = a < FLY ? Math.sin(Math.PI * Math.min(1, fly * 1.1)) : 0;
       for (let i = 0; i < WAKE; i++) {
         const lag = (i + 1) * 0.028;
-        arrivalAt(Math.max(0, a - lag), _p);
-        if (fit > 1) _p.set(_p.x * 0.12, _p.y + (fit - 1) * 0.1, _p.z * fit);
-        place(_p.x, _p.y, _p.z, _p);
+        flightAt(Math.max(0, a - lag), f.side, edge, f.seed, _p);
+        place(restX + _p.x, restY + _p.y, restZ + _p.z, _p);
         pos.setXYZ(i, _p.x, _p.y, _p.z);
         const fade = 1 - i / WAKE;
-        att.setXY(i, 0.5 + i * 0.09, 0 * carry * fade);
+        att.setXY(i, 0.5 + i * 0.09, carry * fade * 0.16);
       }
       pos.needsUpdate = true;
       att.needsUpdate = true;
@@ -243,8 +241,10 @@ export function Parchment({ fragment, art, noise }: { fragment: Fragment; art: P
   return (
     <>
       <group ref={group} visible={false}>
-        <mesh geometry={res.geo} material={res.material} renderOrder={3} name={`parchment-${f.id}`} userData={{ sheet: art.texture.image }} />
+        {/* (Drawn after the smog — GasVolume's composite is 30 — so its torn edge covers the smog behind it exactly.) */}
+        <mesh geometry={res.geo} material={res.material} renderOrder={31} name={`parchment-${f.id}`} userData={{ sheet: art.texture.image }} />
         <Ash fragment={f} art={art} speed={speed} />
+        <UnfurlDust fragment={f} />
       </group>
       <points ref={wake} geometry={res.wakeGeo} material={res.wakeMat} frustumCulled={false} renderOrder={2} visible={false} />
     </>

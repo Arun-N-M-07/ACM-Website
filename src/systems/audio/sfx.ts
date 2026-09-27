@@ -6,12 +6,16 @@
  * Two kinds of sound:
  *
  *   layers    continuous beds whose level (and colour) the sound director
- *             sets every frame from where the film is: the canister's roll,
- *             the gas, the wind on the rise, the muffled cloud, the shaft's
- *             resonance, the Events heard through the door
- *   cues      short events, played once when the film crosses their beat
- *             going forward: a settle, the pressure, the release, the swell
- *             of the words, paper fibres, ash, thunder, the door's mechanism
+ *             sets every frame from where the film is: the canister's
+ *             friction, the gas, the air past a sheet in flight, a burning
+ *             sheet's combustion, the shaft's resonance, the Events heard
+ *             through the door (no wind: the flight is carried by the music)
+ *   cues      short events, played when the film makes them: the canister's
+ *             contact, each contact as it turns, its settle; the pressure and
+ *             the release; the swell of the words; a sheet's flaps in the air
+ *             and its snap as it unfurls; a burning sheet's ignition,
+ *             crackles, pops, brittle curling, ash crumbling and last breath;
+ *             thunder; the door's mechanism
  *
  * It uses the music player's audio context (made in the gesture that
  * enabled sound) and its own bus, so the music's filter never touches it;
@@ -116,18 +120,21 @@ function layer(name: string): Layer | null {
   const got = layers.get(name);
   if (got) return got;
   switch (name) {
-    // A heavy cylinder on damp asphalt: low, grainy, its turn heard in the grain.
+    // Friction under the rolling canister: a low grainy rub on damp asphalt (its level is its speed).
     case 'roll':
-      return bed(ctx, name, 'bandpass', 260, 1.4, true, true);
+      return bed(ctx, name, 'bandpass', 320, 1.1, true, true);
     // Gas escaping and moving: a high hiss.
     case 'hiss':
       return bed(ctx, name, 'highpass', 3200, 0.7, false, true);
     // Air pushed about: a low breath.
     case 'air':
       return bed(ctx, name, 'lowpass', 420, 0.6, true);
-    // Wind on the rise, and in the cloud (its colour set by the director).
-    case 'wind':
-      return bed(ctx, name, 'bandpass', 700, 0.5, false);
+    // A sheet in flight: the air past it (level and brightness follow its speed, pan where it is).
+    case 'flight':
+      return bed(ctx, name, 'bandpass', 900, 0.8, false, true);
+    // A sheet of paper being consumed: the thin breath of its combustion (level follows the fire's front).
+    case 'burn':
+      return bed(ctx, name, 'bandpass', 2400, 0.9, false, true);
     // The shaft and the lobby: an enclosed resonance.
     case 'shaft':
       return drone(ctx, name, [55, 82.4, 110.6], 380);
@@ -147,7 +154,7 @@ export function setLayer(name: string, level: number, opts: { freq?: number; pan
   if (!l || !ctx) return;
   const now = ctx.currentTime;
   l.gain.gain.setTargetAtTime(Math.max(0, level), now, 0.12);
-  if (opts.freq !== undefined) l.filter.frequency.setTargetAtTime(opts.freq, now, 0.15);
+  if (opts.freq !== undefined) l.filter.frequency.setTargetAtTime(Math.min(ctx.sampleRate * 0.45, opts.freq), now, 0.15);
   if (opts.q !== undefined) l.filter.Q.setTargetAtTime(opts.q, now, 0.2);
   if (opts.pan !== undefined && l.pan) l.pan.pan.setTargetAtTime(Math.max(-1, Math.min(1, opts.pan)), now, 0.1);
 }
@@ -168,8 +175,10 @@ function noiseBurst(ctx: AudioContext, o: { type: BiquadFilterType; f0: number; 
   const filter = ctx.createBiquadFilter();
   filter.type = o.type;
   filter.Q.value = o.q;
-  filter.frequency.setValueAtTime(o.f0, t0);
-  filter.frequency.exponentialRampToValueAtTime(Math.max(20, o.f1), t0 + o.attack + o.hold + o.release);
+  // (Within what this context can play: some outputs run at 16 kHz.)
+  const top = ctx.sampleRate * 0.45;
+  filter.frequency.setValueAtTime(Math.min(top, o.f0), t0);
+  filter.frequency.exponentialRampToValueAtTime(Math.min(top, Math.max(20, o.f1)), t0 + o.attack + o.hold + o.release);
   const g = ctx.createGain();
   g.gain.setValueAtTime(0.0001, t0);
   g.gain.exponentialRampToValueAtTime(o.level, t0 + o.attack);
@@ -202,7 +211,28 @@ function tone(ctx: AudioContext, o: { f0: number; f1?: number; type?: Oscillator
   osc.stop(t0 + o.attack + o.hold + o.release + 0.05);
 }
 
-export type Cue = 'settle' | 'pressure' | 'release' | 'words' | 'paper' | 'ash' | 'thunder' | 'doorWake' | 'doorPressure' | 'doorRetract' | 'doorHome';
+export type Cue =
+  | 'contact'
+  | 'rollTick'
+  | 'settle'
+  | 'pressure'
+  | 'release'
+  | 'words'
+  | 'flap'
+  | 'unfurl'
+  | 'ignite'
+  | 'crackle'
+  | 'pop'
+  | 'brittle'
+  | 'crumble'
+  | 'ashRelease'
+  | 'thunder'
+  | 'doorWake'
+  | 'doorPressure'
+  | 'doorRetract'
+  | 'doorHome';
+
+const rnd = (a: number, b: number) => a + Math.random() * (b - a);
 
 /** Play a cue once (the director decides when). */
 export function cue(name: Cue, opts: { pan?: number; level?: number } = {}) {
@@ -210,48 +240,91 @@ export function cue(name: Cue, opts: { pan?: number; level?: number } = {}) {
   if (!ctx) return;
   // (For the QA harness: what played, and when.)
   const dbg = (globalThis as unknown as { __sfxLog?: string[] }).__sfxLog;
-  if (dbg && dbg.length < 200) dbg.push(`${name}@${ctx.currentTime.toFixed(2)}`);
+  if (dbg && dbg.length < 400) dbg.push(`${name}@${ctx.currentTime.toFixed(2)}`);
   const L = opts.level ?? 1;
+  const pan = opts.pan;
   switch (name) {
+    // ── the canister: a physical object on a hard, damp surface ──────────────
+    case 'contact':
+      // Touching down: a muted knock of metal on asphalt — weight, not an impact.
+      noiseBurst(ctx, { type: 'bandpass', f0: 900, f1: 600, q: 3.5, attack: 0.003, hold: 0.012, release: 0.09, level: 0.07 * L, pan });
+      noiseBurst(ctx, { type: 'lowpass', f0: 380, f1: 160, q: 0.9, attack: 0.004, hold: 0.01, release: 0.12, level: 0.06 * L, brown: true, pan });
+      break;
+    case 'rollTick':
+      // One contact as it turns — a band or a seam meeting the ground; never twice the same.
+      noiseBurst(ctx, { type: 'bandpass', f0: rnd(1500, 2600), f1: rnd(1100, 1500), q: rnd(4, 7), attack: 0.002, hold: 0.004, release: rnd(0.025, 0.05), level: 0.03 * L, pan });
+      if (Math.random() < 0.35) noiseBurst(ctx, { type: 'lowpass', f0: 420, f1: 220, q: 0.8, attack: 0.003, hold: 0.006, release: 0.05, level: 0.02 * L, brown: true, pan });
+      break;
     case 'settle':
-      // The canister rocks to rest: two small knocks of metal on stone.
-      noiseBurst(ctx, { type: 'bandpass', f0: 1900, f1: 1400, q: 6, attack: 0.004, hold: 0.01, release: 0.12, level: 0.1 * L, pan: opts.pan });
-      noiseBurst(ctx, { type: 'bandpass', f0: 1700, f1: 1300, q: 6, attack: 0.004, hold: 0.008, release: 0.1, level: 0.05 * L, pan: opts.pan, delay: 0.21 });
+      // Coming to rest: a short scrape as it slows, the rock back, and a last small tick. Then nothing.
+      noiseBurst(ctx, { type: 'bandpass', f0: 2600, f1: 1300, q: 1.6, attack: 0.03, hold: 0.08, release: 0.22, level: 0.035 * L, pan });
+      noiseBurst(ctx, { type: 'bandpass', f0: 1700, f1: 1300, q: 6, attack: 0.003, hold: 0.008, release: 0.08, level: 0.04 * L, pan, delay: 0.34 });
+      noiseBurst(ctx, { type: 'bandpass', f0: 2100, f1: 1700, q: 7, attack: 0.002, hold: 0.004, release: 0.05, level: 0.018 * L, pan, delay: 0.62 });
       break;
     case 'pressure':
-      // Something building inside it: a thin hiss rising, and a faint creak of metal.
-      noiseBurst(ctx, { type: 'highpass', f0: 1400, f1: 5200, q: 1, attack: 1.4, hold: 0.2, release: 0.25, level: 0.07 * L, pan: opts.pan });
-      tone(ctx, { f0: 130, f1: 190, type: 'triangle', attack: 0.9, hold: 0.3, release: 0.4, level: 0.02 * L });
+      // Something building inside it: a thin hiss rising at the seam, and a faint strain of metal.
+      noiseBurst(ctx, { type: 'highpass', f0: 1400, f1: 5200, q: 1, attack: 1.4, hold: 0.2, release: 0.25, level: 0.045 * L, pan });
+      tone(ctx, { f0: 130, f1: 190, type: 'triangle', attack: 0.9, hold: 0.3, release: 0.4, level: 0.012 * L });
       break;
     case 'release':
-      // Not an explosion: a sealed atmosphere let go — a sharp pressurised rush, the air pushed
-      // aside (a soft, deep push, no bang), and the long hiss of the gas going out.
-      noiseBurst(ctx, { type: 'bandpass', f0: 5200, f1: 900, q: 0.7, attack: 0.012, hold: 0.25, release: 2.6, level: 0.45 * L, pan: opts.pan });
-      noiseBurst(ctx, { type: 'lowpass', f0: 520, f1: 90, q: 0.5, attack: 0.05, hold: 0.3, release: 2.2, level: 0.5 * L, brown: true });
-      tone(ctx, { f0: 58, f1: 34, attack: 0.04, hold: 0.15, release: 1.4, level: 0.16 * L });
+      // Not an explosion: a sealed atmosphere let go — a pressurised rush out of the vents, the air
+      // pushed aside (soft, no bang), and the gas going out.
+      noiseBurst(ctx, { type: 'bandpass', f0: 5200, f1: 900, q: 0.7, attack: 0.02, hold: 0.25, release: 2.4, level: 0.2 * L, pan });
+      noiseBurst(ctx, { type: 'lowpass', f0: 460, f1: 110, q: 0.5, attack: 0.08, hold: 0.3, release: 2, level: 0.14 * L, brown: true });
       break;
     case 'words':
       // The air, for a moment, legible: a low swell and a faint harmonic shimmer — no chime.
-      tone(ctx, { f0: 73.4, attack: 2.4, hold: 2.6, release: 3.5, level: 0.07 * L });
-      tone(ctx, { f0: 110, attack: 2.8, hold: 2.2, release: 3.5, level: 0.045 * L });
-      tone(ctx, { f0: 164.8, type: 'triangle', attack: 3.2, hold: 1.8, release: 3.2, level: 0.018 * L });
-      noiseBurst(ctx, { type: 'bandpass', f0: 1800, f1: 2600, q: 3, attack: 2.2, hold: 1.8, release: 2.6, level: 0.02 * L });
+      tone(ctx, { f0: 73.4, attack: 2.4, hold: 2.6, release: 3.5, level: 0.05 * L });
+      tone(ctx, { f0: 110, attack: 2.8, hold: 2.2, release: 3.5, level: 0.032 * L });
+      tone(ctx, { f0: 164.8, type: 'triangle', attack: 3.2, hold: 1.8, release: 3.2, level: 0.012 * L });
+      noiseBurst(ctx, { type: 'bandpass', f0: 1800, f1: 2600, q: 3, attack: 2.2, hold: 1.8, release: 2.6, level: 0.014 * L });
       break;
-    case 'paper':
-      // Fibres finding each other: a dry, soft granular rustle.
-      for (let i = 0; i < 9; i++)
-        noiseBurst(ctx, { type: 'bandpass', f0: 3000 + Math.random() * 2500, f1: 2400, q: 2.5, attack: 0.01, hold: 0.02, release: 0.08 + Math.random() * 0.1, level: (0.012 + Math.random() * 0.02) * L, delay: i * 0.13 + Math.random() * 0.08, pan: (Math.random() - 0.5) * 0.5 });
+    // ── a sheet arriving: flaps in the air, then the snap as it unfurls ──────
+    case 'flap':
+      // One flap of a sheet in the air: a soft, papery push of air — and the paper's own dry edge.
+      noiseBurst(ctx, { type: 'bandpass', f0: rnd(1100, 1500), f1: rnd(600, 800), q: 1.4, attack: 0.012, hold: 0.02, release: rnd(0.07, 0.11), level: 0.03 * L, pan });
+      noiseBurst(ctx, { type: 'highpass', f0: rnd(3800, 5200), f1: 3000, q: 0.9, attack: 0.004, hold: 0.008, release: rnd(0.03, 0.05), level: 0.009 * L, pan, delay: rnd(0, 0.015) });
       break;
-    case 'ash':
-      // Paper becoming dust: tiny crackles, and a breath of air.
-      for (let i = 0; i < 12; i++)
-        noiseBurst(ctx, { type: 'highpass', f0: 3500, f1: 4200, q: 0.8, attack: 0.002, hold: 0.004, release: 0.03 + Math.random() * 0.04, level: (0.01 + Math.random() * 0.03) * L, delay: Math.random() * 1.8, pan: (Math.random() - 0.5) * 0.6 });
-      noiseBurst(ctx, { type: 'lowpass', f0: 700, f1: 300, q: 0.5, attack: 0.6, hold: 0.4, release: 1.4, level: 0.03 * L });
+    case 'unfurl':
+      // Pulled flat: a crisp snap of paper going taut, the air it pushes, and a short rustle settling.
+      noiseBurst(ctx, { type: 'bandpass', f0: 2600, f1: 1200, q: 1.2, attack: 0.002, hold: 0.01, release: 0.13, level: 0.05 * L, pan });
+      noiseBurst(ctx, { type: 'lowpass', f0: 520, f1: 180, q: 0.7, attack: 0.005, hold: 0.02, release: 0.16, level: 0.03 * L, brown: true, pan });
+      for (let i = 0; i < 4; i++)
+        noiseBurst(ctx, { type: 'bandpass', f0: rnd(3000, 5500), f1: 2400, q: 2.5, attack: 0.008, hold: 0.012, release: rnd(0.05, 0.1), level: rnd(0.005, 0.01) * L, delay: 0.1 + i * rnd(0.05, 0.09), pan: (pan ?? 0) + rnd(-0.15, 0.15) });
       break;
+    // ── paper → fire → ash: grains the director schedules from the burn's own state ─
+    case 'ignite':
+      // The first edge catching: a tiny dry catch of flame, and a crackle or two.
+      noiseBurst(ctx, { type: 'bandpass', f0: 1600, f1: 3200, q: 0.9, attack: 0.04, hold: 0.05, release: 0.35, level: 0.018 * L, pan });
+      noiseBurst(ctx, { type: 'highpass', f0: 4200, f1: 5200, q: 0.8, attack: 0.002, hold: 0.003, release: 0.02, level: 0.03 * L, pan, delay: 0.12 });
+      noiseBurst(ctx, { type: 'highpass', f0: 3800, f1: 4600, q: 0.8, attack: 0.002, hold: 0.003, release: 0.025, level: 0.022 * L, pan, delay: 0.27 });
+      break;
+    case 'crackle':
+      // Thin material crackling: a dry click.
+      noiseBurst(ctx, { type: 'highpass', f0: rnd(3000, 6000), f1: rnd(4000, 7000), q: 0.8, attack: 0.001, hold: 0.002, release: rnd(0.012, 0.035), level: rnd(0.012, 0.03) * L, pan });
+      break;
+    case 'pop':
+      // A tiny pop — a fibre bursting.
+      noiseBurst(ctx, { type: 'bandpass', f0: rnd(900, 1700), f1: rnd(700, 1100), q: rnd(3, 6), attack: 0.002, hold: 0.004, release: rnd(0.03, 0.06), level: rnd(0.012, 0.022) * L, pan });
+      break;
+    case 'brittle':
+      // The sheet curling and shrinking: a quick cluster of very fine brittle ticks.
+      for (let i = 0; i < 4; i++)
+        noiseBurst(ctx, { type: 'highpass', f0: rnd(6500, 9500), f1: rnd(7000, 10000), q: 0.8, attack: 0.001, hold: 0.001, release: rnd(0.006, 0.014), level: rnd(0.006, 0.013) * L, pan, delay: i * rnd(0.018, 0.04) });
+      break;
+    case 'crumble':
+      // Ash: very fine dry grains separating — lighter, drier, quieter.
+      noiseBurst(ctx, { type: 'bandpass', f0: rnd(2500, 4500), f1: rnd(1800, 3000), q: rnd(1.5, 3), attack: 0.002, hold: 0.003, release: rnd(0.01, 0.025), level: rnd(0.004, 0.009) * L, pan });
+      break;
+    case 'ashRelease':
+      // The last of it letting go: an almost silent breath of air.
+      noiseBurst(ctx, { type: 'lowpass', f0: 900, f1: 400, q: 0.5, attack: 0.5, hold: 0.3, release: 1.2, level: 0.012 * L, pan });
+      break;
+    // ── the world ────────────────────────────────────────────────────────────
     case 'thunder':
       // Far away: after the flash, the rumble arrives late and low, and rolls on.
-      noiseBurst(ctx, { type: 'lowpass', f0: 220, f1: 60, q: 0.7, attack: 0.5, hold: 0.8, release: 4.5, level: 0.28 * L, brown: true, delay: 1.1 });
-      noiseBurst(ctx, { type: 'lowpass', f0: 140, f1: 45, q: 0.6, attack: 0.9, hold: 0.5, release: 3.5, level: 0.18 * L, brown: true, delay: 2.2 });
+      noiseBurst(ctx, { type: 'lowpass', f0: 220, f1: 60, q: 0.7, attack: 0.5, hold: 0.8, release: 4.5, level: 0.22 * L, brown: true, delay: 1.1 });
+      noiseBurst(ctx, { type: 'lowpass', f0: 140, f1: 45, q: 0.6, attack: 0.9, hold: 0.5, release: 3.5, level: 0.14 * L, brown: true, delay: 2.2 });
       break;
     case 'doorWake':
       // The seams light: a low electrical wake, and a click.

@@ -17,12 +17,11 @@
  *           chars, carries a thin ember line (small, never a flame), and
  *           behind it there is no paper. The words go with the paper.
  *
- * Arrival: the sheet condenses where it hangs — its torn edge draws itself
- * first as a faint pale line, then the fibres fill in from the edges towards
- * the middle (along the paper's grain, not as a wipe), a faint cool light on
- * the forming front; only then does the ink surface. The opposite of the
- * fire: making, not unmaking. The torn edge and the fire's front are
- * antialiased in the shader.
+ * Arrival: the sheet flies in rolled up at its leading edge, and unrolls as
+ * it lands (uRollX: where the flat part ends; beyond it the sheet is wound on
+ * a loose spiral, backwards); its fibres gather in the first moments while it
+ * is still out of view; only when it lies open does the ink surface. The torn
+ * edge and the fire's front are antialiased in the shader.
  */
 import { Color, DoubleSide, MeshStandardMaterial, type Texture, Vector2, Vector4 } from 'three';
 
@@ -38,6 +37,9 @@ export interface ParchmentUniforms {
   uSeed: { value: number };
   uPresence: { value: number };
   uForm: { value: number };
+  uRollX: { value: number };
+  uRollDir: { value: number };
+  uRollR: { value: number };
   uFill: { value: number };
   uLines: { value: Vector4[] };
   uLineCount: { value: number };
@@ -46,24 +48,35 @@ export interface ParchmentUniforms {
   uInk: { value: Color };
   uChar: { value: Color };
   uEmber: { value: Color };
+  /** The smog between the lens and the sheet (the sheet is drawn over the smog, so it carries its own). */
+  uVeil: { value: number };
+  uVeilColor: { value: Color };
 }
 
 const VERTEX_PARS = /* glsl */ `
 uniform sampler2D uTex;
 uniform vec2 uSize;
 uniform float uBurn, uTime, uFlutter, uCurl, uSeed;
+uniform float uRollX, uRollDir, uRollR;
+/** How far round the roll this point is (turns; 0 on the open sheet). */
+varying float vRollTurn;
 vec3 deformSheet(vec2 uv) {
   vec2 p = (uv - 0.5) * uSize;
-  vec2 q = abs(uv - 0.5) * 2.0;
+  // Rolled (below): past uRollX the sheet is wound up. The roll feels the bend and the air as the
+  // line where it leaves the open sheet does — all its turns alike, so they never pass through
+  // each other. (Unrolled, xa is just p.x.)
+  float sx = p.x * uRollDir;
+  float xa = min(sx, uRollX) * uRollDir;
+  vec2 q = vec2(abs(xa) / (0.5 * uSize.x), abs(uv.y - 0.5) * 2.0);
   float z = 0.0;
   // A gentle bend across the width, and a little sag.
-  z += p.x * p.x * 0.085 * uCurl - p.y * p.y * 0.03 * uCurl;
+  z += xa * xa * 0.085 * uCurl - p.y * p.y * 0.03 * uCurl;
   // Corners remember being rolled.
   float corner = pow(q.x, 4.0) * pow(q.y, 2.0);
   z += corner * 0.06 * uCurl;
   // The air: slow travelling waves, stronger towards the edges.
   float edge = max(q.x, q.y);
-  z += sin(p.x * 3.4 + uTime * 1.3 + uSeed) * cos(p.y * 2.7 - uTime * 0.9 + uSeed * 0.5) * uFlutter * (0.35 + 0.65 * edge);
+  z += sin(xa * 3.4 + uTime * 1.3 + uSeed) * cos(p.y * 2.7 - uTime * 0.9 + uSeed * 0.5) * uFlutter * (0.35 + 0.65 * edge);
   z += sin(p.y * 5.1 + uTime * 2.1 + uSeed * 1.7) * uFlutter * 0.25 * edge;
   // Fire: behind the front, the paper curls up and away from you. (Nothing
   // curls before the match is struck, and outside the torn silhouette the
@@ -75,12 +88,21 @@ vec3 deformSheet(vec2 uv) {
   float curl = smoothstep(-0.14, 0.06, local) * smoothstep(0.0, 0.025, uBurn);
   z -= curl * curl * 0.07;
   vec2 pull = normalize(p + 1e-4) * curl * curl * 0.025;
+  // Arriving, the sheet is rolled up at its leading edge — everything beyond uRollX (along the
+  // way it travels) is wound backwards on a loose spiral — and it unrolls as it lands.
+  if (sx > uRollX) {
+    float th = (sx - uRollX) / uRollR;
+    float r = uRollR * (1.0 - 0.16 * th / 6.2832);
+    p.x = (uRollX + r * sin(th)) * uRollDir;
+    z -= uRollR - r * cos(th);
+  }
   return vec3(p - pull, z);
 }
 `;
 
 const VERTEX_NORMAL = /* glsl */ `
 vec3 sheetPos = deformSheet(uv);
+vRollTurn = max(0.0, ((uv.x - 0.5) * uSize.x * uRollDir - uRollX) / uRollR) / 6.2832;
 float eS = 0.004;
 vec3 sheetDx = deformSheet(uv + vec2(eS, 0.0)) - sheetPos;
 vec3 sheetDy = deformSheet(uv + vec2(0.0, eS)) - sheetPos;
@@ -98,6 +120,9 @@ uniform vec2 uSize;
 uniform vec4 uLines[5];
 uniform int uLineCount;
 uniform vec3 uPaperLight, uPaperDark, uInk, uChar, uEmber;
+uniform vec3 uVeilColor;
+uniform float uVeil;
+varying float vRollTurn;
 /** 0..1: when this point's ink surfaces (lines in order, each left to right). */
 float inkOrder(vec2 uv) {
   float o = 2.0;
@@ -174,6 +199,8 @@ float cover = sil * kept * max(formed, rim * 0.85);
 if (cover < 0.02) discard;
 float forming = exp(-pow((formOrder - front) / 0.045, 2.0)) * (1.0 - smoothstep(0.9, 1.0, uForm));
 if (!gl_FrontFacing) col = paper * 0.62;
+// Inside the roll, the turns shade each other.
+col *= 1.0 - 0.5 * smoothstep(0.3, 0.9, vRollTurn);
 diffuseColor.rgb = col;
 // Arrival: it comes out of the mist (the fog does most of it; this keeps the first moment soft).
 diffuseColor.a = uPresence * cover;
@@ -182,7 +209,9 @@ diffuseColor.a = uPresence * cover;
 const FRAGMENT_EMISSIVE = /* glsl */ `
 #include <emissivemap_fragment>
 float flicker = 0.75 + 0.25 * sin(uTime * 17.0 + vUv.x * 40.0) * sin(uTime * 11.0 + vUv.y * 31.0);
-totalEmissiveRadiance += uEmber * ember * flicker + diffuseColor.rgb * uFill;
+// (The fill falls off as the surface turns away from you: a turned sheet, or its roll, shows its shape.)
+float facingV = max(0.0, dot(normal, normalize(vViewPosition)));
+totalEmissiveRadiance += uEmber * ember * flicker + diffuseColor.rgb * uFill * mix(0.22, 1.0, smoothstep(0.0, 1.0, facingV));
 // The forming front, and the edge as it is drawn: a little cool light caught in the new fibres.
 totalEmissiveRadiance += vec3(0.62, 0.68, 0.78) * (forming * 0.55 + rim * (1.0 - formed) * 0.35) * sil;
 `;
@@ -201,6 +230,9 @@ export function createParchmentMaterial(tex: Texture, noise: Texture, size: [num
     uSeed: { value: seed },
     uPresence: { value: 0 },
     uForm: { value: 1 },
+    uRollX: { value: 10 },
+    uRollDir: { value: 1 },
+    uRollR: { value: 0.1 },
     uFill: { value: 0.3 },
     uLines: { value: padded },
     uLineCount: { value: Math.min(5, lines.length) },
@@ -209,6 +241,8 @@ export function createParchmentMaterial(tex: Texture, noise: Texture, size: [num
     uInk: { value: new Color('#24160d') },
     uChar: { value: new Color('#0f0906') },
     uEmber: { value: new Color('#ff5a14').multiplyScalar(2.4) },
+    uVeil: { value: 0 },
+    uVeilColor: { value: new Color() },
   };
   const m = new MeshStandardMaterial({ roughness: 0.9, metalness: 0, side: DoubleSide, transparent: true, depthWrite: true });
   // The sheet's UVs (declares the uv attribute and vUv in both stages).
@@ -223,7 +257,8 @@ export function createParchmentMaterial(tex: Texture, noise: Texture, size: [num
     shader.fragmentShader = shader.fragmentShader
       .replace('#include <common>', `#include <common>\n${FRAGMENT_PARS}`)
       .replace('#include <map_fragment>', FRAGMENT_MAP)
-      .replace('#include <emissivemap_fragment>', FRAGMENT_EMISSIVE);
+      .replace('#include <emissivemap_fragment>', FRAGMENT_EMISSIVE)
+      .replace('#include <dithering_fragment>', 'gl_FragColor.rgb = mix(gl_FragColor.rgb, uVeilColor, uVeil);\n#include <dithering_fragment>');
   };
   m.customProgramCacheKey = () => 'intro-parchment';
   return { material: m, uniforms };

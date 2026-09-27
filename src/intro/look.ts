@@ -26,6 +26,7 @@
  */
 import { Color, Vector3 } from 'three';
 import { T } from './timeline';
+import { flashAt } from './world/lightning';
 
 // ─── keyframed tracks ─────────────────────────────────────────────────────────
 
@@ -70,7 +71,11 @@ const CL = T.clearing;
 const fogDensity = numberTrack([
   [0, 0.034],
   [T.story2, 0.032],
-  [T.acm, 0.03],
+  [T.acm, 0.028],
+  // (Clearer air around the stone while the name is read.)
+  [T.acm + 3, 0.019],
+  [T.acmOut, 0.02],
+  [T.acmGone + 3, 0.028],
   [T.story4, 0.028],
   [B, 0.026],
   [CL, 0.02],
@@ -101,12 +106,16 @@ const fogDensity = numberTrack([
 
 /** The colour distant things dissolve into. */
 const fogColor = colorTrack([
+  // The prologue's smog tints the whole air violet; it stays, thinner, through the first two
+  // sheets, and clears slowly as the second burns and the stone comes — never a cut.
   [T.release, '#5b6570'],
   [T.release + 3, '#4f4764'],
   [T.legible, '#4a4061'],
-  [T.mixed, '#575a6e'],
-  [T.story1 + 3, '#5f6771'],
-  [T.story2, '#626b75'],
+  [T.mixed, '#4d4563'],
+  [T.story1, '#4f4865'],
+  [T.story2, '#534d68'],
+  [T.acmTurn, '#59576c'],
+  [T.acm + 7, '#626b75'],
   [T.story4, '#6a7178'],
   [B, '#767b80'],
   [CL, '#8d8c8b'],
@@ -134,6 +143,11 @@ const fogColor = colorTrack([
 const mistDensity = numberTrack([
   [0, 0.085],
   [T.story2, 0.08],
+  [T.acmTurn, 0.078],
+  // (The mist thins around the stone while its name is read, and closes again after.)
+  [T.acm + 2, 0.048],
+  [T.acmOut, 0.05],
+  [T.acmGone + 3, 0.075],
   [T.story4, 0.075],
   [B, 0.068],
   [CL, 0.058],
@@ -309,6 +323,10 @@ const practicals = numberTrack([
 const exposure = numberTrack([
   [0, 0.8],
   [T.story2, 0.82],
+  [T.acm, 0.84],
+  [T.acmLit, 0.94],
+  [T.acmOut, 0.92],
+  [T.acmGone + 3, 0.84],
   [B, 0.86],
   [CL + 4, 0.96],
   // The building complete: a breath of light as the last of the haze lifts.
@@ -365,14 +383,15 @@ const dark = numberTrack([[0, 0]]);
 // to neutral exactly at the handoff (the Events are not graded).
 
 const saturation = numberTrack([
+  // (The grade lets the violet through while it is in the air, and eases back as it clears.)
   [T.release, 0.32],
   [T.release + 1.5, 0.82],
-  [T.legible, 0.95],
-  [T.dissolve + 1, 0.72],
-  [T.mixed + 1, 0.36],
-  [T.story1, 0.4],
-  [T.story2, 0.48],
-  [T.acm, 0.52],
+  [T.legible, 0.92],
+  [T.mixed, 0.8],
+  [T.story1, 0.74],
+  [T.story2, 0.66],
+  [T.acmTurn, 0.6],
+  [T.acm + 7, 0.52],
   [T.acmOut, 0.5],
   [B, 0.52],
   [CL, 0.56],
@@ -521,5 +540,26 @@ export function evaluateLook(t: number) {
   gain(t, g.gain);
   g.vignette = vignette(t);
   g.bloom = bloom(t);
+
+  // Lightning: a light event, a pure function of the beat. The fog brightens (the air's volume
+  // shows), the stone, the ground and the trees catch a cold light from high behind the lens,
+  // the sky lifts, the exposure opens a little.
+  const f = flashAt(t);
+  L.flash = f;
+  if (f > 0.001) {
+    const k = Math.min(1, f);
+    L.fogColor.lerp(FLASH_FOG, 0.24 * k);
+    L.exposure += 0.18 * f;
+    L.sun.dir.lerp(FLASH_DIR, Math.min(1, f * 3)).normalize();
+    L.sun.color.lerp(FLASH_COLOR, Math.min(1, f * 3));
+    L.sun.intensity += 9 * f;
+    L.sky.intensity += 0.7 * f;
+    L.sky.top.lerp(FLASH_FOG, 0.5 * k);
+  }
   return L;
 }
+
+const FLASH_FOG = new Color('#c8d2e4');
+const FLASH_COLOR = new Color('#e4ecff');
+/** From high behind the reader of the stone: its face, the ground and the garden catch it. */
+const FLASH_DIR = new Vector3(-0.34, 0.77, 0.54).normalize();

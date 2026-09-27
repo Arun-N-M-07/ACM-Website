@@ -12,7 +12,6 @@
  *                how much gas there is at each point of a slab of air.
  */
 import { ClampToEdgeWrapping, Data3DTexture, DataTexture, LinearFilter, LinearMipmapLinearFilter, RedFormat, RepeatWrapping, RGBAFormat, UnsignedByteType } from 'three';
-import { fontFamilies } from '@/systems/textures/typeset';
 
 // ─── noise ─────────────────────────────────────────────────────────────────
 
@@ -114,7 +113,9 @@ export function letterField(words: string, portrait: boolean): LetterField {
   c.width = W;
   c.height = H;
   const g = c.getContext('2d')!;
-  const fam = fontFamilies().sans;
+  // A heavy grotesque, not the site's Bodoni: this is the gas's own letterform — a density field,
+  // blurred and eroded — and only thick, even strokes survive that (Bodoni's hairlines would vanish).
+  const fam = '"Helvetica Neue", Helvetica, Arial, sans-serif';
   g.fillStyle = '#fff';
   g.textBaseline = 'alphabetic';
   // Where each word lies, for the order channel: [x0, x1, y0, y1, order].
@@ -194,5 +195,5 @@ export function letterField(words: string, portrait: boolean): LetterField {
   texture.wrapS = texture.wrapT = ClampToEdgeWrapping;
   texture.needsUpdate = true;
   // Physical size: wide and low in landscape, stacked in portrait.
-  return portrait ? { texture, width: 3.2, height: 2.66 } : { texture, width: 4.6, height: 1.15 };
+  return portrait ? { texture, width: 4.2, height: 3.5 } : { texture, width: 6.4, height: 1.6 };
 }

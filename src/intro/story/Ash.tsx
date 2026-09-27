@@ -131,5 +131,6 @@ export function Ash({ fragment, art, speed }: { fragment: Fragment; art: Parchme
     if (ref.current) ref.current.visible = introFrame.t >= fragment.burn[0] - 0.1 && introFrame.t <= fragment.burn[1] + 4.6;
   });
 
-  return <points ref={ref} geometry={res.geo} material={res.mat} frustumCulled={false} renderOrder={6} />;
+  // (After the sheet, which is drawn after the smog.)
+  return <points ref={ref} geometry={res.geo} material={res.mat} frustumCulled={false} renderOrder={32} />;
 }

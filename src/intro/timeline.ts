@@ -46,24 +46,24 @@ export const SCORE_IN = 70.0;
 
 export const T = {
   // 01 Arrival — the prologue lives on the beats before 0, so every beat of the story keeps its place.
-  /** The film begins: the camera on the ground, in the mist. */
-  prologue: -26,
-  /** Something rolls in out of the fog… */
-  roll: -24,
+  /** The film begins: the camera almost on the ground, in the mist. */
+  prologue: -44,
+  /** Something rolls in out of the fog, touching down… */
+  roll: -42,
   /** …slows, and comes to rest. */
-  rest: -16.5,
+  rest: -33,
   /** Pressure: the seam wakes, the canister trembles. */
-  pressure: -14.5,
-  /** The release. */
-  release: -12.5,
-  /** The gas begins to take the shape of words… */
-  form: -9.5,
-  /** …readable… */
-  legible: -6,
-  /** …and loosens back into gas… */
-  dissolve: -2.5,
-  /** …mixing into the mist. */
-  mixed: 2,
+  pressure: -30.5,
+  /** The release: the smog floods the air, and the camera rises into it. */
+  release: -28,
+  /** The smog begins to take the shape of words… */
+  form: -19,
+  /** …readable, while the camera travels slowly through the smog towards them… */
+  legible: -13,
+  /** …and they loosen back into smog… */
+  dissolve: -8,
+  /** …gone; the smog remains (and stays, thinning, through the first two sheets). */
+  mixed: -3,
   story1: 4,
   // 02 The Story
   story2: 19,
@@ -156,10 +156,11 @@ export function introChapterAt(t: number): IntroChapterId {
 
 /**
  * Reduced motion: framed stills the camera cuts between instead of flying —
- * the words in the gas, each fragment legible, the name, the building, the
- * tower, the rise, above the cloud, the well below, the lobby, the open door.
+ * the canister come to rest, the words in the gas, each fragment legible, the
+ * name, the building, the tower, the rise, above the cloud, the well below,
+ * the lobby, the open door.
  */
-export const STILLS = [-4.5, 1.5, 13, 28, 45, 64, 79, 95, 117, 127, 139.5, 154, 172, 182];
+export const STILLS = [-32, -11, 13, 28, 45, 64, 79, 95, 117, 127, 139.5, 154, 172, 182];
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 

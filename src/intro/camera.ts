@@ -30,7 +30,7 @@
  * still in flight, gone below ground, where the moves are pure direction); a
  * little turbulence in the cloud.
  */
-import { Vector3 } from 'three';
+import { CatmullRomCurve3, Vector3 } from 'three';
 import { CAMERA_STATES } from '@/config/camera';
 import { CAMPUS, EYE_Y, FLOOR_Y, type Vec3 } from '@/config/world';
 import { aim, type CameraPose } from '@/systems/camera/pose';
@@ -54,21 +54,60 @@ const stone = (dy = 0, dz = 0): Vec3 => [STONE_FOCUS[0], STONE_FOCUS[1] + dy, ST
 /** The prologue's ground-level frame (see prologue/layout.ts). */
 const GY = GROUND_Y;
 
+/**
+ * One continuous move through the given keys (only the first and last beats
+ * count): the camera travels the curve through them with a smootherstep
+ * profile — gathering speed evenly out of the first, easing evenly into the
+ * last — as `n` keys along that same curve (the path then passes through them
+ * with continuous speed). Position, look target and lens are all spaced by
+ * their own arc length.
+ */
+function glide(keys: PathKey[], n: number): PathKey[] {
+  const t0 = keys[0].t;
+  const t1 = keys[keys.length - 1].t;
+  const pos = new CatmullRomCurve3(keys.map((k) => new Vector3(...k.pos)), false, 'centripetal');
+  const look = new CatmullRomCurve3(keys.map((k) => new Vector3(...k.look)), false, 'centripetal');
+  pos.arcLengthDivisions = look.arcLengthDivisions = 400;
+  // The lens, by the position's arc length at each authored key.
+  const lens = pos.getLengths(400);
+  const fovAt = (u: number) => {
+    const L = u * lens[lens.length - 1];
+    const seg = keys.length - 1;
+    for (let i = 0; i < seg; i++) {
+      const a = lens[Math.round((i / seg) * 400)];
+      const b = lens[Math.round(((i + 1) / seg) * 400)];
+      if (L <= b || i === seg - 1) return keys[i].fov + (keys[i + 1].fov - keys[i].fov) * Math.min(1, Math.max(0, (L - a) / Math.max(1e-6, b - a)));
+    }
+    return keys[seg].fov;
+  };
+  const S = (x: number) => x * x * x * (x * (x * 6 - 15) + 10);
+  const out: PathKey[] = [];
+  for (let k = 0; k <= n; k++) {
+    const x = k / n;
+    const u = S(x);
+    const p = pos.getPointAt(u);
+    const l = look.getPointAt(u);
+    out.push({ t: t0 + (t1 - t0) * x, pos: [p.x, p.y, p.z], look: [l.x, l.y, l.z], fov: fovAt(u) });
+  }
+  return out;
+}
+
 export const INTRO_KEYS: PathKey[] = [
-  // The prologue: on the road, in the mist, looking down it into the fog. Something is rolling towards the lens…
-  { t: T.prologue, pos: [PX, GY + 0.18, CAM_Z], look: [PX + 0.35, GY + 0.16, 146], fov: 44 },
-  { t: T.roll + 3, pos: [PX - 0.02, GY + 0.18, CAM_Z - 0.03], look: [PX + 0.4, GY + 0.1, 148], fov: 44 },
+  // The prologue: 16 cm off the road, in the mist, looking down it into the fog. Something is rolling towards the lens…
+  { t: T.prologue, pos: [PX, GY + 0.16, CAM_Z], look: [PX + 0.35, GY + 0.14, 146], fov: 44 },
+  { t: T.roll + 3, pos: [PX - 0.02, GY + 0.16, CAM_Z - 0.03], look: [PX + 0.4, GY + 0.08, 148], fov: 44 },
   // …the eye settles on it as it slows, and it comes to rest a couple of metres off.
-  { t: T.rest, pos: [PX - 0.05, GY + 0.18, CAM_Z - 0.06], look: [ROLL_TO.x + 0.05, GY - 0.12, ROLL_TO.z - 4.5], fov: 43.5 },
-  { t: T.release - 0.3, pos: [PX - 0.06, GY + 0.19, CAM_Z - 0.08], look: [ROLL_TO.x + 0.05, GY - 0.1, ROLL_TO.z - 4.5], fov: 43.2 },
-  // The release lifts the view a little and pushes it back — involuntary, not a jump.
-  { t: T.release + 2, pos: [PX - 0.06, GY + 0.55, CAM_Z + 0.35], look: [LETTERS.x, GY + 0.7, LETTERS.z - 1], fov: 44.5 },
-  { t: T.form + 1, pos: [PX - 0.05, GY + 0.9, CAM_Z + 0.8], look: [LETTERS.x, LETTERS.y - 0.05, LETTERS.z], fov: 44 },
-  // The words: held, the eye still.
-  { t: T.legible, pos: [PX - 0.04, GY + 1.0, CAM_Z + 0.9], look: [LETTERS.x, LETTERS.y + 0.02, LETTERS.z], fov: 43.4 },
-  { t: T.dissolve, pos: [PX - 0.04, GY + 1.06, CAM_Z + 0.6], look: [LETTERS.x, LETTERS.y + 0.1, LETTERS.z], fov: 43 },
-  // Through the loosening words, rising into the story's first shot.
-  // Arrival: low, off the axis, among the garden's edges, in mist.
+  { t: T.rest, pos: [PX - 0.05, GY + 0.16, CAM_Z - 0.06], look: [ROLL_TO.x + 0.05, GY - 0.12, ROLL_TO.z - 4.5], fov: 43.5 },
+  { t: T.release - 0.3, pos: [PX - 0.06, GY + 0.17, CAM_Z - 0.08], look: [ROLL_TO.x + 0.05, GY - 0.1, ROLL_TO.z - 4.5], fov: 43.2 },
+  // The release lifts the view and pushes it back a little — involuntary, not a jump — up into the smog…
+  { t: T.release + 3, pos: [PX - 0.06, GY + 0.62, CAM_Z + 0.3], look: [LETTERS.x, GY + 0.8, LETTERS.z], fov: 44.5 },
+  { t: T.release + 7, pos: [PX - 0.05, GY + 1.12, CAM_Z + 0.2], look: [LETTERS.x, LETTERS.y - 0.15, LETTERS.z], fov: 44.2 },
+  // …and, immersed in it, travels slowly through it, towards the words as they form and are read…
+  { t: T.form, pos: [PX - 0.05, GY + 1.2, CAM_Z - 0.4], look: [LETTERS.x, LETTERS.y - 0.08, LETTERS.z], fov: 44 },
+  { t: T.legible, pos: [PX - 0.04, GY + 1.3, CAM_Z - 2.5], look: [LETTERS.x, LETTERS.y, LETTERS.z], fov: 43.5 },
+  { t: T.dissolve, pos: [PX - 0.04, GY + 1.4, CAM_Z - 5.4], look: [LETTERS.x, LETTERS.y + 0.1, LETTERS.z - 2], fov: 43 },
+  // …and on, through where they were, into the story's first shot.
+  { t: T.mixed, pos: [PX - 0.1, GY + 1.55, CAM_Z - 8.0], look: [PX + 1.8, 3.6, 110], fov: 42.6 },
   { t: 0, pos: [-7.4, 1.72, 156], look: [-3.2, 5.2, 58], fov: 42 },
   { t: T.story1, pos: [-6.9, 1.74, 153], look: [-2.9, 5.5, 55], fov: 41.5 },
   // The story: the walk continues, slowly.
@@ -84,13 +123,20 @@ export const INTRO_KEYS: PathKey[] = [
   { t: T.clearing, pos: [-0.9, 1.93, 118.5], look: [-0.2, 9.6, 14], fov: 37.5 },
   // The reveal: settle into the building's composition, and hold.
   { t: T.reveal, pos: [-0.2, 1.9, 111.2], look: [0.15, 11, 2.4], fov: 36 },
-  { t: 95.5, pos: [0.05, 1.95, 109.6], look: [0.2, 11.4, 1.6], fov: 35.6 },
-  { t: T.heroEnd, pos: [0.2, 2.05, 108], look: [0.2, 11.8, 1], fov: 35.2 },
-  // The approach: a glide over the pool, clear of its jets, to hover before the tower.
-  { t: 106.5, pos: [0.1, 3.4, 99], look: [0.2, 13.2, 1], fov: 36.8 },
-  { t: 110.5, pos: [0, 7.6, 84], look: [0.2, 15.5, 0.9], fov: 40 },
-  { t: 113.5, pos: [0, 9.1, 66], look: [0.2, 17.2, 0.8], fov: 45 },
-  { t: T.hover, pos: [0, 9.4, 48.4], look: [0.2, 18.6, 0.6], fov: 50 },
+  // (Keys timed so the drift through the hold is even, and the glide eases out of it and into the hover.)
+  { t: 97.5, pos: [0.05, 1.95, 109.6], look: [0.2, 11.4, 1.6], fov: 35.6 },
+  // The approach: a glide over the pool, clear of its jets, to hover before the tower — one
+  // even ease out of the hold and into the hover (see glide()).
+  ...glide(
+    [
+      { t: T.heroEnd, pos: [0.2, 2.05, 108], look: [0.2, 11.8, 1], fov: 35.2 },
+      { t: 0, pos: [0.1, 3.4, 99], look: [0.2, 13.2, 1], fov: 36.8 },
+      { t: 0, pos: [0, 7.6, 84], look: [0.2, 15.5, 0.9], fov: 40 },
+      { t: 0, pos: [0, 9.1, 66], look: [0.2, 17.2, 0.8], fov: 45 },
+      { t: T.hover, pos: [0, 9.4, 48.4], look: [0.2, 18.6, 0.6], fov: 50 },
+    ],
+    8,
+  ),
   // The ascent: straight up the column, past the tower, the building sinking below…
   { t: T.rise, pos: up(9.8), look: [0.2, 19, 0.6], fov: 51 },
   { t: 123, pos: up(21), look: [0.2, 18.5, 0.6], fov: 52 },

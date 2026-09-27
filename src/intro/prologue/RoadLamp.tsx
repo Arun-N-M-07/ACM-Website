@@ -23,7 +23,7 @@ import { look } from '../look';
 import { introFrame } from '../state';
 import { T } from '../timeline';
 import { glowTexture } from '../world/noise';
-import { GROUND_Y, prologueOn, PX } from './layout';
+import { GROUND_Y, PX } from './layout';
 
 /** The lamp: at the road's edge, some way down it. */
 export const LAMP = { x: PX + 4.7, z: 141, y: GROUND_Y + 4.25 } as const;
@@ -159,7 +159,8 @@ export function RoadLamp() {
 
   useFrame(() => {
     const t = introFrame.t;
-    const on = introFrame.active && prologueOn(t);
+    // (It stands in the garden for the whole film — no popping out of view — and goes out with the other lamps at dawn.)
+    const on = introFrame.active;
     const level = on ? look.practicals * world.intro : 0;
     anchor.gain = level;
     anchor2.gain = level;
