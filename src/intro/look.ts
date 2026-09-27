@@ -84,15 +84,15 @@ const fogDensity = numberTrack([
   [T.rise + 6, 0.0024],
   [T.cloudIn - 1.5, 0.003],
   [T.cloudIn, 0.0055],
-  [T.cloudIn + 1.2, 0.011],
-  [T.cloudOut - 1, 0.012],
+  [T.cloudIn + 1.2, 0.0085],
+  [T.cloudOut - 1, 0.009],
   [T.cloudOut, 0.006],
   [T.cloudOut + 1.2, 0.0024],
   [T.apex, 0.002],
   [T.descend, 0.002],
   [T.cloudTop - 0.5, 0.0035],
-  [T.cloudTop + 1, 0.0115],
-  [T.cloudBase - 1, 0.012],
+  [T.cloudTop + 1, 0.0085],
+  [T.cloudBase - 1, 0.009],
   [T.cloudBase, 0.0075],
   [T.cloudBase + 2, 0.0048],
   [T.cloudBase + 5, 0.0034],
@@ -101,7 +101,11 @@ const fogDensity = numberTrack([
 
 /** The colour distant things dissolve into. */
 const fogColor = colorTrack([
-  [0, '#5b6570'],
+  [T.release, '#5b6570'],
+  [T.release + 3, '#4f4764'],
+  [T.legible, '#4a4061'],
+  [T.mixed, '#575a6e'],
+  [T.story1 + 3, '#5f6771'],
   [T.story2, '#626b75'],
   [T.story4, '#6a7178'],
   [B, '#767b80'],
@@ -361,7 +365,11 @@ const dark = numberTrack([[0, 0]]);
 // to neutral exactly at the handoff (the Events are not graded).
 
 const saturation = numberTrack([
-  [0, 0.32],
+  [T.release, 0.32],
+  [T.release + 1.5, 0.82],
+  [T.legible, 0.95],
+  [T.dissolve + 1, 0.72],
+  [T.mixed + 1, 0.36],
   [T.story1, 0.4],
   [T.story2, 0.48],
   [T.acm, 0.52],
@@ -473,6 +481,8 @@ export const look = {
   practicals: 1,
   exposure: 1,
   cloud: 0,
+  /** Lightning's light (0..1), set by the atmosphere when a flash is struck. */
+  flash: 0,
   dark: 0,
   tunnelAmbient: 1,
   grade: { saturation: 1, contrast: 1, lift: new Color(0, 0, 0), gain: new Color(1, 1, 1), vignette: 0, bloom: 0 },

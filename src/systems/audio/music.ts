@@ -1,7 +1,8 @@
 /**
  * The music player: one track, faded in and out, with a low-pass that closes
  * as the journey goes underground and opens again inside — so the song feels
- * like it is playing in the room you are in. No other sound is made.
+ * like it is playing in the room you are in. The film's sound effects
+ * (./sfx.ts) share its audio context, and are heard only when it is.
  *
  * Entering with sound starts the score at a chosen point (`playFrom`) from
  * inside the click; from then on it plays on, whatever the scroll does.
@@ -22,6 +23,8 @@ class MusicPlayer {
   private level = 1;
   private holdTimer = 0;
   private holding = false;
+  /** No Web Audio in this browser: fade with the element's own volume instead. */
+  private fallback = false;
   state: State = 'idle';
   /** Set when the browser refuses to play (autoplay policy, missing file…). */
   message = '';
@@ -57,9 +60,14 @@ class MusicPlayer {
       this.ctx = ctx;
       this.filter = filter;
       this.gain = gain;
+      // From here the gain node does all the fading: the element itself plays at full volume
+      // into the graph (its volume scales what reaches the graph — left at 0, the music is silent).
+      this.el.volume = 1;
+      this.el.muted = false;
     } catch {
       // No Web Audio: fall back to plain element volume.
       this.ctx = null;
+      this.fallback = true;
       this.el.volume = 0;
     }
   }
@@ -78,6 +86,16 @@ class MusicPlayer {
   /** The file can't be played (missing, or refused). */
   get failed() {
     return this.state === 'missing' || this.state === 'blocked';
+  }
+
+  /** The Web Audio context (built in the gesture that enabled sound), for the sound effects. */
+  get context() {
+    return this.ctx;
+  }
+
+  /** The visitor wants sound. */
+  get wantsSound() {
+    return this.wanted;
   }
 
   /** Playback position (s). */
@@ -188,7 +206,7 @@ class MusicPlayer {
     if (g && ctx) {
       g.gain.cancelScheduledValues(ctx.currentTime);
       g.gain.setValueAtTime(0, ctx.currentTime);
-    } else if (this.el) this.el.volume = 0;
+    } else if (this.el && this.fallback) this.el.volume = 0;
   }
 
   private fadeTo(v: number, seconds: number) {
@@ -197,7 +215,9 @@ class MusicPlayer {
     if (g && ctx) {
       g.gain.cancelScheduledValues(ctx.currentTime);
       g.gain.setTargetAtTime(v, ctx.currentTime, Math.max(0.05, seconds / 3));
-    } else if (this.el) this.el.volume = v;
+    } else if (this.el && this.fallback) this.el.volume = v;
+    // (Before the graph exists nothing is playing, so there is nothing to fade — and touching the
+    // element's volume then would silence it once the graph takes over.)
   }
 
   /**

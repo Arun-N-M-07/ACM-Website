@@ -12,6 +12,7 @@ import { SCROLL_LENGTH_VH } from '@/config/timeline';
 import { useExperience } from '@/store/experience';
 import { useTeams, type TeamsState } from '@/teams/state';
 import { progress } from './progress';
+import { wheelGain } from './wheelShape';
 
 let lenis: Lenis | null = null;
 
@@ -89,7 +90,23 @@ export function ScrollTimeline() {
 
   useEffect(() => {
     gsap.registerPlugin(ScrollTrigger);
-    const instance = reducedMotion ? null : new Lenis({ lerp: 0.085, wheelMultiplier: 0.85, touchMultiplier: 1.4, autoRaf: false });
+    const instance = reducedMotion
+      ? null
+      : new Lenis({
+          lerp: 0.085,
+          wheelMultiplier: 0.85,
+          touchMultiplier: 1.4,
+          autoRaf: false,
+          // Wheel and trackpad: a fling is compressed, deliberate scrolling isn't (wheelShape.ts).
+          virtualScroll: (data) => {
+            if (data.event.type === 'wheel') {
+              const g = wheelGain(data.deltaX, data.deltaY);
+              data.deltaX *= g;
+              data.deltaY *= g;
+            }
+            return true;
+          },
+        });
     lenis = instance;
     const tick = (time: number) => instance?.raf(time * 1000);
     if (instance) {

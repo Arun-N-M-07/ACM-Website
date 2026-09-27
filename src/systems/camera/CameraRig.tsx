@@ -19,7 +19,7 @@ import { useEffect, useRef } from 'react';
 import type { PerspectiveCamera } from 'three';
 import { CAMERA_RESPONSE } from '@/config/camera';
 import { chapterForSegment, INTRO_PROGRESS_END, segmentAt } from '@/config/timeline';
-import { INTRO_END, INTRO_MAX_BEATS_PER_SECOND } from '@/intro/timeline';
+import { INTRO_MAX_BEATS_PER_SECOND, INTRO_SPAN } from '@/intro/timeline';
 import { evaluateIntroShot } from '@/intro/camera';
 import { syncIntro } from '@/intro/controller';
 import { introFrame } from '@/intro/state';
@@ -34,7 +34,7 @@ import { copyPose, emptyPose } from './pose';
 import { eventStationAt, evaluateCinematic, nearestStop } from './shots';
 
 /** The opening's fastest follow rate, in progress units per second. */
-const INTRO_MAX_RATE = (INTRO_MAX_BEATS_PER_SECOND / INTRO_END) * INTRO_PROGRESS_END;
+const INTRO_MAX_RATE = (INTRO_MAX_BEATS_PER_SECOND / INTRO_SPAN) * INTRO_PROGRESS_END;
 
 export function CameraRig() {
   const camera = useThree((s) => s.camera) as PerspectiveCamera;

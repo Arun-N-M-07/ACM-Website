@@ -17,6 +17,7 @@ import { progress } from '@/systems/scroll/progress';
 import { jumpToProgress, ScrollTimeline, scrollToProgress } from '@/systems/scroll/ScrollTimeline';
 import { fontsReady } from '@/systems/textures/typeset';
 import { MusicDirector } from './MusicDirector';
+import { SoundDirector } from './SoundDirector';
 import { ChapterRail } from './ChapterRail';
 import { Dossier } from './Dossier';
 import { IndexMenu } from './IndexMenu';
@@ -139,6 +140,7 @@ export function Experience() {
       <LoadingScreen />
       <KeyboardNav />
       <MusicDirector />
+      <SoundDirector />
     </>
   );
 }

@@ -17,8 +17,12 @@
  *           chars, carries a thin ember line (small, never a flame), and
  *           behind it there is no paper. The words go with the paper.
  *
- * Arrival: it comes out of the mist (and a short presence ramp); the torn edge
- * and the fire's front are antialiased in the shader.
+ * Arrival: the sheet condenses where it hangs — its torn edge draws itself
+ * first as a faint pale line, then the fibres fill in from the edges towards
+ * the middle (along the paper's grain, not as a wipe), a faint cool light on
+ * the forming front; only then does the ink surface. The opposite of the
+ * fire: making, not unmaking. The torn edge and the fire's front are
+ * antialiased in the shader.
  */
 import { Color, DoubleSide, MeshStandardMaterial, type Texture, Vector2, Vector4 } from 'three';
 
@@ -33,6 +37,7 @@ export interface ParchmentUniforms {
   uCurl: { value: number };
   uSeed: { value: number };
   uPresence: { value: number };
+  uForm: { value: number };
   uFill: { value: number };
   uLines: { value: Vector4[] };
   uLineCount: { value: number };
@@ -88,7 +93,8 @@ vec3 objectNormal = normalize(cross(sheetDx, sheetDy));
 const FRAGMENT_PARS = /* glsl */ `
 uniform sampler2D uTex;
 uniform sampler2D uNoise;
-uniform float uReveal, uBurn, uTime, uPresence, uFill;
+uniform float uReveal, uBurn, uTime, uPresence, uFill, uForm;
+uniform vec2 uSize;
 uniform vec4 uLines[5];
 uniform int uLineCount;
 uniform vec3 uPaperLight, uPaperDark, uInk, uChar, uEmber;
@@ -126,6 +132,14 @@ float inkSharp = sheet.g;
 float inkSoft = texture2D(uTex, vUv, 2.4).g;
 float inkAmt = mix(inkSoft * 0.5, inkSharp, smoothstep(0.3, 1.0, reveal)) * reveal * (0.8 + 0.2 * n1);
 vec3 col = mix(paper, uInk, clamp(inkAmt, 0.0, 1.0) * 0.93);
+// The Trace: a small red archival rule, printed low on every sheet with a registration tick —
+// the same red that returns in the stone's inlay, and in the building.
+vec2 rr = (vUv - vec2(0.085, 0.14)) * uSize;
+float rw = max(fwidth(rr.y), 1e-4);
+float rule = (1.0 - smoothstep(0.0022, 0.0022 + rw, abs(rr.y))) * smoothstep(-rw, rw, rr.x) * (1.0 - smoothstep(0.2 - rw, 0.2 + rw, rr.x));
+float tick = (1.0 - smoothstep(0.0018, 0.0018 + rw, abs(rr.x))) * (1.0 - smoothstep(0.018, 0.018 + rw, abs(rr.y)));
+float trace = max(rule, tick) * smoothstep(0.05, 0.35, uReveal) * (0.7 + 0.3 * n2);
+col = mix(col, vec3(0.58, 0.1, 0.07), trace * 0.9);
 // Fire.
 float bt = sheet.b + (n2 - 0.5) * 0.07 + (n3 - 0.5) * 0.035;
 float local = uBurn * 1.28 - bt;
@@ -145,8 +159,20 @@ float silW = max(fwidth(sheet.a), 0.004) * 0.85;
 float sil = smoothstep(0.5 - silW, 0.5 + silW, sheet.a);
 float fireW = max(fwidth(local), 0.0005);
 float kept = 1.0 - smoothstep(-fireW, fireW, local) * lit;
-float cover = sil * kept;
+// Arrival: the edge first, then the fibres in towards the middle.
+vec2 cq = abs(vUv - 0.5) * 2.0;
+float inward = 1.0 - max(cq.x, cq.y);
+// Gathering in patches (the fibres find each other), with a little grain at the front.
+float blotch = texture2D(uNoise, vUv * 1.4 + 0.21).g;
+float fibre = texture2D(uNoise, vUv * vec2(3.0, 9.0) + 0.53).r;
+float formOrder = inward * 0.62 + (blotch - 0.5) * 0.52 + (n1 - 0.5) * 0.18 + (fibre - 0.5) * 0.07;
+float front = uForm * 1.5 - 0.3;
+float formed = smoothstep(front + 0.035, front - 0.035, formOrder);
+// The torn edge itself is drawn first, as a line.
+float rim = smoothstep(0.62, 0.9, 1.0 - soft) * smoothstep(0.0, 0.12, uForm);
+float cover = sil * kept * max(formed, rim * 0.85);
 if (cover < 0.02) discard;
+float forming = exp(-pow((formOrder - front) / 0.045, 2.0)) * (1.0 - smoothstep(0.9, 1.0, uForm));
 if (!gl_FrontFacing) col = paper * 0.62;
 diffuseColor.rgb = col;
 // Arrival: it comes out of the mist (the fog does most of it; this keeps the first moment soft).
@@ -157,6 +183,8 @@ const FRAGMENT_EMISSIVE = /* glsl */ `
 #include <emissivemap_fragment>
 float flicker = 0.75 + 0.25 * sin(uTime * 17.0 + vUv.x * 40.0) * sin(uTime * 11.0 + vUv.y * 31.0);
 totalEmissiveRadiance += uEmber * ember * flicker + diffuseColor.rgb * uFill;
+// The forming front, and the edge as it is drawn: a little cool light caught in the new fibres.
+totalEmissiveRadiance += vec3(0.62, 0.68, 0.78) * (forming * 0.55 + rim * (1.0 - formed) * 0.35) * sil;
 `;
 
 export function createParchmentMaterial(tex: Texture, noise: Texture, size: [number, number], lines: Vector4[], seed: number) {
@@ -172,6 +200,7 @@ export function createParchmentMaterial(tex: Texture, noise: Texture, size: [num
     uCurl: { value: 1 },
     uSeed: { value: seed },
     uPresence: { value: 0 },
+    uForm: { value: 1 },
     uFill: { value: 0.3 },
     uLines: { value: padded },
     uLineCount: { value: Math.min(5, lines.length) },

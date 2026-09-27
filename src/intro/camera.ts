@@ -38,6 +38,7 @@ import { CameraPath, makeSample, type PathKey } from './path';
 import { introFrame } from './state';
 import { ease, T, window4 } from './timeline';
 import { STONE_FOCUS } from './world/stoneLayout';
+import { CAM_Z, GROUND_Y, LETTERS, PX, ROLL_TO } from './prologue/layout';
 
 const END = CAMERA_STATES.facilityEnd;
 /** The handoff: the corridor mouth, looking north, level. */
@@ -50,7 +51,23 @@ const down = (y: number): Vec3 => [W.x, y, W.z - 0.03];
 /** Towards the stone. */
 const stone = (dy = 0, dz = 0): Vec3 => [STONE_FOCUS[0], STONE_FOCUS[1] + dy, STONE_FOCUS[2] + dz];
 
+/** The prologue's ground-level frame (see prologue/layout.ts). */
+const GY = GROUND_Y;
+
 export const INTRO_KEYS: PathKey[] = [
+  // The prologue: on the road, in the mist, looking down it into the fog. Something is rolling towards the lens…
+  { t: T.prologue, pos: [PX, GY + 0.18, CAM_Z], look: [PX + 0.35, GY + 0.16, 146], fov: 44 },
+  { t: T.roll + 3, pos: [PX - 0.02, GY + 0.18, CAM_Z - 0.03], look: [PX + 0.4, GY + 0.1, 148], fov: 44 },
+  // …the eye settles on it as it slows, and it comes to rest a couple of metres off.
+  { t: T.rest, pos: [PX - 0.05, GY + 0.18, CAM_Z - 0.06], look: [ROLL_TO.x + 0.05, GY - 0.12, ROLL_TO.z - 4.5], fov: 43.5 },
+  { t: T.release - 0.3, pos: [PX - 0.06, GY + 0.19, CAM_Z - 0.08], look: [ROLL_TO.x + 0.05, GY - 0.1, ROLL_TO.z - 4.5], fov: 43.2 },
+  // The release lifts the view a little and pushes it back — involuntary, not a jump.
+  { t: T.release + 2, pos: [PX - 0.06, GY + 0.55, CAM_Z + 0.35], look: [LETTERS.x, GY + 0.7, LETTERS.z - 1], fov: 44.5 },
+  { t: T.form + 1, pos: [PX - 0.05, GY + 0.9, CAM_Z + 0.8], look: [LETTERS.x, LETTERS.y - 0.05, LETTERS.z], fov: 44 },
+  // The words: held, the eye still.
+  { t: T.legible, pos: [PX - 0.04, GY + 1.0, CAM_Z + 0.9], look: [LETTERS.x, LETTERS.y + 0.02, LETTERS.z], fov: 43.4 },
+  { t: T.dissolve, pos: [PX - 0.04, GY + 1.06, CAM_Z + 0.6], look: [LETTERS.x, LETTERS.y + 0.1, LETTERS.z], fov: 43 },
+  // Through the loosening words, rising into the story's first shot.
   // Arrival: low, off the axis, among the garden's edges, in mist.
   { t: 0, pos: [-7.4, 1.72, 156], look: [-3.2, 5.2, 58], fov: 42 },
   { t: T.story1, pos: [-6.9, 1.74, 153], look: [-2.9, 5.5, 55], fov: 41.5 },
@@ -70,41 +87,42 @@ export const INTRO_KEYS: PathKey[] = [
   { t: 95.5, pos: [0.05, 1.95, 109.6], look: [0.2, 11.4, 1.6], fov: 35.6 },
   { t: T.heroEnd, pos: [0.2, 2.05, 108], look: [0.2, 11.8, 1], fov: 35.2 },
   // The approach: a glide over the pool, clear of its jets, to hover before the tower.
-  { t: 102.5, pos: [0.1, 3.4, 99], look: [0.2, 13.2, 1], fov: 36.8 },
-  { t: 106.5, pos: [0, 7.6, 84], look: [0.2, 15.5, 0.9], fov: 40 },
-  { t: 109.5, pos: [0, 9.1, 66], look: [0.2, 17.2, 0.8], fov: 45 },
+  { t: 106.5, pos: [0.1, 3.4, 99], look: [0.2, 13.2, 1], fov: 36.8 },
+  { t: 110.5, pos: [0, 7.6, 84], look: [0.2, 15.5, 0.9], fov: 40 },
+  { t: 113.5, pos: [0, 9.1, 66], look: [0.2, 17.2, 0.8], fov: 45 },
   { t: T.hover, pos: [0, 9.4, 48.4], look: [0.2, 18.6, 0.6], fov: 50 },
   // The ascent: straight up the column, past the tower, the building sinking below…
   { t: T.rise, pos: up(9.8), look: [0.2, 19, 0.6], fov: 51 },
-  { t: 119, pos: up(21), look: [0.2, 18.5, 0.6], fov: 52 },
-  { t: 122, pos: up(41), look: [0.1, 11, 3], fov: 53 },
-  { t: 125, pos: up(80), look: [0, 3, 10], fov: 54 },
+  { t: 123, pos: up(21), look: [0.2, 18.5, 0.6], fov: 52 },
+  { t: 126, pos: up(41), look: [0.1, 11, 3], fov: 53 },
+  { t: 129, pos: up(80), look: [0, 3, 10], fov: 54 },
   // …into the cloud, and out above it…
   { t: T.cloudIn, pos: up(150), look: [0, 0, 32], fov: 55 },
-  { t: T.cloudOut, pos: up(222), look: [0, 130, 44], fov: 55 },
+  { t: T.cloudOut, pos: up(222), look: [0, 185, -40], fov: 55 },
   // …tilting up to the horizon over the cloud.
-  { t: T.apex, pos: up(256), look: [0, 243, -104], fov: 52 },
-  { t: 136.5, pos: up(262), look: [0, 247.5, -120], fov: 51 },
+  // (The apex: the rise spends itself and settles, looking out over the sea of cloud — not up at the sky.)
+  { t: T.apex, pos: up(254), look: [0, 216, -104], fov: 53 },
+  { t: 140.5, pos: up(258), look: [0, 218, -112], fov: 52.5 },
   // The descent: tilting down, and straight down the same column…
   { t: T.descend, pos: up(260), look: down(200), fov: 52 },
   { t: T.cloudTop, pos: up(222), look: down(160), fov: 53 },
-  { t: 143.8, pos: up(187), look: down(125), fov: 53 },
+  { t: 147.8, pos: up(187), look: down(125), fov: 53 },
   // …out of the cloud's base, the light-well at the centre of the frame…
   { t: T.cloudBase, pos: up(152), look: down(90), fov: 53 },
-  { t: 149.5, pos: up(82), look: down(20), fov: 53 },
-  { t: 152.5, pos: up(34), look: down(-20), fov: 52 },
+  { t: 153.5, pos: up(82), look: down(20), fov: 53 },
+  { t: 156.5, pos: up(34), look: down(-20), fov: 52 },
   // …hovering low while its glass slides open, and through.
   { t: T.plaza, pos: up(10.5), look: down(-10), fov: 52 },
-  { t: 157, pos: up(6.4), look: down(-12), fov: 53 },
+  { t: 161, pos: up(6.4), look: down(-12), fov: 53 },
   { t: T.shaft, pos: up(-1), look: down(-20), fov: 54 },
-  { t: 162.5, pos: up(FLOOR_Y + 15), look: down(FLOOR_Y - 3), fov: 58 },
+  { t: 166.5, pos: up(FLOOR_Y + 15), look: down(FLOOR_Y - 3), fov: 58 },
   // Tipping up out of the shaft into the lobby, and level, facing the door.
-  { t: 164, pos: [W.x, FLOOR_Y + 6.4, W.z + 0.6], look: [W.x, FLOOR_Y + 2.3, W.z - 4.5], fov: 57 },
+  { t: 168, pos: [W.x, FLOOR_Y + 6.4, W.z + 0.6], look: [W.x, FLOOR_Y + 2.3, W.z - 4.5], fov: 57 },
   { t: T.lobby, pos: [0, EYE_Y + 0.3, 44.8], look: [0, FLOOR_Y + 5.4, 27], fov: 55 },
   // Across the lobby, the lettering above the door, the door opening as the camera nears…
-  { t: 169, pos: [0, EYE_Y + 0.22, 40.6], look: [0, FLOOR_Y + 5.2, 27], fov: 54 },
+  { t: 173, pos: [0, EYE_Y + 0.22, 40.6], look: [0, FLOOR_Y + 5.2, 27], fov: 54 },
   { t: T.door, pos: [0, EYE_Y + 0.14, 37], look: [0, FLOOR_Y + 4.2, 27], fov: 53.5 },
-  { t: 176.5, pos: [0, EYE_Y + 0.05, 32.4], look: [0, EYE_Y + 0.6, 18], fov: 53 },
+  { t: 180.5, pos: [0, EYE_Y + 0.05, 32.4], look: [0, EYE_Y + 0.6, 18], fov: 53 },
   // …and through.
   { t: T.doorway, pos: [0, EYE_Y, 27.2], look: [0, EYE_Y, 10], fov: 53.5 },
   { t: T.end, pos: HANDOFF, look: [HANDOFF[0], HANDOFF[1], HANDOFF[2] - 20], fov: END.fov },
@@ -174,11 +192,6 @@ export function evaluateIntroShot(time: number, aspect: number, out: CameraPose,
   out.pitch += (Math.sin(time * 0.19 + 0.6) * 0.0032 + Math.sin(time * 0.53 + 2.2) * 0.001) * b;
   out.x += Math.sin(time * 0.29 + 0.3) * 0.028 * b;
   out.y += Math.sin(time * 0.37 + 1.1) * 0.022 * b;
-  // Turbulence in the cloud: small, quick, never a shake.
-  const c = window4(t, T.cloudIn - 0.4, T.cloudIn + 0.8, T.cloudOut - 0.6, T.cloudOut + 0.2) + window4(t, T.cloudTop - 0.2, T.cloudTop + 0.9, T.cloudBase - 0.9, T.cloudBase + 0.3);
-  if (c > 0) {
-    out.roll += (Math.sin(time * 1.7) * 0.006 + Math.sin(time * 2.9 + 1) * 0.003) * c;
-    out.pitch += Math.sin(time * 2.3 + 0.4) * 0.004 * c;
-  }
+  // (No turbulence in the cloud: the camera never rolls — the cloud's own motion, and the motes streaming past, carry it.)
   return out;
 }

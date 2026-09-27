@@ -4,20 +4,14 @@
  * camera.
  *
  * It travels with the walk (it is carried on the air the camera moves
- * through — so it can be read), with its own motion inside that frame. Its
- * arrival is staged like a shot, and every part of it is a function of the
- * scroll (the arrival's progress `a`), so it can be stopped anywhere and
- * played backwards:
+ * through — so it can be read), with its own motion inside that frame. Every
+ * part of it is a function of the scroll (the arrival's progress `a`), so it
+ * can be stopped anywhere and played backwards.
  *
- *   anticipation  far off in the mist it hangs, turning slowly, even drifting
- *                 a little away — something out there, not yet coming
- *   the carry     then the air takes it: it accelerates towards the lens on a
- *                 curving path, tumbling, its plain back towards you
- *   the turn      it turns over as it comes, catching the light as its face
- *                 swings through it (the paper is glossier while it moves)
- *   overshoot     it comes a touch too close and turns a little too far,
- *                 and settles back — damped springs, not an ease
- *   the wake      a breath of mist is dragged along behind it
+ * It does not fly in. It condenses where it hangs, out of the mist: its torn
+ * edge draws itself first, then the fibres fill in from the edges to the
+ * middle (parchmentMaterial: uForm), while the sheet settles the last few
+ * centimetres into place — creation, the opposite of the fire that ends it.
  *
  * Settled, it breathes in the air; burning, it lifts on its own heat. The
  * camera it is placed against is the opening's path, not the breathing
@@ -160,9 +154,12 @@ export function Parchment({ fragment, art, noise }: { fragment: Fragment; art: P
     _u.crossVectors(_r, _f).normalize();
 
     const a = span(t, f.arrive[0], f.arrive[1]);
-    const s = spring((a - HANG) / (1 - HANG));
-    arrivalAt(a, _p);
-    let { x, y, z } = _p;
+    // (No tumble: the sheet condenses in place, settling the last few centimetres.)
+    const s = 1;
+    const settle = 1 - ease(a, 0.15, 1);
+    let x = f.rest[0];
+    let y = f.rest[1] - 0.05 * settle;
+    let z = f.rest[2] + 0.32 * settle;
     // Breathing in the air (the only thing here that runs on its own).
     const w = clock.elapsedTime;
     x += Math.sin(w * 0.47 + f.seed) * 0.022;
@@ -190,7 +187,7 @@ export function Parchment({ fragment, art, noise }: { fragment: Fragment; art: P
     _m.lookAt(S.pos, g.position, _u);
     _q.setFromRotationMatrix(_m);
     const k = 1 - s;
-    const hangTurn = (1 - Math.min(1, a / HANG)) * 0.35;
+    const hangTurn = 0.06 * settle;
     _qt.setFromAxisAngle(_ax.set(1, 0, 0), f.tilt[0] + spin.x * k + Math.sin(w * 0.33 + f.seed) * 0.03);
     _q.multiply(_qt);
     _qt.setFromAxisAngle(_ax.set(0, 1, 0), f.tilt[1] + spin.y * k + hangTurn + Math.sin(w * 0.27 + f.seed * 2) * 0.035);
@@ -208,15 +205,18 @@ export function Parchment({ fragment, art, noise }: { fragment: Fragment; art: P
 
     const u = res.uniforms;
     u.uTime.value = w;
-    u.uPresence.value = ease(t, f.arrive[0], f.arrive[0] + 1.1);
+    u.uPresence.value = ease(t, f.arrive[0], f.arrive[0] + 0.6);
+    u.uForm.value = span(t, f.arrive[0], f.arrive[1] - 0.4);
     u.uReveal.value = span(t, f.ink[0], f.ink[1]);
     u.uBurn.value = b;
     u.uFlutter.value = 0.011 + 0.026 * k + 0.012 * b;
     // Before the sun, the sheet holds what little light there is (so it reads);
     // once the sun is up, the sun lights it. Turning, it flashes as it faces you.
     const base = 0.36 - 0.25 * Math.min(1, look.sun.intensity / 2.2);
-    u.uFill.value = base + moving * 0.22 * Math.pow(facing, 6);
-    res.material.roughness = 0.9 - 0.32 * moving;
+    u.uFill.value = base;
+    res.material.roughness = 0.9;
+    void facing;
+    void moving;
 
     // The wake: puffs where the sheet was a moment ago, thicker the faster it came.
     const wk = wake.current;
@@ -231,7 +231,7 @@ export function Parchment({ fragment, art, noise }: { fragment: Fragment; art: P
         place(_p.x, _p.y, _p.z, _p);
         pos.setXYZ(i, _p.x, _p.y, _p.z);
         const fade = 1 - i / WAKE;
-        att.setXY(i, 0.5 + i * 0.09, carry * fade * 0.16 * (a > HANG ? 1 : 0));
+        att.setXY(i, 0.5 + i * 0.09, 0 * carry * fade);
       }
       pos.needsUpdate = true;
       att.needsUpdate = true;

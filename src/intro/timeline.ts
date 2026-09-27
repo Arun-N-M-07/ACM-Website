@@ -9,7 +9,10 @@
  * scrolling and it stops, scroll back and it plays backwards, at the
  * visitor's own speed.
  *
- *   01 Arrival    the world, in mist
+ *   01 Arrival    the prologue, on the ground in the mist: something rolls in
+ *                 out of the fog and comes to rest; it releases a pressurised
+ *                 purple gas, and the gas itself becomes "22 YEARS AGO" before
+ *                 it dissolves into the mist — then the world, in mist
  *   02 The Story  four fragments of an archive, each read and burnt; after the
  *                 second ("Within CEG, a community was born."), a stone in the
  *                 mist carries the chapter's name
@@ -36,13 +39,31 @@ export const INTRO_VH_PER_BEAT = 10;
  * a hard fling still reads as a move, not a cut. Ordinary scrolling never
  * reaches it.
  */
-export const INTRO_MAX_BEATS_PER_SECOND = 18;
+export const INTRO_MAX_BEATS_PER_SECOND = 10;
 
 /** Where the score starts when the visitor enters with sound (s into the recording). */
 export const SCORE_IN = 70.0;
 
 export const T = {
-  // 01 Arrival
+  // 01 Arrival — the prologue lives on the beats before 0, so every beat of the story keeps its place.
+  /** The film begins: the camera on the ground, in the mist. */
+  prologue: -26,
+  /** Something rolls in out of the fog… */
+  roll: -24,
+  /** …slows, and comes to rest. */
+  rest: -16.5,
+  /** Pressure: the seam wakes, the canister trembles. */
+  pressure: -14.5,
+  /** The release. */
+  release: -12.5,
+  /** The gas begins to take the shape of words… */
+  form: -9.5,
+  /** …readable… */
+  legible: -6,
+  /** …and loosens back into gas… */
+  dissolve: -2.5,
+  /** …mixing into the mist. */
+  mixed: 2,
   story1: 4,
   // 02 The Story
   story2: 19,
@@ -65,44 +86,47 @@ export const T = {
   clearing: 84,
   // 03 CEG
   reveal: 92,
-  heroEnd: 99,
+  heroEnd: 103,
   /** The glide over the pool towards the building… */
-  approach: 99,
+  approach: 103,
   /** …hovering over the plaza before the tower. */
-  hover: 112,
+  hover: 116,
   // 04 Ascent
   /** Straight up. */
-  rise: 116,
+  rise: 120,
   /** Into the cloud's base on the way up… */
-  cloudIn: 128,
+  cloudIn: 132,
   /** …out of its top. */
-  cloudOut: 131.5,
+  cloudOut: 135.5,
   /** Above the cloud: looking out at the horizon. */
-  apex: 134,
+  apex: 138,
   // 05 Descent
   /** Tilting down; straight down. */
-  descend: 138.5,
+  descend: 142.5,
   /** Into the cloud's top… */
-  cloudTop: 141,
+  cloudTop: 145,
   /** …out of its base: the campus below, the light-well at the centre. */
-  cloudBase: 146.5,
+  cloudBase: 150.5,
   /** Low over the light-well. */
-  plaza: 155,
+  plaza: 159,
   /** The well's glass leaves slide open (over 2 beats). */
-  wellOpen: 155,
+  wellOpen: 159,
   /** Through the ground, down the shaft. */
-  shaft: 158,
+  shaft: 162,
   /** Level, in the lobby. */
-  lobby: 165.5,
+  lobby: 169.5,
   /** The door wakes, unlocks and opens (over 6.5 beats). */
-  door: 172.5,
+  door: 176.5,
   /** Through the door. */
-  doorway: 180,
+  doorway: 184,
   /** The Events. */
-  end: 184,
+  end: 188,
 } as const;
 
+/** The film's first and last beats. */
+export const INTRO_START = T.prologue;
 export const INTRO_END = T.end;
+export const INTRO_SPAN = INTRO_END - INTRO_START;
 
 export type IntroChapterId = 'arrival' | 'story' | 'ceg' | 'ascent' | 'descent';
 
@@ -118,7 +142,7 @@ export interface IntroChapter {
 
 /** User-facing chapters (numbered so the journey's own 06–08 follow on). */
 export const INTRO_CHAPTERS: IntroChapter[] = [
-  { id: 'arrival', number: '01', label: 'Arrival', from: 0, to: T.story1, enterAt: 0 },
+  { id: 'arrival', number: '01', label: 'Arrival', from: INTRO_START, to: T.story1, enterAt: INTRO_START },
   { id: 'story', number: '02', label: 'The Story', from: T.story1, to: T.clearing, enterAt: 12 },
   { id: 'ceg', number: '03', label: 'CEG', from: T.clearing, to: T.rise, enterAt: T.reveal + 2 },
   { id: 'ascent', number: '04', label: 'Ascent', from: T.rise, to: T.descend, enterAt: T.rise + 0.5 },
@@ -132,10 +156,10 @@ export function introChapterAt(t: number): IntroChapterId {
 
 /**
  * Reduced motion: framed stills the camera cuts between instead of flying —
- * each fragment legible, the name, the building, the tower, the rise, above
- * the cloud, the well below, the lobby, the open door.
+ * the words in the gas, each fragment legible, the name, the building, the
+ * tower, the rise, above the cloud, the well below, the lobby, the open door.
  */
-export const STILLS = [1.5, 13, 28, 45, 64, 79, 95, 113, 123, 135.5, 150, 168, 178];
+export const STILLS = [-4.5, 1.5, 13, 28, 45, 64, 79, 95, 117, 127, 139.5, 154, 172, 182];
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 

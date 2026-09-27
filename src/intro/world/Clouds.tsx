@@ -27,6 +27,8 @@ import { introFrame } from '../state';
 import { T } from '../timeline';
 import { hash, noiseTexture } from './noise';
 
+const _flash = new Color('#dfe6ff');
+
 /** The cloud layer's base and top (m). */
 export const CLOUD_BASE = 155;
 export const CLOUD_TOP = 218;
@@ -175,6 +177,9 @@ export function Clouds() {
     const above = Math.min(1, Math.max(0, (cp.y - CLOUD_TOP + 8) / 30));
     (u.uLit.value as Color).setScalar(1.1 - 0.2 * under + 0.4 * above).lerp(look.sun.color, 0.1 + 0.1 * above);
     (u.uShade.value as Color).set('#98a1aa').multiplyScalar(1 - 0.25 * under + 0.3 * above);
+    // Lightning lights the cloud from within: cool, brief.
+    (u.uLit.value as Color).lerp(_flash, Math.min(1, look.flash * 0.6)).multiplyScalar(1 + 1.4 * look.flash);
+    (u.uShade.value as Color).lerp(_flash, Math.min(1, look.flash * 0.5)).multiplyScalar(1 + 1.8 * look.flash);
     (u.uFog.value as Color).copy(look.fogColor);
     u.uFogDensity.value = look.fogDensity;
   });

@@ -100,8 +100,11 @@ export interface ChapterDef {
   intro?: boolean;
 }
 
-/** Progress at an opening beat. */
-const introAt = (beat: number) => (beat / INTRO_CHAPTERS[INTRO_CHAPTERS.length - 1].to) * INTRO_PROGRESS_END;
+/** Progress at an opening beat (the film's first chapter starts before beat 0: the prologue). */
+const introAt = (beat: number) => {
+  const first = INTRO_CHAPTERS[0].from;
+  return ((beat - first) / (INTRO_CHAPTERS[INTRO_CHAPTERS.length - 1].to - first)) * INTRO_PROGRESS_END;
+};
 
 export const CHAPTERS: ChapterDef[] = [
   ...INTRO_CHAPTERS.map((c) => ({ id: c.id, number: c.number, label: c.label, jumpTo: introAt(c.enterAt), segments: [c.id] as SegmentId[], intro: true })),

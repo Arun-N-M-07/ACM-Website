@@ -340,7 +340,8 @@ export function Grounds() {
       mLamp: new MeshBasicMaterial({ color: LAMP.clone() }),
       mGlass: new MeshStandardMaterial({ color: PALETTE.glass, roughness: 0.04, metalness: 0.5, transparent: true, opacity: 0.45, depthWrite: false }),
       mSteel: new MeshStandardMaterial({ color: '#2a2d31', roughness: 0.35, metalness: 0.85 }),
-      mGlow: new MeshBasicMaterial({ color: new Color('#cfe0ff').multiplyScalar(1.3) }),
+      // (The Trace turns here: the red of history gives way to the ACM blue of the present.)
+      mGlow: new MeshBasicMaterial({ color: new Color('#8fb8f2').multiplyScalar(1.35) }),
       glowGeo: new RingGeometry(W.r - 0.25, W.r - 0.05, 64).rotateX(-Math.PI / 2),
     };
   }, [q.textureScale]);

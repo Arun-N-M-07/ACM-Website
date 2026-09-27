@@ -14,13 +14,13 @@ import { experience } from '@/store/experience';
 import { progress } from '@/systems/scroll/progress';
 import { jumpToProgress } from '@/systems/scroll/ScrollTimeline';
 import { intro, introFrame } from './state';
-import { INTRO_END, introChapterAt } from './timeline';
+import { INTRO_END, INTRO_SPAN, INTRO_START, introChapterAt } from './timeline';
 import { STORY_LINES } from './story/fragments';
 
-/** The beat at scroll progress p. */
-export const introTimeAt = (p: number) => Math.min(1, Math.max(0, p / INTRO_PROGRESS_END)) * INTRO_END;
+/** The beat at scroll progress p (the film runs from INTRO_START — the prologue's beats are negative — to INTRO_END). */
+export const introTimeAt = (p: number) => INTRO_START + Math.min(1, Math.max(0, p / INTRO_PROGRESS_END)) * INTRO_SPAN;
 /** The scroll progress at beat t. */
-export const progressAtIntroTime = (t: number) => (Math.min(INTRO_END, Math.max(0, t)) / INTRO_END) * INTRO_PROGRESS_END;
+export const progressAtIntroTime = (t: number) => ((Math.min(INTRO_END, Math.max(INTRO_START, t)) - INTRO_START) / INTRO_SPAN) * INTRO_PROGRESS_END;
 
 /** Idle time (s) before the quiet scroll cue shows: at the very start, and later on. */
 const HINT_AT_START = 2.4;
@@ -50,7 +50,7 @@ export function syncIntro(p: number) {
   if (line !== s.line) s.set({ line });
   const idle = (performance.now() - Math.max(progress.lastInputAt, shownAt)) / 1000;
   const settled = st.reducedMotion || Math.abs(progress.target - progress.value) < 1e-4;
-  const hint = idle > (f.t < 1.5 ? HINT_AT_START : HINT_LATER) && settled;
+  const hint = idle > (f.t < INTRO_START + 1.5 ? HINT_AT_START : HINT_LATER) && settled;
   if (hint !== s.hint) s.set({ hint });
 }
 

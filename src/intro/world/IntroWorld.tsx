@@ -25,6 +25,7 @@ import { Lobby } from './Lobby';
 import { MistLayers } from './MistLayers';
 import { Motes } from './Motes';
 import { Story } from '../story/Story';
+import { Prologue } from '../prologue/Prologue';
 
 /** The opening is what's on screen (the threshold counts: the world is behind it). */
 const onScreen = () => {
@@ -44,6 +45,7 @@ export function IntroWorld() {
   return (
     <group name="intro-world">
       <IntroAtmosphere />
+      <Prologue />
       <MistLayers />
       <Halos />
       <Story />

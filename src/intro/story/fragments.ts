@@ -117,22 +117,27 @@ export const FRAGMENTS: Fragment[] = [
     size: [1.72, 1.2],
     arrive: [70, 75],
     ink: [73.5, 76.5],
-    burn: [82.5, 86.5],
-    // Low and to the side: the building is the subject now.
-    rest: [0.34, -0.3, 3.25],
-    from: [3.8, 2.2, 15],
-    tilt: [-0.06, -0.16, 0.04],
-    ignite: [0.1, 0.05],
-    holes: [[0.55, 0.62]],
+    // (It burns as the mist begins to clear, so what opens in it is the building coming out.)
+    burn: [84.5, 89],
+    // Over the tower: it burns from the middle outwards, and the opening it leaves frames the
+    // building as the mist clears behind it — the words become the place.
+    rest: [0.02, 0.14, 3.3],
+    from: [0.3, 0.6, 15],
+    tilt: [-0.03, -0.05, 0.015],
+    ignite: [0.52, 0.56],
+    holes: [[0.4, 0.62], [0.6, 0.5]],
     seed: 53,
   },
 ];
 
 /**
- * For assistive technology: each fragment's words — and the chapter's name,
- * which is not on paper — and when they can be read.
+ * For assistive technology: the words the prologue's gas forms, each
+ * fragment's words — and the chapter's name, which is not on paper — and
+ * when they can be read.
  */
 export const STORY_LINES = [
+  // The prologue: the words the gas forms.
+  { text: `${years} years ago`, readable: [T.legible - 1.5, T.dissolve + 1] as [number, number] },
   ...FRAGMENTS.slice(0, 2).map((f) => ({
     text: f.lines.map((l) => l.text).join(' '),
     readable: [f.ink[1] - 0.4, f.burn[0] + 0.3] as [number, number],

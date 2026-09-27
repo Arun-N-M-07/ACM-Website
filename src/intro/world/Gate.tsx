@@ -1,26 +1,29 @@
 'use client';
 /**
- * The EVENTS door: a rectangle cut on both diagonals into four triangular
- * leaves of dark steel, set in the lobby's north wall under its lettering.
+ * The EVENTS door: a four-part retracting portal. The opening is cut on both
+ * diagonals into four triangular panels of dark steel that meet at its
+ * centre; each runs in a channel recessed into the architecture around it —
+ * the head, the two jambs, and a slot in the threshold.
  *
  * It is a mechanism, and it is the scroll's — as the camera crosses the lobby
  * towards it, it responds:
  *
- *   waking     the seams (the X between the leaves) light as the camera
+ *   waking     the seams (the X between the panels) light as the camera
  *              comes within reach
- *   unlocking  the bolts draw: every leaf pulls back a few centimetres, with
- *              a tremor
- *   opening    each leaf swings inward on a hinge along its outer edge —
- *              heavy to start, with a little give as it comes to rest against
- *              the passage (top up to the ceiling, bottom down to lie on the
- *              floor, the sides flat to the walls); the top and bottom first,
- *              the sides a moment after
+ *   pressure   the seal lets go: every panel draws back a few centimetres
+ *              with a tremor, and gas escapes at the seams
+ *   the seam   the panels part at the centre — the X opens into light
+ *   retracting each panel travels straight out along its own direction and
+ *              into its channel — the top up into the head, the bottom down
+ *              into the floor, the sides into the walls — heavy to start,
+ *              heavy to stop, a small settle at the end; top and bottom
+ *              first, the sides a moment after
  *   inside     light from the passage spills out across the lobby floor, and
  *              a cold gas held behind the door pours out over the threshold,
  *              low along the floor, towards you
  *
- * Scroll back and it all runs backwards: the gas draws back in, the leaves
- * swing shut, the seams go dark.
+ * Scroll back and it all runs backwards: the gas draws back in, the panels
+ * return and meet, the seams go dark.
  */
 import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
@@ -61,11 +64,12 @@ type LeafId = 'top' | 'bottom' | 'left' | 'right';
 interface Leaf {
   id: LeafId;
   tri: [Vector2, Vector2, Vector2];
-  /** The hinge (door-local), and which way the leaf turns about it. */
+  /** The panel's outer edge (door-local): its origin, which rides in the channel. */
   hinge: [number, number];
-  axis: 'x' | 'y';
-  sign: 1 | -1;
-  /** When it swings (fractions of the door's progress). */
+  /** The direction it retracts in, and how far (fully into its channel). */
+  slide: [number, number];
+  travel: number;
+  /** When it retracts (fractions of the door's progress). */
   from: number;
   to: number;
 }
@@ -91,14 +95,14 @@ function inset(a: Vector2, b: Vector2, c: Vector2, d: number): [Vector2, Vector2
   return [meet(lines[2], lines[0]), meet(lines[0], lines[1]), meet(lines[1], lines[2])];
 }
 
-/** A heavy swing across its whole range: slow to start, slowing into the stop, a little give there, settled. */
-function swing(x: number) {
+/** A heavy travel across its whole range: slow to start, slowing into the stop, a small settle there. */
+function retract(x: number) {
   if (x <= 0) return 0;
   if (x >= 1) return 1;
   // Heavy: a long ease in, a long ease out.
   const e = x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
-  // The give at the stop: a touch past, and back.
-  const give = x > 0.8 ? Math.sin(Math.PI * ((x - 0.8) / 0.2)) * 0.025 : 0;
+  // The settle at the end of the channel: a touch past, and back.
+  const give = x > 0.84 ? Math.sin(Math.PI * ((x - 0.84) / 0.16)) * 0.012 : 0;
   return e + give;
 }
 
@@ -114,10 +118,10 @@ export function Gate() {
     const tl = new Vector2(-W / 2, H / 2);
     const o = new Vector2(0, 0);
     const leaves: Leaf[] = [
-      { id: 'top', tri: inset(tl, tr, o, SEAM), hinge: [0, H / 2], axis: 'x', sign: 1, from: 0.2, to: 0.84 },
-      { id: 'bottom', tri: inset(br, bl, o, SEAM), hinge: [0, -H / 2], axis: 'x', sign: -1, from: 0.22, to: 0.86 },
-      { id: 'left', tri: inset(bl, tl, o, SEAM), hinge: [-W / 2, 0], axis: 'y', sign: 1, from: 0.27, to: 0.93 },
-      { id: 'right', tri: inset(tr, br, o, SEAM), hinge: [W / 2, 0], axis: 'y', sign: -1, from: 0.29, to: 0.95 },
+      { id: 'top', tri: inset(tl, tr, o, SEAM), hinge: [0, H / 2], slide: [0, 1], travel: H / 2 + 0.14, from: 0.3, to: 0.84 },
+      { id: 'bottom', tri: inset(br, bl, o, SEAM), hinge: [0, -H / 2], slide: [0, -1], travel: H / 2 + 0.14, from: 0.31, to: 0.85 },
+      { id: 'left', tri: inset(bl, tl, o, SEAM), hinge: [-W / 2, 0], slide: [-1, 0], travel: W / 2 + 0.14, from: 0.36, to: 0.92 },
+      { id: 'right', tri: inset(tr, br, o, SEAM), hinge: [W / 2, 0], slide: [1, 0], travel: W / 2 + 0.14, from: 0.37, to: 0.93 },
     ];
     const opts = { depth: THICK, bevelEnabled: true, bevelThickness: 0.018, bevelSize: 0.016, bevelSegments: 2, curveSegments: 1 };
     // Each leaf's geometry is placed relative to its hinge, so turning its group swings it.
@@ -226,7 +230,16 @@ export function Gate() {
           gl_FragColor = vec4(uColor * across * fall * uOpen * 0.3, 1.0);
         }`,
     });
-    return { leaves, geos, seams, face, seamMat, gasGeo, gasMat, glowGeo, glowMat, spillGeo, spillMat };
+    // The channels: recessed slots in the head and the jambs, and one across the threshold.
+    const CH = THICK + 0.06;
+    const channels = merge([
+      place(metricBox(W + 0.3, 0.05, CH), { position: [0, H / 2 + 0.024, 0] }),
+      place(metricBox(0.05, H + 0.3, CH), { position: [-W / 2 - 0.024, 0, 0] }),
+      place(metricBox(0.05, H + 0.3, CH), { position: [W / 2 + 0.024, 0, 0] }),
+      place(metricBox(W + 0.3, 0.02, CH), { position: [0, -H / 2 + 0.008, 0] }),
+    ]);
+    const channelMat = new MeshStandardMaterial({ color: '#07080a', roughness: 0.9, metalness: 0.2 });
+    return { leaves, geos, seams, face, seamMat, gasGeo, gasMat, glowGeo, glowMat, spillGeo, spillMat, channels, channelMat };
   }, [quality]);
 
   const anchorList = useMemo(
@@ -250,16 +263,20 @@ export function Gate() {
     const flick = d > 0.01 && d < 0.12 ? (hash(Math.floor(d * 90), 3) > 0.35 ? 1 : 0.35) : 1;
     let open = 0;
     res.leaves.forEach((l, i) => {
-      const a = swing(span(d, l.from, l.to));
+      const a = retract(span(d, l.from, l.to));
       open += a / 4;
       const g = pivots.current[i];
       if (!g) return;
-      // Unlocking: the leaves draw back a touch and tremble, then swing.
-      const unlock = ease(d, 0.1, 0.19) * (1 - ease(d, l.from, l.from + 0.06));
-      const tremor = unlock * 0.004;
-      g.position.set(l.hinge[0] + Math.sin(d * 301 + i) * tremor, l.hinge[1] + Math.cos(d * 277 + i * 2) * tremor, -0.035 * ease(d, 0.1, 0.19));
-      const angle = l.sign * a * (Math.PI / 2) * 0.985;
-      g.rotation.set(l.axis === 'x' ? angle : 0, l.axis === 'y' ? angle : 0, 0);
+      // Pressure: the seal lets go — the panels draw back a touch and tremble.
+      const pressure = ease(d, 0.1, 0.19);
+      // The seam: they part at the centre, a few centimetres, before they run.
+      const part = ease(d, 0.2, 0.29) * 0.07;
+      // A tremor under pressure, and a fainter one while they travel (the mechanism working).
+      const moving = a > 0.001 && a < 0.999 ? 1 : 0;
+      const tremor = pressure * (1 - ease(d, 0.2, 0.3)) * 0.004 + moving * 0.0015;
+      const k = part + a * l.travel;
+      g.position.set(l.hinge[0] + l.slide[0] * k + Math.sin(d * 301 + i) * tremor, l.hinge[1] + l.slide[1] * k + Math.cos(d * 277 + i * 2) * tremor, -0.035 * pressure);
+      g.rotation.set(0, 0, 0);
     });
     // (A faint standing glow in the seams, so the door reads before it wakes.)
     const seam = wake * flick * (1 - 0.65 * open) + (film ? 0.22 : 0) * (1 - open);
@@ -270,7 +287,7 @@ export function Gate() {
     res.spillMat.uniforms.uOpen.value = film ? open : 0;
     // The pour runs from the first gap to past the doorway.
     const u = res.gasMat.uniforms;
-    u.uG.value = film ? span(t, T.door + DOOR_BEATS * 0.3, T.doorway + 2) : 0;
+    u.uG.value = film ? span(t, T.door + DOOR_BEATS * 0.14, T.doorway + 2) : 0;
     u.uTime.value = clock.elapsedTime;
     const cam = camera as { fov?: number };
     u.uScale.value = (size.height * gl.getPixelRatio()) / (2 * Math.tan(((cam.fov ?? 54) * Math.PI) / 360));
@@ -291,6 +308,7 @@ export function Gate() {
             <mesh geometry={res.seams[i]} material={res.seamMat} />
           </group>
         ))}
+        <mesh geometry={res.channels} material={res.channelMat} />
         <points geometry={res.gasGeo} material={res.gasMat} frustumCulled={false} renderOrder={9} />
         <mesh geometry={res.glowGeo} material={res.glowMat} position={[0, 0, -(PASSAGE.z0 - PASSAGE.z1) / 2 - 0.2]} />
       </group>
