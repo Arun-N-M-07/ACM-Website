@@ -19,7 +19,7 @@ export function DomainDetail() {
   return <div ref={root} className="domain-detail" data-open={open} data-domain={d.slug} data-ui style={{ opacity: 0 }}>
     <article className="sr-only" aria-labelledby="domain-detail-title" aria-hidden={!open}>
       <h2 id="domain-detail-title" ref={heading} tabIndex={-1}>{d.name}</h2>
-      <ul>{d.officers ? d.officers.map(o => <li key={o.rollNumber}>{o.role}: {o.name}, {o.rollNumber}</li>) : d.members.map(name => <li key={name}>{name}</li>)}</ul>
+      <ul>{d.officers ? d.officers.map(o => <li key={o.role}>{o.role}: {o.name}</li>) : d.members.map(name => <li key={name}>{name}</li>)}</ul>
     </article>
     <p className="domain-scroll" aria-hidden="true">Scroll to return</p>
     <nav className="domain-controls" aria-label="Domain controls" inert={!open}>

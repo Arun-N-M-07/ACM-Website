@@ -128,11 +128,11 @@ html[data-teams-hover='true'] body {
   position: fixed;
   left: var(--gutter);
   bottom: calc(var(--gutter) + env(safe-area-inset-bottom));
-  /* Wrap inside the strip left of the card rather than run across its pale
-     glass: the card is fitted to 53 % of the width or 81.45 % of the height,
-     whichever is smaller (layout.ts), so its left edge sits at
-     max(23.5vw, 50vw − 40.73vh). */
-  max-width: min(46ch, calc(max(23.5vw, 50vw - 40.73vh) - var(--gutter) - 16px));
+  /* Wrap inside the strip left of the card rather than run across its glass:
+     the card is fitted to 56 % of the width or 58 % of the height (its width
+     then being 85 % of the height), whichever is smaller (layout.ts), so its
+     left edge sits at max(22vw, 50vw − 42.5vh). */
+  max-width: min(46ch, calc(max(22vw, 50vw - 42.5vh) - var(--gutter) - 16px));
   font-family: var(--mono);
   font-size: 11px;
   line-height: 1.5;

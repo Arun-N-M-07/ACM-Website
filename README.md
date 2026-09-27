@@ -5,10 +5,10 @@ The website of the **ACM-CEG Student Chapter**, College of Engineering Guindy, A
 ```
 CEG red building → drone ascent → the campus → straight down the light-well → the underground facility
 → the events corridor (one room per programme) → the portal: TOUCH & HOLD
-→ travel through it → the Teams world: an orbit of six domain cards around a spine
+→ travel through it → THE TEAM → the Teams world: CORE and six domain cards around a spine
 ```
 
-The event rooms are walk-in installations that perform their event as you scroll (columns that sort themselves for Head First, balloons rising over a contest for CodeX, a machine that boots for Bell Labs…). The corridor ends at a portal: press and hold it (mouse, touch or keyboard) and the world reacts stage by stage for two seconds, then carries you through a tunnel of light into the **Teams world** — a central organic spine with the chapter's six domains on frosted-glass cards around it. Scroll orbits the spine card by card; choose any card and the camera flies to it and it opens: the domain, its members, and room for what's still to be written. See [docs/TEAMS_WORLD.md](docs/TEAMS_WORLD.md).
+The event rooms are walk-in installations that perform their event as you scroll (columns that sort themselves for Head First, balloons rising over a contest for CodeX, a machine that boots for Bell Labs…). The corridor ends at a portal: press and hold it (mouse, touch or keyboard) and the world reacts stage by stage for two seconds, then carries you through a tunnel of light to **THE TEAM** — the words built as architecture, which scrolling flies you through into the **Teams world**: a massive vertebral spine with CORE and the chapter's six domains on frosted cards around it. Scroll orbits the spine card by card; choose any card and the camera flies through its surface into the domain's room: its name and members, on a screen at the end of a space in the domain's tone. See [docs/TEAMS_WORLD.md](docs/TEAMS_WORLD.md).
 
 Content is never loose text over the 3D: every piece is a **plate** — a crisp HTML card that lifts out of the thing it describes (the clock tower, a room's title wall, the portal) and stays tied to it with a leader line and a pin; in the Teams world an open domain becomes a screen in a darkened room, its details typed in beside it. The facility has a split-flap departures board of every programme.
 
@@ -36,8 +36,8 @@ Node 20+ (tested with Node 22). `npm run dev` / `build` first run `scripts/scan-
 ```
 src/
   app/                    Next.js App Router: /, /archive, /events/[slug], sitemap, robots, OG image
-  content/                ← everything a committee edits: chapter, events, prodigy, teams (the six
-                            domains + members), faculty, alumni, gallery, faq, newsletter, media manifest
+  content/                ← everything a committee edits: chapter, events, prodigy, teams (CORE + the
+                            six domains + members), faculty, alumni, gallery, faq, newsletter, media manifest
   config/                 world layout, scroll timeline, camera states, quality tiers, palette, asset slots
   experience/             canvas root, chapter streaming (SceneDirector), shader warm-up
   scenes/
@@ -47,7 +47,8 @@ src/
     shared/               atmosphere, world lights, signal thread, canvas panels, props, model slots, error boundary
   teams/                  the portal and the Teams world (docs/TEAMS_WORLD.md)
     portal/               the ring, membrane, motes (PortalEntry)
-    world/                TeamsWorld scene: Spine, ParticleField, DomainCards, Tunnel, Backdrop, environment
+    world/                TeamsWorld scene: TeamEntrance + letters, Spine, ParticleField, DomainCards,
+                          DomainInterior (the domain rooms), Tunnel, Backdrop, environment
     post/                 PostProcessing (bloom + one final pass; only near the portal and inside)
     ui/                   PortalHold, TeamsHud, DomainDetail, TeamsInput, TypeIn, teams.css (mounted by TeamsExperience)
     state · layout · camera · travel · focus · controller   state machine, composition, shots, timelines

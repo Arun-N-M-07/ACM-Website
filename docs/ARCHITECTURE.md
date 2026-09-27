@@ -12,7 +12,7 @@ The whole journey is one continuous coordinate system (metres, +y up):
 | Facility hall | y = −60, directly under the lawn (`UNDERGROUND.hall`) |
 | Events corridor | runs north under the building; rooms alternate left/right; flagships face each other in a taller transept (`buildCorridorLayout`) |
 | The portal | set into the end wall of a tall vestibule (`PORTAL`) |
-| The Teams world | somewhere else entirely (`TEAMS_ORIGIN`, far below and beyond the facility), reached only through the portal; the spine and the six domain cards on a helix around it (`teams/layout.ts`) |
+| The Teams world | somewhere else entirely (`TEAMS_ORIGIN`, far below and beyond the facility), reached only through the portal; THE TEAM letters at its entrance, then the spine with CORE and the six domain cards on a helix around it (`teams/layout.ts`) |
 
 Layouts that depend on content are computed from `src/content`, so adding an event re-flows the corridor. The Teams world is described in full in **[TEAMS_WORLD.md](TEAMS_WORLD.md)**.
 
@@ -40,7 +40,7 @@ CameraRig (every frame): damp target → progress.value ──► publish to HTM
 | `facility` | DESCENT_CAMERA | turn to the departures board, push in, pan past the corridor mouth to the 2004 monument, out into the corridor |
 | `events` | EVENT_CAMERA | per room: walk out of the last portal, down the corridor and to the next portal (52%), then step inside while the installation performs (48%) |
 | `portal` | cinematic | out of the last room, down the vestibule, stand square to the portal; from `PORTAL_DWELL` the camera holds there and scroll is walled at `PORTAL_GATE` until the portal is held |
-| `teams` | Teams camera | the orbit: an establishing view, the six cards one by one around and down the spine, then the pull-back over the whole ring |
+| `teams` | Teams camera | through THE TEAM (the camera flies between the letters), then the orbit: CORE and the six domain cards one by one around and down the spine, then the pull-back over the whole ring |
 
 Every segment's first pose equals the previous segment's last pose (they share named states in `src/config/camera.ts`), so the move is continuous. Poses are yaw/pitch/roll (Euler YXZ) rather than look-at targets so the camera can interpolate all the way to straight down without flips.
 
@@ -112,7 +112,7 @@ Decisions are debounced (0.25 s) except during jump fades. Unmounting disposes g
 ## Performance notes
 
 - Static architecture is merged per material (`systems/geometry/build.ts`); the red building's repeated parts (windows, pilasters, balusters, voussoirs…) are instanced per category; all campus buildings are two draw calls (caps + walls), all trees two (instanced).
-- The Teams world is a handful of draw calls: one merged spine, one point cloud, six cards (glass + face), a tunnel that only draws while travelling. Frosted glass is physical transmission; its extra pass only redraws the spine, at reduced resolution on smaller tiers.
+- The Teams world is a handful of draw calls: one merged spine, one point cloud, one merged mesh for THE TEAM, seven cards (one material each, the lettering printed inside it) with their mounts, a domain room (shell + screen) only while a card is chosen, a tunnel that only draws while travelling. Frosted glass is physical transmission; its extra pass only redraws the opaque objects behind it, at reduced resolution on smaller tiers.
 - Quality tiers (`config/quality.ts`): DPR cap, shadows (high only; the shadow map stops updating underground), tree/block counts, canvas texture scale, room streaming window, pooled light count. `PerformanceMonitor` lowers DPR and, if the device keeps struggling, the tier.
 - Procedural textures: no image or font files are downloaded for the world itself (the soundtrack is the one optional download).
 - Per-frame values (progress, camera, the portal hold, the orbit) never go through React; overlays mutate styles from the progress channel (`teams/state.ts` keeps the Teams world's per-frame values the same way).
@@ -122,7 +122,7 @@ Decisions are debounced (0.25 s) except during jump fades. Unmounting disposes g
 - **Text version** (T, top bar, skip link, loader): the complete chapter as semantic HTML, server-rendered in the page (`#archive`), also at `/archive`.
 - **Reduced motion** (OS setting or toggle): the camera cuts between framed stills behind fades instead of flying; no shake, blur, bob or smooth-scroll.
 - **Keyboard**: scroll keys travel; hold Space or Enter on the portal to go through; N / P step between framed stops (N at the portal goes through); inside, the domain index is buttons, Enter opens, ← / → move between open domains, Esc closes; M index; T text version.
-- **Index** (M): jump to any chapter, event room, or any of the six domains (entering through the portal).
+- **Index** (M): jump to any chapter, event room, CORE or any of the six domains (entering through the portal).
 - The canvas is `aria-hidden`; every plate, label, the portal's prompt and an open domain's text are real HTML.
 - Reduced motion: the portal still fills as you hold, then fades straight through; the orbit steps between framed stills of each card.
 - **No WebGL / context lost** → the printed edition becomes the page.
@@ -130,6 +130,6 @@ Decisions are debounced (0.25 s) except during jump fades. Unmounting disposes g
 ## Known limitations
 
 - The red building is modelled from its real footprint and photographs, but by hand — not a survey. The campus is as good as OpenStreetMap is (heights are from `building:levels` or estimated).
-- The six domains show names and members only; everything else is marked `[CONTENT PLACEHOLDER]` until the chapter writes it.
+- CORE and the six domains show names and members only (CORE: roles and roll numbers too); nothing else is invented until the chapter writes it.
 - Photographs are not bundled (the source site blocks automated downloads); install them from the site's own `assets/img`.
 - The spine is procedural (not an authored model); a GLB could replace it later if the chapter commissions one.

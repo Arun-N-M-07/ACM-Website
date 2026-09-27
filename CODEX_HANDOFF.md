@@ -1903,3 +1903,16 @@ Understand.
 Implement.
 Verify.
 Refine.
+---
+
+# 58. STATUS AFTER THE SECOND TEAMS PASS (September 2026)
+
+Details of what changed, what was verified and what remains open are in docs/TEAMS_WORLD.md §7. In brief:
+
+- THE TEAM: letterforms traced from the site's Archivo Expanded Bold (src/teams/world/letters.ts). The camera follows a keyed, scroll-driven path through the passage between the words (the slot between the lines in portrait) and lands on card 01. The tunnel hands straight over to scroll; there is no timed arrival glide.
+- Composition: a spine about twice as thick; larger, thicker cards on a wider ring; the ambient dust moved into the air round the column (no starfield).
+- Cards: frosted physical transmission on every tier, under a clearcoat, with the lettering printed inside the glass material.
+- Motion: a critically damped orbit follower on the Lenis target, plus separate velocity channels for the cards, the spine (torsion) and the dust. Measured settle times are roughly half the old ones, with no rubber-banding.
+- Card entry: commit → travel → surface → crossing → settle, one path keyed on the focus scalar. The chosen card's frost clears at the threshold into the domain's room (src/teams/world/DomainInterior.tsx). Return runs the same path back to the exact orbit position.
+- QA: scripts/qa/teams.mjs now skips the intro film and adds the `trace` and `pose` steps.
+- Not yet done: measurement on a real mid-range phone; removal of dead code in post/PostProcessing.tsx and cardFace.ts; reconciling master's uncommitted edits to the same Teams files.

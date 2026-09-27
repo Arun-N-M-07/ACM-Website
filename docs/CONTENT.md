@@ -7,7 +7,7 @@ Everything the chapter changes year to year lives in `src/content/`. Nothing in 
 | `chapter.ts` | about, mission, membership, contact people, email, address, socials, alumni stats |
 | `events.ts` | programmes/events — **array order = corridor order** |
 | `prodigy.ts` | Prodigy sub-events (shown on the puzzle wall) |
-| `teams.ts` | **the six domains and their members** — order = order around the spine in the Teams world |
+| `teams.ts` | **CORE and the six domains, with their members** — order = order around the spine in the Teams world |
 | `team.ts` | the founder and faculty (shown in the archive) |
 | `alumni.ts` | past office bearers by year |
 | `gallery.ts` | gallery photographs + categories |
@@ -17,7 +17,7 @@ Everything the chapter changes year to year lives in `src/content/`. Nothing in 
 
 Source of the current content: https://auceg.acm.org (home, events.html incl. the "Read More" descriptions, team.html, alumni.html, gallery.html, newsletter_index.html, prodigy.html, contact.html), inspected September 2026.
 
-## The six domains (`teams.ts`)
+## CORE and the six domains (`teams.ts`)
 
 Each entry is one card in the Teams world:
 
@@ -26,9 +26,10 @@ Each entry is one card in the Teams world:
 ```
 
 - `name` and `members` are shown exactly as written (card face, the open domain, the index, the archive). No roll numbers, photographs or bios are shown.
-- `tone` tints the card's glass — a design choice, not content.
-- The world is laid out for **six** domains (60° apart, so the ring closes on the sixth). A different number still works (the angle follows the count), but re-check the composition.
-- The open domain shows two `[CONTENT PLACEHOLDER]` areas (`src/teams/ui/DomainDetail.tsx`). When the chapter has real copy, add fields here and render them there — don't invent text in the meantime.
+- `tone` tints the card's glass and the domain's room — a design choice, not content.
+- CORE (the first entry) also carries `officers` (role, name, roll number), shown in its room and in the text version.
+- The world is laid out for **seven** cards on authored stations (`ANGLES` / `HEIGHTS` / `RADII` in `src/teams/layout.ts`, one entry per card). Adding or removing a domain means adding or removing a station there, then re-checking the composition.
+- An open domain shows its name and members (CORE: roles, names and roll numbers) on the screen in its room (`src/teams/world/DomainInterior.tsx`) and in the screen-reader article (`src/teams/ui/DomainDetail.tsx`). When the chapter has more copy, add fields here and render them in both — don't invent text in the meantime.
 
 ## Next year's committee
 
@@ -61,7 +62,7 @@ The corridor, scroll length, room numbering, departures board, index menu, archi
 
 ## Items to verify with the chapter
 
-- **The six domains and their members** are exactly as supplied by the chapter; the previous directors list (from auceg.acm.org) has been retired from the site and the archive.
+- **CORE and the six domains, and their members,** are exactly as supplied by the chapter; the previous directors list (from auceg.acm.org) has been retired from the site and the archive.
 - **Faculty links** on the current site point to the same two URLs for both faculty heads, so they were not reused.
 - **Prodigy registration forms** are the Google Forms linked from prodigy.html — confirm they are for the current edition.
 - **Newsletter links**: the archive maps "November 2025" to `clickbyte/december/…` and "December 2025" to `clickbyte/january/…`, preserved as published.

@@ -1,12 +1,14 @@
 /**
  * Spatial composition of the Teams world.
  *
- * The world is a vertical spine with the six domain cards on a descending
- * helix around it, 60° apart — so the ring closes exactly on the sixth card.
+ * The world is a vertical spine with CORE and the six domain cards on a
+ * descending helix around it, at authored stations roughly 50–60° apart.
  * Cards face outward. The camera orbits outside the ring at the angle of the
  * card in focus and descends with it: the focused card sits square to the
- * lens with the spine standing behind it, its neighbours turn away at the
- * edges of frame, and the far side of the ring shows through, lower down.
+ * lens with the spine standing behind it (its massive column the structure
+ * the whole world hangs on, seen blurred through the frosted card), its
+ * neighbours turn away at the edges of frame, and the far side of the ring
+ * shows through, lower down.
  *
  * Portrait screens are *re-composed*, not scaled: portrait cards, a tighter
  * ring, a steeper helix and a wider lens.
@@ -58,41 +60,41 @@ function fitDistance(w: number, h: number, fovDeg: number, aspect: number, fw: n
 export function composition(aspect: number): Composition {
   const portrait = aspect < 0.9;
   if (portrait) {
-    const cardW = 2.2;
-    const cardH = 3.0;
+    const cardW = 2.3;
+    const cardH = 3.1;
     const fov = 48;
     const detailFov = 44;
     return {
       portrait,
       aspect,
-      radius: 2.7,
+      radius: 3.25,
       cardW,
       cardH,
-      cardDepth: 0.11,
-      corner: 0.12,
-      drop: 1.25,
+      cardDepth: 0.15,
+      corner: 0.13,
+      drop: 1.4,
       fov,
-      orbitDist: fitDistance(cardW, cardH, fov, aspect, 0.74, 0.5),
+      orbitDist: fitDistance(cardW, cardH, fov, aspect, 0.76, 0.52),
       lift: 0.3,
       detailFov,
       detailDist: fitDistance(cardW, cardH, detailFov, aspect, 0.8, 0.46),
     };
   }
-  const cardW = 3.2;
-  const cardH = 2.2;
-  const fov = 44;
+  const cardW = 3.4;
+  const cardH = 2.32;
+  const fov = 42;
   const detailFov = 36;
   return {
     portrait,
     aspect,
-    radius: 3.65,
+    radius: 4.4,
     cardW,
     cardH,
-    cardDepth: 0.11,
-    corner: 0.12,
-    drop: 1.05,
+    cardDepth: 0.16,
+    corner: 0.13,
+    drop: 1.18,
     fov,
-    orbitDist: fitDistance(cardW, cardH, fov, aspect, 0.53, 0.56),
+    orbitDist: fitDistance(cardW, cardH, fov, aspect, 0.56, 0.58),
     lift: 0.3,
     detailFov,
     detailDist: fitDistance(cardW, cardH, detailFov, aspect, 0.6, 0.68),
@@ -114,6 +116,8 @@ export const C_END = LAST + 0.9;
 const SHAPE = 0.55;
 
 const shape = (r: number) => r - (SHAPE * Math.sin(2 * Math.PI * r)) / (2 * Math.PI);
+/** d(orbit coordinate)/d(scroll coordinate) as a card settles — the entrance path lands with this speed. */
+export const DWELL_SLOPE = 1 - SHAPE;
 
 /** Orbit coordinate for scroll progress p. */
 export function carouselAt(p: number) {

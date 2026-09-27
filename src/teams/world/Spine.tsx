@@ -27,12 +27,36 @@ import {
   SphereGeometry,
   type Texture,
   TubeGeometry,
+  Vector3,
 } from 'three';
 import { smoothstep } from '@/systems/camera/pose';
 import { useDisposable } from '@/systems/performance/useDisposable';
 import { teamsFrame } from '../state';
 import { useExperience } from '@/store/experience';
+import { cardY, O, spineAxis, type Composition } from '../layout';
 import { filamentPoints, spineGeometry } from './spineGeometry';
+
+const _ax = new Vector3();
+
+/**
+ * Torsion about the column's own (curved) axis — the spine's secondary
+ * response: it twists a little with the orbit's velocity, heavier and later
+ * than the camera and the cards, and relaxes back without springing. Points
+ * on the axis stay put, so the card mounts never detach.
+ */
+const TWIST = /* glsl */ `
+uniform float uTwist;
+uniform float uTwistY;
+vec2 spineTwist(float y) {
+  float tw = uTwist * (0.55 + 0.45 * exp(-pow((y - uTwistY) * 0.25, 2.0)));
+  return vec2(cos(tw), sin(tw));
+}
+vec2 twistXZ(vec2 xz, float y, vec2 cs) {
+  vec2 ax = vec2(0.48 * sin(y * 0.32), 0.42 * sin(y * 0.27)); // layout.spineAxis
+  vec2 r = xz - ax;
+  return ax + vec2(r.x * cs.x + r.y * cs.y, -r.x * cs.y + r.y * cs.x);
+}
+`;
 
 function spineMaterial(env: Texture | null) {
   const mat = new MeshPhysicalMaterial({
@@ -47,17 +71,21 @@ function spineMaterial(env: Texture | null) {
     envMap: env,
     envMapIntensity: 0.85,
   });
-  const uniforms = { uTime: { value: 0 }, uSil: { value: 1 }, uLit: { value: 1 }, uDim: { value: 1 }, uWave: { value: 1 } };
+  const uniforms = { uTime: { value: 0 }, uSil: { value: 1 }, uLit: { value: 1 }, uDim: { value: 1 }, uWave: { value: 1 }, uTwist: { value: 0 }, uTwistY: { value: 0 }, uEmph: { value: 0 }, uEmphY: { value: 0 } };
   mat.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, uniforms);
     shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', '#include <common>\nuniform float uTime;\nuniform float uWave;\nvarying float vSpineY;')
+      .replace('#include <common>', `#include <common>\nuniform float uTime;\nuniform float uWave;\nvarying float vSpineY;\n${TWIST}`)
+      .replace(
+        '#include <beginnormal_vertex>',
+        '#include <beginnormal_vertex>\nvec2 spineCS = spineTwist(position.y);\nobjectNormal.xz = vec2(objectNormal.x * spineCS.x + objectNormal.z * spineCS.y, -objectNormal.x * spineCS.y + objectNormal.z * spineCS.x);',
+      )
       .replace(
         '#include <begin_vertex>',
-        '#include <begin_vertex>\nvSpineY = position.y;\ntransformed += objectNormal * sin(position.y * 1.35 - uTime * 0.9) * 0.012 * uWave;',
+        '#include <begin_vertex>\nvSpineY = position.y;\ntransformed.xz = twistXZ(transformed.xz, position.y, spineCS);\ntransformed += objectNormal * sin(position.y * 1.35 - uTime * 0.9) * 0.012 * uWave;',
       );
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', '#include <common>\nuniform float uTime;\nuniform float uSil;\nuniform float uLit;\nuniform float uDim;\nvarying float vSpineY;')
+      .replace('#include <common>', '#include <common>\nuniform float uTime;\nuniform float uSil;\nuniform float uLit;\nuniform float uDim;\nuniform float uEmph;\nuniform float uEmphY;\nvarying float vSpineY;')
       .replace(
         '#include <opaque_fragment>',
         `#include <opaque_fragment>
@@ -67,14 +95,18 @@ function spineMaterial(env: Texture | null) {
           gl_FragColor.rgb += tint * fres * 0.16 * uLit;
           vec3 sil = tint * fres * 1.2;
           gl_FragColor.rgb = mix(sil * uSil, gl_FragColor.rgb, uLit) * uDim;
+          // A chosen card draws the column's attention to its level: that band
+          // lifts a little, the rest recedes (never a glow — a shift in weight).
+          float band = exp(-pow((vSpineY - uEmphY) / 1.4, 2.0));
+          gl_FragColor.rgb *= 1.0 + uEmph * (0.32 * band - 0.28 * (1.0 - band));
         }`,
       );
   };
-  mat.customProgramCacheKey = () => 'teams-spine';
+  mat.customProgramCacheKey = () => 'teams-spine-v3';
   return { mat, uniforms };
 }
 
-export function Spine({ env }: { env: Texture | null }) {
+export function Spine({ env, comp }: { env: Texture | null; comp: Composition }) {
   const group = useRef<Group>(null);
   const [geo, setGeo] = useState<BufferGeometry | null>(null);
   useEffect(() => {
@@ -90,6 +122,15 @@ export function Spine({ env }: { env: Texture | null }) {
     const curve = new CatmullRomCurve3(filamentPoints(), false, 'centripetal');
     const tube = new TubeGeometry(curve, 640, 0.012, 5, false);
     const thread = new MeshBasicMaterial({ color: new Color('#83bbff').multiplyScalar(1.3), transparent: true, opacity: 0.9, toneMapped: false, depthWrite: false });
+    // The thread is wound round the column: it twists with it.
+    thread.onBeforeCompile = (shader) => {
+      shader.uniforms.uTwist = uniforms.uTwist;
+      shader.uniforms.uTwistY = uniforms.uTwistY;
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', `#include <common>\n${TWIST}`)
+        .replace('#include <begin_vertex>', '#include <begin_vertex>\ntransformed.xz = twistXZ(transformed.xz, position.y, spineTwist(position.y));');
+    };
+    thread.customProgramCacheKey = () => 'teams-spine-thread';
     const bead = new SphereGeometry(0.035, 10, 8);
     const beadMat = new MeshBasicMaterial({ color: new Color('#eef5ff').multiplyScalar(2), toneMapped: false });
     return { mat, uniforms, curve, tube, thread, bead, beadMat };
@@ -97,7 +138,7 @@ export function Spine({ env }: { env: Texture | null }) {
   const bead = useRef<Group>(null);
   const beadT = useRef(0);
 
-  useFrame(({ clock }, dt) => {
+  useFrame(({ clock, camera }, dt) => {
     const f = teamsFrame;
     const reduced = useExperience.getState().reducedMotion;
     const t = reduced ? 0 : clock.elapsedTime;
@@ -105,11 +146,19 @@ export function Spine({ env }: { env: Texture | null }) {
     u.uTime.value = t;
     u.uSil.value = smoothstep(0.05, 0.3, f.reveal);
     u.uLit.value = smoothstep(0.25, 0.7, f.reveal);
-    u.uDim.value = 1 - 0.998 * smoothstep(0.25, 0.9, f.focus);
-    u.uWave.value = 1 + Math.min(3, Math.abs(f.cVel) * 2.2);
+    // A chosen card pushes the spine back into the dark — gone before the glass clears.
+    u.uDim.value = 1 - 0.998 * smoothstep(0.12, 0.5, f.focus);
+    u.uWave.value = 1 + Math.min(3, Math.abs(f.spineVel) * 2.2);
+    // It also answers a selection: a slight turn as the card leaves the ring.
+    const twist = reduced ? 0 : Math.max(-0.05, Math.min(0.05, 0.035 * f.spineVel)) * (1 - f.focus) + 0.03 * Math.sin(Math.PI * Math.min(1, f.focus * 1.6));
+    u.uTwist.value = twist;
+    u.uTwistY.value = camera.position.y - O.y;
+    u.uEmph.value = reduced ? 0 : f.commit * (1 - smoothstep(0.1, 0.42, f.focus));
+    u.uEmphY.value = cardY(f.focusK, comp);
     // Turns a little with the orbit (counter to it, for parallax) and drifts.
     if (group.current) {
-      group.current.visible = f.reveal > 0.001 && f.focus < 0.93;
+      // Out of the way before the room behind the chosen card lights (the room reaches back past the axis).
+      group.current.visible = f.reveal > 0.001 && f.focus < 0.52;
       group.current.rotation.y = 0;
     }
     // The thread draws itself in on arrival; a bead of light runs down it.
@@ -119,7 +168,15 @@ export function Spine({ env }: { env: Texture | null }) {
     if (!reduced) beadT.current = (beadT.current + dt * 0.018) % 1;
     if (bead.current) {
       bead.current.visible = drawn > 0.99 && f.focus < 0.5;
-      res.curve.getPointAt(beadT.current, bead.current.position);
+      const p = bead.current.position;
+      res.curve.getPointAt(beadT.current, p);
+      // …and the bead on it.
+      const tw = twist * (0.55 + 0.45 * Math.exp(-(((p.y - u.uTwistY.value) * 0.25) ** 2)));
+      spineAxis(p.y, _ax);
+      const rx = p.x - _ax.x;
+      const rz = p.z - _ax.z;
+      p.x = _ax.x + rx * Math.cos(tw) + rz * Math.sin(tw);
+      p.z = _ax.z - rx * Math.sin(tw) + rz * Math.cos(tw);
     }
   });
 

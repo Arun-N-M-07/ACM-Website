@@ -52,8 +52,9 @@ const FinalShader = {
     uTime: { value: 0 },
     uResolution: { value: new Vector2(1, 1) },
     uForce: { value: new Vector2(0.5, 0.5) },
-    uVelocity: { value: new Vector2() },
-    uEnergy: { value: 0 },
+    uDir: { value: new Vector2(1, 0) },
+    uStir: { value: 0 },
+    uGrainPx: { value: 1 },
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;
@@ -69,11 +70,13 @@ const FinalShader = {
     uniform float uBarrel;
     uniform float uDim;
     uniform vec4 uRect;
-    uniform float uGrain, uTime, uEnergy;
-    uniform vec2 uResolution, uForce, uVelocity;
+    uniform float uGrain, uTime, uStir, uGrainPx;
+    uniform vec2 uResolution, uForce, uDir;
     varying vec2 vUv;
-    float noise(vec2 p) {
-      return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+    float hash12(vec2 p) {
+      vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+      p3 += dot(p3, p3.yzx + 33.33);
+      return fract((p3.x + p3.y) * p3.z);
     }
     void main() {
       // Lens surge: magnify towards the middle, pulling the edges in.
@@ -113,15 +116,22 @@ const FinalShader = {
       }
       col = 1.0 - (1.0 - col) * (1.0 - uFlash * vec3(0.98, 0.95, 0.93));
       col *= 1.0 - uDark;
-      // Only the grain coordinates are advected: never warp text or the scene.
-      // A damped force field gives local motion a trailing, settling response.
-      vec2 delta = (vUv - uForce) * vec2(uResolution.x / uResolution.y, 1.0);
-      float influence = exp(-dot(delta, delta) * 32.0);
-      vec2 displacement = clamp(uVelocity, -2.0, 2.0) * influence * (1.2 + 2.8 * uEnergy);
-      vec2 grainUv = vUv * uResolution - displacement;
-      float grain = noise(floor(grainUv) + floor(uTime * 18.0)) - 0.5;
-      float texture = noise(floor(grainUv * 0.38)) - 0.5;
-      col += (grain * 0.018 + texture * influence * uEnergy * 0.012) * uGrain;
+      // Grain, in the air rather than on the glass: it follows the image's
+      // brightness (faint in the blacks), and near the hand it streaks along
+      // the direction of motion — dust dragged through light — then relaxes
+      // as the air settles (uStir releases slowly). Only the grain moves:
+      // never the scene or the text.
+      float aspect = uResolution.x / uResolution.y;
+      vec2 dd = (vUv - uForce) * vec2(aspect, 1.0);
+      float local = exp(-dot(dd, dd) * 26.0) * uStir;
+      vec2 gdir = normalize(uDir * vec2(aspect, 1.0) + vec2(1e-5, 0.0));
+      vec2 gp = gl_FragCoord.xy / uGrainPx;
+      float stretch = 1.0 + 3.5 * local;
+      vec2 gq = vec2(dot(gp, gdir) / stretch, dot(gp, vec2(-gdir.y, gdir.x)));
+      float grain = hash12(floor(gq) + mod(floor(uTime * 24.0), 64.0) * vec2(37.0, 17.0)) - 0.5;
+      float lum = dot(col, vec3(0.2126, 0.7152, 0.0722));
+      float resp = clamp(lum * 4.0, 0.25, 1.0) * (1.0 - 0.5 * smoothstep(0.55, 1.0, lum));
+      col += grain * 0.022 * resp * (1.0 + 0.6 * local) * uGrain;
       gl_FragColor = vec4(col, 1.0);
     }
   `,
@@ -194,8 +204,10 @@ function Composer() {
     u.uTime.value = reduced ? 0 : clock.elapsedTime;
     (u.uResolution.value as Vector2).set(size.width * dpr, size.height * dpr);
     (u.uForce.value as Vector2).set(f.pointer.fx * 0.5 + 0.5, f.pointer.fy * 0.5 + 0.5);
-    (u.uVelocity.value as Vector2).set(reduced ? 0 : f.pointer.fvx, reduced ? 0 : f.pointer.fvy);
-    u.uEnergy.value = reduced ? 0 : f.pointer.energy;
+    (u.uDir.value as Vector2).set(f.pointer.dirX, f.pointer.dirY);
+    u.uStir.value = reduced ? 0 : f.pointer.stir;
+    // About one CSS pixel per grain cell at every pixel ratio.
+    u.uGrainPx.value = Math.max(1, Math.round(dpr));
     if (r.visible) (u.uRect.value as Vector4).set(r.x / size.width, 1 - (r.y + r.h) / size.height, (r.x + r.w) / size.width, 1 - r.y / size.height);
     if (res.bloom) {
       const target = travelling ? 0.7 : f.inside ? 0.16 : 0.12 + 0.3 * smoothstep(0.3, 1, h);
