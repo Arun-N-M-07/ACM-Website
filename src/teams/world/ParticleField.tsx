@@ -296,8 +296,8 @@ export function ParticleField({ comp }: { comp: Composition }) {
     vel.current += (Math.min(2, Math.abs(f.cVel)) - vel.current) * (1 - Math.exp(-dt * (Math.abs(f.cVel) > vel.current ? 6 : 3.2)));
     u.uVel.value = vel.current;
     u.uReveal.value = smoothstep(0.02, 0.4, f.arrival);
-    // Some of the dust stays in the air of the domain's room.
-    u.uDim.value = 1 - 0.9 * f.focus;
+    // Once through a card, a little of the dust stays: the depth field behind the member hand.
+    u.uDim.value = 1 - 0.78 * f.focus;
     const cam = camera as typeof camera & { fov: number };
     u.uScale.value = (size.height * gl.getPixelRatio()) / (2 * Math.tan(((cam.fov ?? 45) * Math.PI) / 360));
     // The same largest mote in CSS pixels at every pixel ratio.
@@ -307,19 +307,19 @@ export function ParticleField({ comp }: { comp: Composition }) {
     camera.getWorldDirection(u.uView.value as Vector3);
     const t = now();
     u.uNow.value = t;
-    // Inside a domain's room the air is closer and the stir smaller.
-    const inRoom = f.focus > 0.98;
-    u.uImpR.value = inRoom ? 0.6 : 0.9;
+    // Once through a card the air is closer and the stir smaller.
+    const through = f.focus > 0.98;
+    u.uImpR.value = through ? 0.6 : 0.9;
     u.uImpGain.value = dustQa.gain;
     // The hand in the air: while the pointer moves, a stroke is laid down every
-    // 80 ms at the depth of what it's over (the card plane, or the room), with
+    // 80 ms at the depth of what it's over (the card plane, or the air behind the hand), with
     // the pointer's velocity carried to that depth (m/s, capped).
     const moving = Math.hypot(f.pointer.vx, f.pointer.vy) > 0.06;
-    const settled = f.focus < 0.02 || inRoom;
+    const settled = f.focus < 0.02 || through;
     if (f.pointer.active && f.inside && !reduced && settled && moving && t - lastSample.current >= 0.08) {
       lastSample.current = t;
       // In the air between the eye and the cards (the stroke reaches ~2.7 m either way along the view).
-      const depth = inRoom ? 2 : 3.2;
+      const depth = through ? 2 : 3.2;
       _ray.set(f.pointer.x, f.pointer.y, 0.5).unproject(camera).sub(_cam).normalize();
       _at.copy(_cam).addScaledVector(_ray, depth).sub(O);
       const half = depth * Math.tan(((cam.fov ?? 45) * Math.PI) / 360);

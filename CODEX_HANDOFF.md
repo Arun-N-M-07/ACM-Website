@@ -1916,3 +1916,15 @@ Details of what changed, what was verified and what remains open are in docs/TEA
 - Card entry: commit → travel → surface → crossing → settle, one path keyed on the focus scalar. The chosen card's frost clears at the threshold into the domain's room (src/teams/world/DomainInterior.tsx). Return runs the same path back to the exact orbit position.
 - QA: scripts/qa/teams.mjs now skips the intro film and adds the `trace` and `pose` steps.
 - Not yet done: measurement on a real mid-range phone; removal of dead code in post/PostProcessing.tsx and cardFace.ts; reconciling master's uncommitted edits to the same Teams files.
+
+---
+
+# 59. STATUS: DOMAIN INTERIOR REPLACED BY THE MEMBER HAND (September 2026)
+
+Details are in docs/TEAMS_WORLD.md §10. In brief:
+
+- The 3D domain rooms are gone. `src/teams/world/DomainInterior.tsx` and `domainPieces.ts` were deleted, along with the room's key light in TeamsWorld.
+- The card entry is unchanged up to the threshold: commit, travel, the card's type filling the view, then the aperture opening. The domain's people are then dealt out of the opening as a hand of physical CSS 3D cards (`src/teams/ui/MemberHand.tsx`, mounted by DomainDetail) over the world's own dark atmosphere.
+- A card shows ROLE over NAME. Members have no role in the data, so they read MEMBER. No roll numbers, nothing invented.
+- Hovering a card pulls it out of the hand while its neighbours give way. A click draws it to the centre. Escape or a click beside it puts it back first; a second one leaves the domain. `teamsFrame.member` is the shared state, and TeamsInput remains the only input handler.
+- Camera constants renamed from the rooms: `ROOM_EYE` → `BEYOND_EYE`, `roomFov` → `beyondFov`; `roomSize` was removed.

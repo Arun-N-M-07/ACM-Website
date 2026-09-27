@@ -26,10 +26,10 @@ Each entry is one card in the Teams world:
 ```
 
 - `name` and `members` are shown exactly as written (card face, the open domain, the index, the archive). No roll numbers, photographs or bios are shown.
-- `tone` tints the card's glass and the domain's room — a design choice, not content.
-- CORE (the first entry) also carries `officers` (role, name, roll number), shown in its room and in the text version.
+- `tone` tints the card's glass and, faintly, the open domain's member cards — a design choice, not content.
+- CORE (the first entry) also carries `officers` (role, name, roll number): role and name are shown on its member cards and in the text version; the roll number is kept in the data only.
 - The world is laid out for **seven** cards on authored stations (`ANGLES` / `HEIGHTS` / `RADII` in `src/teams/layout.ts`, one entry per card). Adding or removing a domain means adding or removing a station there, then re-checking the composition.
-- An open domain shows its name and members (CORE: roles, names and roll numbers) on the screen in its room (`src/teams/world/DomainInterior.tsx`) and in the screen-reader article (`src/teams/ui/DomainDetail.tsx`). When the chapter has more copy, add fields here and render them in both — don't invent text in the meantime.
+- An open domain shows its index, name and head count, then its people as a hand of cards (`src/teams/ui/MemberHand.tsx`): CORE's role over name, other members as MEMBER over name. The cards are real DOM text, so they are also the accessible copy. When the chapter has more copy (a role, a line of description), add fields here and render them on the cards — don't invent text in the meantime.
 
 ## Next year's committee
 

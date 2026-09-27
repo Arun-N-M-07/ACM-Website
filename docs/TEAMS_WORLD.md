@@ -677,3 +677,65 @@ The brief: the entry felt slow, awkward and generic, and the room felt like a ga
 - **Phone rooms (390×844):** they need their own layout. The pane and the outer CORE steles are cut off at the frame edge. This was deferred at the user's request.
 - **Room type:** it is drawn into the 3D scene, so it can't be selected. The accessible copy is the DOM article.
 - **Edge line:** a faint dashed highlight can show along the top edge of a room pane at DPR 1.
+
+## 10 · The domain interior replaced by a hand of member cards (September 2026)
+
+This supersedes the room design in §9. The rooms were visually overbuilt for what they communicate: walls, floor, props and panels around a few names. An open domain is now its people, dealt out of its card as a small hand of physical cards. The 3D world stays for exploring: carousel, spine, cards, atmosphere, pointer and scroll.
+
+### What was removed
+
+- **Deleted:** `world/DomainInterior.tsx` and `world/domainPieces.ts`:
+  - seven always-mounted rooms (shell, signage, panes, CORE's steles);
+  - the six centrepieces;
+  - their three custom shader programs (shell, signage, printed pane);
+  - about seventeen canvas textures.
+- **Room key light:** removed from `TeamsWorld`.
+- **Camera constants:** `roomSize` is removed; `ROOM_EYE` / `roomFov` are now `BEYOND_EYE` / `beyondFov`, since the eye still settles just through the card.
+
+### The handover (unchanged path, new destination)
+
+- **Unchanged:** the entry path of §9 (commit, travel, type filling the view, the aperture opening, the crossing).
+- **Behind the card:** only the Teams atmosphere. The spine is already gone at that point, the ring has given way, and the dust is kept at 22 % (it was 10 %) as a depth field.
+- **The deal:** the member cards rise out of the aperture as a stack and fan out while the camera settles (focus 0.66 → 1). The domain's identity arrives with them, and the controls come last.
+- **Reversible:** it is all keyed on the focus scalar, so closing collapses the hand back into the opening, and Next / Previous collapse one hand and deal the next.
+
+### The hand (`ui/MemberHand.tsx`, styles in `ui/teams.css`)
+
+- **Cards:** DOM and CSS 3D, no WebGL. Each is a dark, faintly tinted coated surface with:
+  - a thin body plate behind it (a turned card shows its edge);
+  - a thin edge, brightest along the top;
+  - a shadow it throws on the cards beneath;
+  - light that slides across the coat from the pointer.
+- **Typography:** the CORE language: a short rule, ROLE in mono, NAME in Instrument Serif. Members have no role in the data, so they read MEMBER. Each name is measured in the loaded serif and set as large as its card allows, with no lone initial on a line. The foot carries "0N / 0N"; a drawn card also shows the domain's name. No roll numbers, nothing invented.
+- **Composition by count:**
+  - **one card** (Marketing): the hero, slightly off-axis;
+  - **two**: an overlapping pair;
+  - **four** (CORE): a fan with the Chairperson standing slightly proud.
+  - Every fan is stacked in depth with the top card nearest (36 px apart, so turned neighbours never cut through each other), with fixed small irregularities. Every name sits in the part of its card that stays visible.
+- **Pointer** (the Teams pointer channel). Hover is decided from the hand's rest geometry, with a little hysteresis, so a moving card never flickers its own hover.
+  - Approaching turns the nearest card slightly.
+  - Reaching it pulls it out: +95 px forward, up, a little towards its own open side, squared to the eye, tilting a few degrees with the pointer.
+  - The cards above it make room (0.14 of a card width), the cards below give a little, and the outer cards sink back.
+  - Springs are critically damped (ω 24 out, 15 back; no overshoot).
+- **Click (or Enter):** draws the card to the centre, square, at 1.22×, and the rest recede and dim. Escape or a click beside the hand puts it back; a second one leaves the domain. `teamsFrame.member` carries this; `TeamsInput` stays the only input handler.
+- **Accessibility:**
+  - the cards are buttons with real text, so they are the accessible copy;
+  - `aria-pressed` marks the drawn card;
+  - keyboard focus lifts a card like hover does;
+  - the domain name is the focused heading on open.
+- **Reduced motion:** the hand appears and responds without travel or tilt.
+
+### Verified (desktop 1440×900, headless Chrome with the GPU)
+
+- **Real clicks:** CORE (four), Web and App and Competitive Programming (pairs) and Marketing (one): hover pull, neighbours giving way, drawing, putting back, closing.
+- **The handover, posed frame by frame:** type filling the view, the first card rising in the aperture, the fan opening, the identity arriving.
+- **Keyboard:** Tab to a card, Enter draws it (`aria-pressed` true on that card only), Escape puts it back with the domain still open, ArrowRight moves to the next domain, and Escape leaves.
+- **Data:** no 10-digit number on the page.
+- **Reduced motion:** open, then close with focus restored.
+- **Frames:** 1,133 at DPR 1 and 1,142 at DPR 2 through open, hover sweeps, draw, put back, next and close. All at 16.7 ms, max 16.8 ms, none over 33 ms (headless, 60 Hz cap). The JS heap ended lower than it started.
+- **Checks:** the typecheck passes.
+
+### Still open
+
+- **Phone (390×844):** the pair fits, but CORE's four-card fan runs off both sides. The phone layout was deferred at the user's request.
+- **Real device:** not yet measured on a real device.

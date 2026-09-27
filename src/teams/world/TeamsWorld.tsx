@@ -22,7 +22,6 @@ import { cardCenter, composition, O } from '../layout';
 import { teams, teamsFrame } from '../state';
 import { Backdrop } from './Backdrop';
 import { DomainCards } from './DomainCards';
-import { DomainInterior, roomPoint } from './DomainInterior';
 import { buildTeamsEnvironment } from './environment';
 import { ParticleField } from './ParticleField';
 import { Spine } from './Spine';
@@ -72,7 +71,7 @@ export function TeamsWorld() {
       const g = group.current;
       if (!alive || !g) return done();
       g.visible = true;
-      // Hidden parts (the domains' rooms) compile now too, so entering one never waits on a shader.
+      // Parts hidden at this moment compile now too, so revealing one never waits on a shader.
       const hidden: Object3D[] = [];
       g.traverse((o) => {
         if (!o.visible) {
@@ -132,15 +131,7 @@ export function TeamsWorld() {
     // plate and warms a little as the plate comes forward, and fades as the
     // eye closes in.
     const turn = reduced ? 0 : f.commit * (1 - smoothstep(0.35, 0.65, f.focus));
-    // Inside a domain the same light is the room's key: warm, above its centrepiece (CORE: down its axis).
-    const room = smoothstep(0.6, 0.9, f.focus);
-    if (room > 0.01 && teams().selected !== null) {
-      const k = teams().selected!;
-      const core = k === 0;
-      // Above and just ahead of the eye, off the axis: a key on the people and the
-      // piece whose highlight falls away from the lens (no glint on the pane's edge).
-      roomPoint(k, comp, core ? 0 : comp.portrait ? 0.2 : 0.4, comp.portrait ? 2.0 : 2.3, core ? -3.4 : comp.portrait ? -3.8 : -1.7, _goal);
-    } else if (turn > 0.01) {
+    if (turn > 0.01) {
       // High and well in front, so its reflection in the coat sits at the top edge, not mid-card.
       cardCenter(f.focusK, comp, _goal, 3.5);
       _goal.y += 1.6;
@@ -152,10 +143,10 @@ export function TeamsWorld() {
       // their top edge with the pointer instead of sitting mid-card on the type.
       _goal.y += reach * 0.4;
     }
-    pointerLight.position.lerp(_goal, room > 0.01 ? 1 : 1 - Math.exp(-dt * (turn > 0.01 ? 6 : 10)));
+    pointerLight.position.lerp(_goal, 1 - Math.exp(-dt * (turn > 0.01 ? 6 : 10)));
     const prox = f.hover >= 0 ? f.hoverAmt[f.hover] : 0;
     const pointerGain = f.inside && f.pointer.active && !reduced ? (0.07 + 0.06 * prox) * (1 - f.focus) : 0;
-    pointerLight.gain = Math.max(pointerGain, 0.12 * turn, 1.1 * room);
+    pointerLight.gain = Math.max(pointerGain, 0.12 * turn);
   });
 
   return (
@@ -167,7 +158,6 @@ export function TeamsWorld() {
       </group>
       <ParticleField comp={comp} />
       <DomainCards comp={comp} env={env} />
-      <DomainInterior comp={comp} env={env} />
       <Tunnel />
     </group>
   );

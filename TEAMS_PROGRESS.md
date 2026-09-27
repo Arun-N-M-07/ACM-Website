@@ -202,3 +202,30 @@ More detail on the second pass is in `docs/TEAMS_WORLD.md` §7.
   - typecheck and build pass.
 - **Not done:** phone rooms (the pane and the outer CORE steles are cut off at 390×844). Deferred as you asked.
 - **Details:** `docs/TEAMS_WORLD.md` §9.
+
+---
+
+## 9. Domain rooms replaced by a hand of member cards (uncommitted)
+
+- **Rooms removed:**
+  - walls, floor, panes, steles and every centrepiece;
+  - the two room modules and their room light.
+- **The dive is kept:** the card's type fills the view and the aperture opens. The people are then dealt out of the opening as a hand of physical CSS 3D cards over the dark Teams atmosphere.
+- **Each card:** ROLE over NAME, in the CORE style (members read MEMBER). No roll numbers, nothing invented.
+- **Layouts:**
+  - Marketing: one hero card;
+  - two-member domains: a pair;
+  - CORE: a four-card fan with the Chairperson slightly proud.
+- **Hover:** pulls a card out of the hand toward you while the others make room.
+- **Click (or Enter):** draws it to the centre. Escape or a click beside it puts it back; a second one leaves the domain.
+- **Tested (desktop):**
+  - every layout by real click;
+  - the handover frame by frame;
+  - the keyboard;
+  - reduced motion;
+  - no roll numbers on the page;
+  - 60 fps with no long frames at DPR 1 and 2 (headless);
+  - memory steady;
+  - typecheck passes.
+- **Not done:** on a phone, CORE's four cards run off the sides (deferred).
+- **Details:** `docs/TEAMS_WORLD.md` §10.

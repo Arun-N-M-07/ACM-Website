@@ -195,42 +195,37 @@ export function letterClearance(camZ: number) {
 
 // ─── Entering a domain ───────────────────────────────────────────────────────
 //
-// A chosen card is a threshold. Behind every card there is a room (the
-// domain's space, world/DomainInterior.tsx); the camera flies through the
-// card's surface into it:
+// A chosen card is a threshold: the camera flies through the card's surface,
+// and the domain's people are dealt out of it as a hand of cards (a light
+// DOM layer, ui/MemberHand.tsx) over the world's own dark atmosphere. No room
+// is built behind the card.
 //
 //   commit      the card comes forward and squares up at once, on its own
 //               quicker clock; the eye sets off straight away (no pull-back)
 //   travel      it accelerates, arcing round the spine if it has to, until it
 //               stands square in front of the card
 //   threshold   it closes on the surface; the card's type fills the view and
-//               an aperture opens from the card's centre (DomainCards, uOpen)
-//               with the room behind it, and the lens widens a little as it
+//               an aperture opens from the card's centre (DomainCards, uOpen),
+//               the hand rising out of it, and the lens widens a little as it
 //               crosses
-//   settle      it decelerates to rest just inside the room
+//   settle      it decelerates to rest just past the card, the hand fanned out
 //
 // One continuous path, keyed on the focus scalar (0..1): closing the domain
 // runs the same scalar back, so the return retraces it exactly.
 
 /** How far a chosen card comes forward out of the ring. */
 export const FOCUS_PUSH = 0.55;
-/** Where the eye settles inside the room: this far past the card's centre plane. */
-export const ROOM_EYE = 0.9;
-/**
- * The room behind a card — far larger than the card: the card is the
- * compressed form, the room the world it opens onto. Width, height, depth,
- * and how far the floor lies below the eye (metres).
- */
-export const roomSize = (comp: Composition) => (comp.portrait ? { w: 4.8, h: 6.6, depth: 8.6, floor: 1.9 } : { w: 7.6, h: 4.3, depth: 8.6, floor: 1.45 });
-/** The lens inside the room (wide enough to take in the room's architecture). */
-export const roomFov = (comp: Composition) => (comp.portrait ? 64 : 52);
+/** Where the eye settles once through: this far past the card's centre plane. */
+export const BEYOND_EYE = 0.9;
+/** The lens once through the card. */
+export const beyondFov = (comp: Composition) => (comp.portrait ? 64 : 52);
 
-/** Settled inside the domain room, looking down it. */
+/** Settled just through the card, looking on towards the spine. */
 export function focusShot(k: number, comp: Composition, out: Shot) {
   const a = cardAngle(k);
-  cardCenter(k, comp, out.pos, FOCUS_PUSH - ROOM_EYE);
+  cardCenter(k, comp, out.pos, FOCUS_PUSH - BEYOND_EYE);
   out.target.set(out.pos.x - Math.sin(a) * 4, out.pos.y, out.pos.z - Math.cos(a) * 4);
-  out.fov = roomFov(comp);
+  out.fov = beyondFov(comp);
   out.roll = 0;
   return out;
 }
@@ -262,7 +257,7 @@ function setKey(i: number, px: number, py: number, pz: number, tx: number, ty: n
   k[7] = roll;
 }
 
-/** The entry path: from the orbit shot `from` into card k's room, at focus 0..1. */
+/** The entry path: from the orbit shot `from` through card k, at focus 0..1. */
 export function entryShot(from: Shot, k: number, comp: Composition, focus: number, out: Shot) {
   const a = cardAngle(k);
   _n.set(Math.sin(a), 0, Math.cos(a));
@@ -282,17 +277,17 @@ export function entryShot(from: Shot, k: number, comp: Composition, focus: numbe
   // in front of the eye is squared almost at once and the travel starts
   // straight away; one round the ring takes longer to reach.
   const toSquare = _al.distanceTo(from.pos);
-  const through = _al.distanceTo(_cc) + ROOM_EYE;
+  const through = _al.distanceTo(_cc) + BEYOND_EYE;
   ENTRY_U[2] = Math.min(0.5, Math.max(0.2, 0.12 + (0.5 * toSquare) / (toSquare + through)));
   ENTRY_U[1] = ENTRY_U[2] * 0.3;
   // 3 · through its surface, the lens opened a little by the speed
-  setKey(3, _cc.x - _n.x * 0.12, _cc.y, _cc.z - _n.z * 0.12, _cc.x - _n.x * 4, _cc.y, _cc.z - _n.z * 4, roomFov(comp) + 4, 0);
-  // 4 · at rest inside the room
-  const e = ROOM_EYE;
-  setKey(4, _cc.x - _n.x * e, _cc.y, _cc.z - _n.z * e, _cc.x - _n.x * (e + 4), _cc.y, _cc.z - _n.z * (e + 4), roomFov(comp), 0);
+  setKey(3, _cc.x - _n.x * 0.12, _cc.y, _cc.z - _n.z * 0.12, _cc.x - _n.x * 4, _cc.y, _cc.z - _n.z * 4, beyondFov(comp) + 4, 0);
+  // 4 · at rest just through it
+  const e = BEYOND_EYE;
+  setKey(4, _cc.x - _n.x * e, _cc.y, _cc.z - _n.z * e, _cc.x - _n.x * (e + 4), _cc.y, _cc.z - _n.z * (e + 4), beyondFov(comp), 0);
   // C¹ through the keys, at rest at both ends, and monotone between them
   // (Fritsch–Carlson): the eye never drifts back before it goes forward, and
-  // never overshoots the room.
+  // never overshoots the rest.
   const U = ENTRY_U;
   const n = U.length;
   for (let j = 0; j < 8; j++) {

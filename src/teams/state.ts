@@ -144,6 +144,8 @@ export const teamsFrame = {
   touchCard: -1,
   /** Visibility of content physically behind the chosen card. */
   domainReveal: 0,
+  /** In an open domain, the member card drawn from the hand (−1: the hand at rest). */
+  member: -1,
 
   /** The selected card's rectangle on screen (CSS px) — the detail layer is laid out inside it. */
   cardRect: { x: 0, y: 0, w: 0, h: 0, visible: false } as ScreenRect,

@@ -273,6 +273,206 @@ html[data-teams-hover='true'] body {
   color: var(--ink);
 }
 
+/* ── The member hand (MemberHand.tsx) ───────────────────────────────────────
+   Physical cards in CSS 3D: a dark, faintly tinted coated surface, a thin
+   body behind it (a turned card shows its edge), a shadow it casts on the
+   cards beneath, light sliding across the coat from the pointer. Transforms,
+   opacity and the light's custom properties are written per frame. */
+.hand-stage {
+  position: absolute;
+  inset: 0;
+  text-transform: none;
+  pointer-events: none;
+}
+/* The only light in the scene: a soft pool where the hand is held. */
+.hand-stage::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: var(--deal, 0);
+  background: radial-gradient(
+    ellipse calc(var(--u, 300px) * 2.2) calc(var(--ch, 420px) * 0.95) at var(--cx, 55%) var(--cy, 58%),
+    color-mix(in srgb, var(--tone) 12%, rgba(239, 233, 223, 0.05)),
+    transparent 72%
+  );
+}
+.hand-ident {
+  position: absolute;
+  left: calc(var(--gutter) + 1.5vw);
+  top: calc(84px + 5vh);
+  max-width: min(500px, 34vw);
+  will-change: transform, opacity;
+}
+.hand-index,
+.hand-count {
+  margin: 0;
+  font: 500 11px/1 var(--mono);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--bone-dim);
+}
+.hand-title {
+  margin: 14px 0 0;
+  font: 600 clamp(22px, 2.4vw, 38px)/1.02 var(--sans);
+  font-stretch: 125%;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+  color: var(--bone);
+  outline: none;
+}
+.hand-count {
+  position: relative;
+  margin-top: 18px;
+  padding-top: 16px;
+}
+.hand-count::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 28px;
+  height: 1px;
+  background: currentColor;
+}
+.hand {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  perspective: 1600px;
+  perspective-origin: var(--cx) var(--cy);
+  transform-style: preserve-3d;
+}
+.hand-slot {
+  position: absolute;
+  left: calc(var(--cx) - var(--u) / 2);
+  top: calc(var(--cy) - var(--ch) / 2);
+  width: var(--u);
+  height: var(--ch);
+  transform-style: preserve-3d;
+  will-change: transform, opacity;
+}
+.hand-card {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: calc(var(--u) * 0.045);
+  color: var(--bone);
+  font: inherit;
+  text-align: left;
+  text-transform: none;
+  cursor: pointer;
+  transform-style: preserve-3d;
+  background:
+    radial-gradient(120% 70% at 12% 0%, color-mix(in srgb, var(--tone) 16%, transparent), transparent 62%),
+    linear-gradient(168deg, rgba(46, 45, 52, 0.9) 0%, rgba(24, 24, 29, 0.93) 52%, rgba(13, 13, 16, 0.95) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 250, 242, 0.08),
+    inset 0 0 0 1px rgba(239, 233, 223, 0.07);
+}
+.domain-detail[data-open='true'] .hand-card { pointer-events: auto; }
+.hand-card:disabled { cursor: default; }
+.hand-card:focus-visible { outline: 1px solid var(--bone-2); outline-offset: 6px; }
+/* The card's body: a thin dark plate just behind the face. */
+.hand-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: #060608;
+  box-shadow: 0 0 0 1px rgba(239, 233, 223, 0.04);
+  transform: translateZ(-5px);
+}
+/* The shadow it throws on the cards beneath: deeper as it is pulled out. */
+.hand-card__shade {
+  position: absolute;
+  inset: 3% 3% 0;
+  border-radius: inherit;
+  box-shadow: 0 calc(var(--u) * 0.14) calc(var(--u) * 0.26) calc(var(--u) * -0.05) rgba(0, 0, 0, 0.82);
+  opacity: calc(0.5 + 0.5 * var(--lift, 0));
+  transform: translateZ(-6px);
+}
+.hand-card__face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  padding: calc(var(--u) * 0.1);
+}
+.hand-card__rule {
+  width: calc(var(--u) * 0.09);
+  height: 1px;
+  margin-bottom: calc(var(--u) * 0.065);
+  background: rgba(239, 233, 223, 0.42);
+}
+.hand-card__role {
+  font: 500 calc(var(--u) * 0.036) / 1.2 var(--mono);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: rgba(239, 233, 223, calc(0.56 + 0.2 * var(--lift, 0)));
+}
+.hand-card__name {
+  max-width: calc(var(--u) * 0.66);
+  margin-top: calc(var(--u) * 0.05);
+  font: 400 var(--name, calc(var(--u) * 0.125)) / 1.02 var(--serif);
+  letter-spacing: -0.005em;
+  color: rgba(239, 233, 223, calc(0.86 + 0.14 * var(--lift, 0)));
+}
+.hand-card__foot {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: auto;
+  font: calc(var(--u) * 0.03) / 1.3 var(--mono);
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(239, 233, 223, 0.38);
+}
+/* The domain's name, only on the card drawn from the hand. */
+.hand-card__domain {
+  max-width: 62%;
+  margin-left: auto;
+  text-align: right;
+  opacity: var(--drawn, 0);
+}
+/* Light sliding across a coated card. */
+.hand-card__sheen {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at var(--lx, 30%) var(--ly, 18%),
+    rgba(255, 250, 242, 0.14),
+    rgba(255, 250, 242, 0.035) 36%,
+    transparent 64%
+  );
+  opacity: var(--lit, 0.18);
+}
+/* A thin edge, brightest along the top, lifting with the card. */
+.hand-card__edge {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  border: 1px solid rgba(239, 233, 223, 0.22);
+  -webkit-mask: linear-gradient(to bottom, #000, rgba(0, 0, 0, 0.18) 60%);
+  mask: linear-gradient(to bottom, #000, rgba(0, 0, 0, 0.18) 60%);
+  opacity: calc(0.4 + 0.6 * var(--lift, 0));
+}
+@media (max-aspect-ratio: 9 / 10) {
+  .hand-ident {
+    left: var(--gutter);
+    right: var(--gutter);
+    top: calc(96px + env(safe-area-inset-top));
+    max-width: none;
+  }
+}
+
 /* ── The open domain ────────────────────────────────────────────────────── */
 .domain-detail {
   position: fixed;
@@ -283,6 +483,7 @@ html[data-teams-hover='true'] body {
   text-transform: uppercase;
 }
 .domain-controls {
+  opacity: var(--controls, 0);
   position: absolute;
   bottom: calc(28px + env(safe-area-inset-bottom));
   left: 50%;
@@ -299,6 +500,7 @@ html[data-teams-hover='true'] body {
 .domain-controls button:disabled { opacity: 0.3; }
 .domain-controls button:focus-visible { outline: 1px solid var(--bone); outline-offset: 4px; }
 .domain-scroll {
+  opacity: var(--controls, 0);
   position: fixed;
   top: calc(64px + env(safe-area-inset-top));
   left: 50%;

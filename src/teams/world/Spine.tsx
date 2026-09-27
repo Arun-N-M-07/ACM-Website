@@ -157,7 +157,7 @@ export function Spine({ env, comp }: { env: Texture | null; comp: Composition })
     u.uEmphY.value = cardY(f.focusK, comp);
     // Turns a little with the orbit (counter to it, for parallax) and drifts.
     if (group.current) {
-      // Out of the way before the room behind the chosen card lights (the room reaches back past the axis).
+      // Out of the way before the eye comes through the chosen card (it looks on past the axis).
       group.current.visible = f.reveal > 0.001 && f.focus < 0.52;
       group.current.rotation.y = 0;
     }

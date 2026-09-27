@@ -105,9 +105,10 @@ export function TeamsInput() {
         const i = pickAt(p.x, p.y);
         if (i >= 0) selectDomain(i);
       } else if (s === 'domainDetail') {
-        // The selected surface is now behind the camera; its projected
-        // rectangle cannot be used as an outside-click boundary.
-        closeDomain();
+        // A click beside the member hand: a drawn card goes back into the
+        // hand first; with the hand at rest, it closes the domain.
+        if (f.member >= 0) f.member = -1;
+        else closeDomain();
       }
     };
 
@@ -153,7 +154,8 @@ export function TeamsInput() {
       const s = teams().state;
       if (e.key === 'Escape' && (s === 'domainDetail' || s === 'cardFocused')) {
         e.preventDefault();
-        closeDomain();
+        if (s === 'domainDetail' && f.member >= 0) f.member = -1;
+        else closeDomain();
       } else if (s === 'domainDetail' && (e.key === 'ArrowRight' || e.key === 'ArrowLeft')) {
         e.preventDefault();
         stepDomain(e.key === 'ArrowRight' ? 1 : -1);

@@ -48,9 +48,9 @@ src/
   teams/                  the portal and the Teams world (docs/TEAMS_WORLD.md)
     portal/               the ring, membrane, motes (PortalEntry)
     world/                TeamsWorld scene: TeamEntrance + letters, Spine, ParticleField, DomainCards,
-                          DomainInterior (the domain rooms), Tunnel, Backdrop, environment
+                          Tunnel, Backdrop, environment
     post/                 PostProcessing (bloom + one final pass; only near the portal and inside)
-    ui/                   PortalHold, TeamsHud, DomainDetail, TeamsInput, TypeIn, teams.css (mounted by TeamsExperience)
+    ui/                   PortalHold, TeamsHud, DomainDetail + MemberHand (an open domain's hand of cards), TeamsInput, TypeIn, teams.css (mounted by TeamsExperience)
     state · layout · camera · travel · focus · controller   state machine, composition, shots, timelines
   systems/
     camera/               pose math, drone flight, cinematic shots, effects, CameraRig (the one camera owner)

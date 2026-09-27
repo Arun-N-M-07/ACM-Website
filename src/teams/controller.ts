@@ -335,7 +335,7 @@ export function evaluateTeamsShot(dt: number, time: number, aspect: number, prev
   cardCenter(f.focusK, cp, _rad, FOCUS_PUSH);
   const normalAngle = cardAngle(f.focusK);
   const surfaceDistance = (OUT.pos.x - _rad.x) * Math.sin(normalAngle) + (OUT.pos.z - _rad.z) * Math.cos(normalAngle);
-  // The domain's copy arrives as the eye comes through the surface into the room.
+  // The domain's hand is fully dealt as the eye comes through the surface.
   f.domainReveal = f.focus > 0.3 ? 1 - smoothstep(-0.45, -0.04, surfaceDistance) : 0;
   f.dive = 0;
 
@@ -343,8 +343,8 @@ export function evaluateTeamsShot(dt: number, time: number, aspect: number, prev
   _fwd.subVectors(OUT.target, OUT.pos).normalize();
   _right.crossVectors(_fwd, _up).normalize();
   const live = st === 'teamsEntering' ? smoothstep(0.85, 1, f.arrival) : 1;
-  // Pointer parallax: out in the orbit, and (smaller) inside a domain's room,
-  // where it's what makes the room read as a space rather than a picture.
+  // Pointer parallax: out in the orbit, and (smaller) once through a card, where
+  // it keeps the dust behind the member hand reading as depth.
   const par = qa.still ? 0 : (reduced ? 0 : 0.45) * live * (1 - f.focus) + (reduced ? 0 : 0.22) * f.domainReveal;
   OUT.pos.addScaledVector(_right, f.pointer.cx * 0.14 * par).addScaledVector(_up, f.pointer.cy * 0.09 * par);
   OUT.target.addScaledVector(_right, f.pointer.cx * 0.05 * par).addScaledVector(_up, f.pointer.cy * 0.03 * par);

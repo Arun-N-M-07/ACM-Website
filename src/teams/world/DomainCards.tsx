@@ -248,7 +248,7 @@ totalDiffuse = mix(totalDiffuse, uInk * uInkLight, inkA);`,
     const others = smoothstep(0.03 + 0.06 * rank, 0.5 + 0.06 * rank, f.focus) * (1 - near);
     const a = cardAngle(i);
     // The threshold: as the eye closes on the chosen card its frost clears, so
-    // the card becomes a window onto the room behind it, then a doorway.
+    // the card becomes a window, then a doorway the member hand rises out of.
     cardCenter(i, comp, c, FOCUS_PUSH);
     const surface = (camera.position.x - c.x) * Math.sin(a) + (camera.position.z - c.z) * Math.cos(a);
     // The doorway opens over the last metre and a half before the eye reaches the surface.
@@ -299,7 +299,7 @@ totalDiffuse = mix(totalDiffuse, uInk * uInkLight, inkA);`,
     g.rotation.set(P.tx.v, a + toward * (1 - selected) - 0.02 * flex + P.ty.v + Math.sign(i - f.focusK) * others * 0.12, 0, 'YXZ');
     // Chosen: a slight lift in scale as it snaps to attention.
     g.scale.setScalar((0.94 + appear * 0.06) * (1 + 0.035 * selected));
-    // The rest of the ring has given way before the room behind the chosen card lights.
+    // The rest of the ring has given way before the eye comes through the chosen card.
     g.visible = appear > 0.002 && (near > 0.5 ? true : others < 0.85);
 
     const glass = mats.glass;

@@ -76,7 +76,7 @@ Text is never placed loose over the 3D, and paragraphs are never painted into it
 - a plate is an HTML card with a progress range; it fades in over a soft scrim on its side of the screen, so it reads over any scene;
 - it is tied to a **world anchor** (`config/anchors.ts` — the clock tower, a room's title wall, the portal). `experience/AnchorProjector.tsx` projects every anchor to screen space once per frame, right after the camera moves, and the plate draws a leader line and pin to it — the card lifts out of the anchor as it appears;
 - on phones plates become a bottom sheet and the leader rises from its top edge;
-- `Plates.tsx` holds the journey's plates (chapter, membership, mission, facility, legacy, one per event room, the portal). Inside the Teams world, an open domain's details type in beside its card (`teams/ui/DomainDetail.tsx`).
+- `Plates.tsx` holds the journey's plates (chapter, membership, mission, facility, legacy, one per event room, the portal). Inside the Teams world, an open domain's people are dealt out of its card as a hand of CSS 3D cards (`teams/ui/MemberHand.tsx`, mounted by `teams/ui/DomainDetail.tsx`).
 
 Camera framing is designed around them: rooms, the board and the monument are framed to one side so their plate can sit on the other.
 
@@ -112,7 +112,7 @@ Decisions are debounced (0.25 s) except during jump fades. Unmounting disposes g
 ## Performance notes
 
 - Static architecture is merged per material (`systems/geometry/build.ts`); the red building's repeated parts (windows, pilasters, balusters, voussoirs…) are instanced per category; all campus buildings are two draw calls (caps + walls), all trees two (instanced).
-- The Teams world is a handful of draw calls: one merged spine, one point cloud, one merged mesh for THE TEAM, seven cards (one material each, the lettering printed inside it) with their mounts, a domain room (shell + screen) only while a card is chosen, a tunnel that only draws while travelling. Frosted glass is physical transmission; its extra pass only redraws the opaque objects behind it, at reduced resolution on smaller tiers.
+- The Teams world is a handful of draw calls: one merged spine, one point cloud, one merged mesh for THE TEAM, seven cards (one material each, the lettering printed inside it) with their mounts, nothing extra for an open domain (its people are a DOM hand of cards, `teams/ui/MemberHand.tsx`), a tunnel that only draws while travelling. Frosted glass is physical transmission; its extra pass only redraws the opaque objects behind it, at reduced resolution on smaller tiers.
 - Quality tiers (`config/quality.ts`): DPR cap, shadows (high only; the shadow map stops updating underground), tree/block counts, canvas texture scale, room streaming window, pooled light count. `PerformanceMonitor` lowers DPR and, if the device keeps struggling, the tier.
 - Procedural textures: no image or font files are downloaded for the world itself (the soundtrack is the one optional download).
 - Per-frame values (progress, camera, the portal hold, the orbit) never go through React; overlays mutate styles from the progress channel (`teams/state.ts` keeps the Teams world's per-frame values the same way).

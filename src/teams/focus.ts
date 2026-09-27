@@ -36,8 +36,8 @@ const DUR = { open: 1.35, close: 1.1, step: 1.1, commit: 0.28 };
  * entryShot) over time. Decisive, not cinematic-slow — the card has already
  * answered the click on its own quicker clock (commit); the eye then gathers
  * momentum almost at once, travels, crosses the card's opening surface at
- * speed (about two thirds of the way through), and decelerates softly into
- * the room. Monotone cubic through the beats (Fritsch–Carlson), at rest at
+ * speed (about two thirds of the way through), and decelerates softly as
+ * the member hand fans out. Monotone cubic through the beats (Fritsch–Carlson), at rest at
  * both ends: no overshoot, no stall.
  */
 const BEATS: [number, number][] = [
@@ -104,6 +104,7 @@ export function selectDomain(i: number) {
   const rest = reduced ? teamsFrame.c : teamsFrame.c + teamsFrame.cV / ORBIT_FOLLOW;
   placeScroll(progressForCarousel(rest));
   teamsFrame.focusK = i;
+  teamsFrame.member = -1;
   teams().set({ state: 'cardFocused', selected: i, focusDir: 'in' });
   commitTo(1, reduced ? 0.01 : DUR.commit, 'power3.out');
   if (!reduced) {
@@ -129,6 +130,8 @@ export function closeDomain() {
   kill();
   const reduced = experience().reducedMotion;
   teams().set({ state: 'cardFocused', focusDir: 'out' });
+  // A drawn member card goes back into the hand as the hand closes.
+  teamsFrame.member = -1;
   const duration = reduced ? 0.01 : DUR.close * Math.max(0.4, teamsFrame.focus);
   // The card settles back into the ring as the eye arrives back in orbit.
   commitTo(0, duration, 'power2.in');
@@ -153,6 +156,7 @@ export function hopTo(next: number) {
   // Pull out through the current surface before approaching the next. Never
   // interpolate a camera from inside one plate directly through the spine.
   teams().set({ state: 'cardFocused', focusDir: 'out' });
+  teamsFrame.member = -1;
   tween = gsap
     .timeline({
       onComplete: () => {
