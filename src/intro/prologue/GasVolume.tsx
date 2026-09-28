@@ -66,7 +66,7 @@ import { introFrame } from '../state';
 import { T } from '../timeline';
 import { letterField, noise3D } from './gasFields';
 import { activePaper } from '../story/paperOccluders';
-import { CAN, dissolveAt, floodRadius, formAt, gasAmount, GROUND_Y, LETTERS, ROLL_AXLE, ROLL_FROM, rollAt, type RollState, smogOn, WORDS } from './layout';
+import { CAN, dissolveAt, floodRadius, formAt, unstableAt, gasAmount, GROUND_Y, LETTERS, ROLL_AXLE, ROLL_FROM, rollAt, type RollState, smogOn, WORDS } from './layout';
 import { LAMP, LAMP2 } from './RoadLamp';
 
 /** The volume around the camera: this far to each side, and from the road to this height. */
@@ -90,8 +90,9 @@ uniform vec3 uBoxMin, uBoxMax;
 uniform float uTime, uGround;
 uniform vec3 uCan, uAxle;
 uniform float uCanL, uRel, uFlood, uHeight, uAmount;
-uniform float uForm, uDissolve;
+uniform float uForm, uDissolve, uUnstable;
 uniform vec3 uLetC;
+uniform vec2 uRegion;
 uniform vec2 uLetSize;
 uniform vec3 uFrom, uRollPos;
 uniform float uWake;
@@ -104,6 +105,9 @@ uniform int uDebug;
 varying vec3 vWorld;
 
 float nz(vec3 p) { return texture(uNoise, p).r; }
+// How much fine detail the smog shows where the ray is: it fades with distance (aerial
+// perspective), so far lobes smaller than a step never alias into sparkle.
+float gDetail = 1.0;
 
 vec2 hitBox(vec3 ro, vec3 rd, vec3 bmin, vec3 bmax) {
   vec3 inv = 1.0 / rd;
@@ -146,8 +150,8 @@ vec3 fieldL(vec3 p, bool cheap, bool coarse) {
     vec3 outward = vec3(dc.x, 0.0, dc.y) / max(r, 0.3);
     vec3 q = p - outward * min(r, uFlood) * 0.18 - vec3(uTime * 0.018, uRel * 0.05 + uTime * 0.012, -uTime * 0.03);
     float nb = nz(q * 0.2);
-    float nd = coarse ? 0.5 : nz(q * 0.55 + 0.31);
-    float nl = (cheap || coarse) ? 0.5 : nz(q * 1.6 + vec3(0.57, 0.0, 0.13));
+    float nd = coarse ? 0.5 : mix(0.5, nz(q * 0.55 + 0.31), gDetail);
+    float nl = (cheap || coarse) ? 0.5 : mix(0.5, nz(q * 1.6 + vec3(0.57, 0.0, 0.13)), gDetail * gDetail);
     float billow = nb * 0.55 + nd * 0.3 + nl * 0.15;
     // ── the flood: its front, ragged, runs out past everything
     float fill = 1.0 - smoothstep(uFlood - 3.0, uFlood + 0.5, r + (nb - 0.5) * 5.0);
@@ -160,6 +164,11 @@ vec3 fieldL(vec3 p, bool cheap, bool coarse) {
     float thick = 0.3 + 1.4 * smoothstep(0.32, 0.72, regionN);
     float structure = smoothstep(0.42, 0.72, billow + (nl - 0.5) * 0.3);
     smog = fill * hp * thick * (0.012 + 1.5 * structure * structure) * 0.75;
+    // The volume travels with the camera; the smog in it thins to nothing before any of its faces
+    // (the ceiling over the camera, the walls metres around it), so no face of it is ever seen —
+    // beyond, the film's own fog carries the air on.
+    vec2 toWall = min(p.xz - uBoxMin.xz, uBoxMax.xz - p.xz);
+    smog *= smoothstep(0.0, 3.5, min(toWall.x, toWall.y)) * (1.0 - smoothstep(uBoxMax.y - 2.2, uBoxMax.y - 0.3, p.y));
     // ── the burst: a dense core swelling out of the canister
     float rc = 0.18 + 1.4 * (1.0 - exp(-uRel / 1.2));
     vec3 cc = uCan + vec3(0.0, 0.25 * (1.0 - exp(-uRel / 2.0)), -0.35 * (1.0 - exp(-uRel / 2.0)));
@@ -192,25 +201,29 @@ vec3 fieldL(vec3 p, bool cheap, bool coarse) {
     // ── the words, formed of the smog itself
     if (uForm > 0.0 && uDissolve < 1.0) {
       vec2 lp = vec2((p.x - uLetC.x) / uLetSize.x + 0.5, (p.y - uLetC.y) / uLetSize.y + 0.5);
-      if (lp.x > -0.15 && lp.x < 1.15 && lp.y > -0.3 && lp.y < 1.3) {
+      // (The bounds hold the whole soft region below, its fraying included: nothing here may
+      // end on a line — a hard edge in the smog reads as a box in the air.)
+      if (lp.x > -0.45 && lp.x < 1.45 && lp.y > -0.75 && lp.y < 1.75) {
         float w1 = cheap ? 0.5 : nz(p * 0.33 + vec3(0.0, uTime * 0.012 - uDissolve * 0.3, uTime * 0.009));
         float w2 = cheap ? 0.5 : nz(p * 0.33 + vec3(0.47, 0.19 - uDissolve * 0.3, uTime * 0.011));
-        // Curling edges: strong while it condenses and as it comes apart, faint while it is read.
+        // Curling edges: strong while it condenses and as it comes apart, faint while it is read;
+        // and before it goes it grows restless — the forms waver and fray, then loosen.
         float legible = smoothstep(0.75, 1.0, uForm) * (1.0 - smoothstep(0.0, 0.25, uDissolve));
-        float warp = 0.008 + 0.055 * (1.0 - legible) + 0.1 * uDissolve;
+        float warp = 0.008 + 0.055 * (1.0 - legible) + 0.045 * uUnstable + 0.1 * uDissolve;
         vec2 wl = lp + (vec2(w1, w2) - 0.5) * warp * 2.0 - vec2(0.0, uDissolve * 0.16);
         vec4 m = texture(uLetters, wl);
         float order = m.b;
-        // Each word at its own depth; the slab thicker and thinner along the words.
-        float dz = p.z - uLetC.z - mix(0.3, -0.36, order);
+        // Each word at its own depth, and every stroke pushed off the plane by the smog's own
+        // billows: a body of air with thickness, not a sign standing in it.
+        float dz = p.z - uLetC.z - mix(0.3, -0.36, order) - (nd - 0.5) * 0.55;
         float th = 0.14 + 0.26 * w1;
         float slab = 1.0 - smoothstep(th * 0.4, th, abs(dz));
         float formed = smoothstep(order, order + 0.32, uForm * 1.32 + (w2 - 0.5) * 0.28);
         float gone = smoothstep(0.0, 0.85, uDissolve * 1.25 + (w1 - 0.5) * 0.55 - (1.0 - order) * 0.1);
         float live = formed * (1.0 - gone);
-        // (Torn, billowing edges: the smog parts, it isn't cut.)
-        vec2 rl = lp + (vec2(nb, nd) - 0.5) * 0.3 + (vec2(nl, nb) - 0.5) * vec2(0.06, 0.22);
-        float region = smoothstep(-0.12, 0.08, rl.x) * (1.0 - smoothstep(0.92, 1.12, rl.x)) * smoothstep(-0.28, 0.06, rl.y) * (1.0 - smoothstep(0.94, 1.26, rl.y));
+        // Where the smog gives way to the words: a soft oval, frayed by the smog's own billows.
+        vec2 ov = (lp - 0.5) / uRegion;
+        float region = 1.0 - smoothstep(0.62, 1.0, length(ov) + (nb - 0.5) * 0.35 + (nl - 0.5) * 0.12);
         // The smog is drawn into the words: in front of them (towards the lens) it thins, around
         // them in their slab it thins; behind them it stays — the words stand against it.
         float inFront = smoothstep(-0.05, 0.4, dz) * (1.0 - smoothstep(6.5, 9.0, dz));
@@ -220,15 +233,21 @@ vec3 fieldL(vec3 p, bool cheap, bool coarse) {
           // Fine fraying at the scale of the strokes, drifting up with the smog.
           float e1 = nz(p * 0.9 + vec3(uTime * 0.02, -uDissolve * 0.5, 0.0));
           float e3 = nz(vec3(p.x * 2.6, p.y * 2.0 - uTime * 0.035 - uDissolve * 0.8, p.z * 2.6));
-          float body = smoothstep(0.32, 0.76, m.r + (w1 - 0.5) * 0.24 + (e1 - 0.5) * 0.26 + (e3 - 0.5) * 0.3);
+          float fray = 0.3 + 0.25 * uUnstable;
+          float body = smoothstep(0.3, 0.8, m.r + (w1 - 0.5) * (0.24 + 0.16 * uUnstable) + (e1 - 0.5) * 0.26 + (e3 - 0.5) * fray);
           // It gathers first as loose masses, then tightens into the forms; coming apart, the reverse.
           float tight = smoothstep(0.35, 0.95, formed) * (1.0 - smoothstep(0.0, 0.6, gone));
           float lump = smoothstep(0.08, 0.55, m.g + (w2 - 0.5) * 0.35) * (0.4 + 0.8 * e1);
           float shape = mix(lump * 0.8, body, tight);
-          float inner = 0.4 + 1.0 * smoothstep(0.2, 0.8, e1);
+          // Unevenly dense, as smog is: thick in places, thin in others.
+          float inner = 0.3 + 1.2 * smoothstep(0.2, 0.8, e1);
           float e2 = nz(vec3(p.x * 1.4, p.y * 0.45 - uTime * 0.02 - uDissolve * 0.6, p.z * 1.4));
+          // Clear air curling through the strokes: thin winding channels where the smog's drift
+          // crosses them (a contour of its own noise), more of them as it grows restless.
+          float e4 = nz(vec3(p.x * 0.55 + e1 * 0.35 + uTime * 0.01, p.y * 1.3 - uTime * 0.03 - uDissolve * 0.7, p.z * 0.6) + 0.61);
+          float channel = smoothstep(0.58, 0.68, e4) * (1.0 - smoothstep(0.7, 0.84, e4));
           float tendril = m.g * smoothstep(0.6, 0.85, e2) * (1.0 - body);
-          word = (shape * 2.6 * inner * (0.6 + 0.8 * e3) + tendril * 1.2 + m.g * 0.12) * slab * live;
+          word = (shape * 2.6 * inner * (0.6 + 0.8 * e3) * (1.0 - (0.45 + 0.3 * uUnstable) * channel) + tendril * 1.2 + m.g * 0.12) * slab * live;
           // Wisps still drift across in front of the words now and then.
           float front = smoothstep(0.15, 0.45, dz) * (1.0 - smoothstep(0.7, 1.3, dz));
           float streak = smoothstep(0.5, 0.82, nz(vec3(p.x * 0.22 - uTime * 0.015, p.y * 0.9, p.z * 0.3)));
@@ -300,6 +319,7 @@ void march(vec3 ro, vec3 rd, float t0, float t1, float jitter, inout vec3 acc, i
   for (int i = 0; i < 96; i++) {
     if (i >= uStepsA || t >= t1 || trans < 0.012) break;
     vec3 p = ro + rd * t;
+    gDetail = 1.0 - smoothstep(9.0, 14.0, t);
     vec3 f = field(p, false);
     // Nothing solid at the lens: the air thins to nothing in the last metre.
     float nearFade = smoothstep(0.3, 1.3, t);
@@ -409,9 +429,14 @@ export function GasVolume() {
         uAmount: { value: 0 },
         uForm: { value: 0 },
         uDissolve: { value: 0 },
+        uUnstable: { value: 0 },
         // (Portrait stacks the words: the slab stands a little higher, clear of the smoke lying on the road.)
-        uLetC: { value: new Vector3(LETTERS.x, LETTERS.y + (portrait ? 0.45 : 0), LETTERS.z) },
+        // (Portrait's field is tall: raised, so its second line stands clear of the road's mist.)
+        uLetC: { value: new Vector3(LETTERS.x, LETTERS.y + (portrait ? 0.8 : 0), LETTERS.z) },
         uLetSize: { value: new Vector2(fields.letters.width, fields.letters.height) },
+        // The soft oval the words stand in (in the field's own units): portrait's stacked second line
+        // runs out to its sides, so there it is wider — or the line's ends fade into the smog.
+        uRegion: { value: new Vector2(portrait ? 0.78 : 0.66, 0.9) },
         uPaperOn: { value: 0 },
         uPaperPresence: { value: 0 },
         uPaperC: { value: new Vector3() },
@@ -426,8 +451,8 @@ export function GasVolume() {
         uSky: { value: new Color() },
         uFogCol: { value: new Color() },
         // Deep, a little desaturated: violet smog, not neon.
-        uGasDeep: { value: new Color('#6c3aa8') },
-        uGasLit: { value: new Color('#b98fe6') },
+        uGasDeep: { value: new Color('#643c9c') },
+        uGasLit: { value: new Color('#ae90da') },
         uMistCol: { value: new Color() },
         uMistD: { value: 0.08 },
         uStepsA: { value: steps },
@@ -462,7 +487,13 @@ export function GasVolume() {
   }, [res]);
 
   useEffect(() => {
-    const scale = quality === 'high' ? 0.62 : quality === 'medium' ? 0.52 : 0.42;
+    // The march runs at a fraction of the screen, set by a budget of pixels — what the tier spends on
+    // a 1440×900 frame — rather than a fixed share of its width: at the same share a phone's narrow
+    // frame left the words only a few pixels tall (the stacked second line a smudge), while drawing a
+    // fraction of what a desktop does. (Never below the tier's share; never above the screen's own.)
+    const share = quality === 'high' ? 0.62 : quality === 'medium' ? 0.52 : 0.42;
+    const budget = 1440 * 900 * share * share;
+    const scale = Math.max(share, Math.min(1, Math.sqrt(budget / Math.max(1, size.width * size.height))));
     res.target.setSize(Math.max(2, Math.round(size.width * scale)), Math.max(2, Math.round(size.height * scale)));
   }, [res, size.width, size.height, quality]);
 
@@ -487,6 +518,7 @@ export function GasVolume() {
     u.uAmount.value = gasAmount(t);
     u.uForm.value = formAt(t);
     u.uDissolve.value = dissolveAt(t);
+    u.uUnstable.value = unstableAt(t);
     const lamp = look.practicals;
     (u.uLampCol.value as Color).set('#ffcf94').multiplyScalar(2.0 * lamp);
     (u.uLamp2Col.value as Color).set('#ffd6a6').multiplyScalar(1.5 * lamp);

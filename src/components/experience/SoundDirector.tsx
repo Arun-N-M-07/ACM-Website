@@ -20,39 +20,64 @@
  *                  breath; silence. Only while the burn moves forward (or
  *                  rests, faintly, as the ember line flickers); scrolled back,
  *                  it is silent.
- *   the world      thunder after lightning; the shaft's resonance; the Events
- *                  heard through their door before it opens; its mechanism
+ *   the world      thunder after each flash — late, and the later the farther
+ *                  (each storm its own); the air of the cloud as the camera
+ *                  moves through it (soft pressure and displaced air, wide and
+ *                  slowly moving, only as loud as the camera is fast); the
+ *                  light-well's shaft as a tube of air (its resonances rising
+ *                  as the camera goes down, the air brightening with its
+ *                  speed) — its entry, its release into the lobby; the room
+ *                  beyond the Events door, heard as air as it opens; the
+ *                  door's mechanism; the threshold into the Events
+ *   the Events     the Prodigy wall: each piece's move and its lock, as the
+ *                  picture has it (exhibits/common: puzzleSpan). Nothing else
+ *                  plays in the rooms: no bed, no hum — the music is the bed.
  *
  * One-off events play when the film crosses their beat going forward (never
  * scrubbed back, never on a jump), and re-arm once it is back before them.
- * No wind: the flight belongs to the music. With sound off, nothing is made.
+ * No wind, no drones. With sound off, nothing is made. (The portal's
+ * crossing is the travel's own: teams/travel.ts.)
  */
 import { useEffect, useRef } from 'react';
+import { CORRIDOR } from '@/config/world';
+import { cloud } from '@/intro/look';
+import { PUZZLE_PIECES, puzzlePiece, puzzleSpan, readRoomClock, type RoomClock } from '@/scenes/events/exhibits/common';
 import { introCameraAt } from '@/intro/camera';
 import { CAN, GROUND_Y, gasAmount, rollAt, type RollState } from '@/intro/prologue/layout';
 import { introFrame } from '@/intro/state';
-import { edgeFor, flapIndex, flightAt, flutterAt, SNAP, START_AHEAD } from '@/intro/story/flight';
+import { flapIndex, flightAt, flutterAt, SNAP, START_AHEAD, startFor } from '@/intro/story/flight';
 import { FRAGMENTS } from '@/intro/story/fragments';
 import { T } from '@/intro/timeline';
 import { LIGHTNING } from '@/intro/world/lightning';
-import { world } from '@/scenes/shared/blend';
 import { useExperience } from '@/store/experience';
 import { cue, type Cue, quietAll, setLayer } from '@/systems/audio/sfx';
+import { fx } from '@/systems/camera/effects';
 import { useProgressFrame } from './useProgressFrame';
 
 const DOOR_BEATS = 6.5;
-const CUES: { at: number; name: Cue; level?: number; pan?: number }[] = [
+/** Where the shaft tips up into the lobby (intro/camera: the key at 181). */
+const TIP_UP = 181;
+const CUES: { at: number; name: Cue; level?: number; pan?: number; variant?: number; distance?: number }[] = [
   { at: T.roll + 0.4, name: 'contact' },
   { at: T.rest - 0.3, name: 'settle' },
   { at: T.pressure, name: 'pressure' },
   { at: T.release, name: 'release' },
   { at: T.form, name: 'words' },
-  ...LIGHTNING.map((l) => ({ at: l.at, name: 'thunder' as Cue, level: l.strength })),
+  ...LIGHTNING.map((l) => ({ at: l.at, name: 'thunder' as Cue, level: 0.6 + 0.4 * l.strength, variant: l.variant, distance: l.distance })),
+  { at: T.shaft, name: 'tunnelEnter' },
+  { at: TIP_UP, name: 'tunnelRelease' },
   { at: T.door + DOOR_BEATS * 0.02, name: 'doorWake' },
   { at: T.door + DOOR_BEATS * 0.1, name: 'doorPressure' },
   { at: T.door + DOOR_BEATS * 0.3, name: 'doorRetract' },
   { at: T.door + DOOR_BEATS * 0.9, name: 'doorHome' },
+  { at: T.doorway, name: 'threshold' },
 ];
+
+/** The Prodigy room (its artifact is the puzzle wall). */
+const PRODIGY_ROOM = CORRIDOR.rooms.findIndex((r) => r.event.artifact === 'puzzle-wall');
+const prodigyClock: RoomClock = { u: -0.3, here: false, near: false, presence: 0 };
+/** Every layer the film plays (all silenced once it is left behind). */
+const FILM_LAYERS = ['roll', 'hiss', 'air', 'flight', 'burn', 'cloudLow', 'cloudHigh', 'tunnelAir', 'tunnelRes', 'tunnelRes2', 'eventsAir'];
 
 /** Contacts per turn of the canister (its bands and seam meeting the road). */
 const CONTACTS_PER_TURN = 5;
@@ -89,6 +114,8 @@ export function SoundDirector() {
   const contact = useRef<number | null>(null);
   const burns = useRef<BurnState[]>(FRAGMENTS.map(() => ({ b: 0, ignite: true, release: true })));
   const arrivals = useRef<ArrivalState[]>(FRAGMENTS.map(() => ({ flap: null, snap: true })));
+  /** The Prodigy room's clock last frame (null: not in it). */
+  const prodigyU = useRef<number | null>(null);
 
   useEffect(() => {
     if (!musicOn) quietAll();
@@ -102,12 +129,33 @@ export function SoundDirector() {
     const prev = last.current;
     last.current = inFilm ? t : null;
     if (!inFilm) {
-      // After the film: only the Events' own air, faintly, underground.
-      for (const l of ['roll', 'hiss', 'air', 'flight', 'burn', 'shaft']) setLayer(l, 0);
-      setLayer('events', 0.035 * world.underground * (1 - world.teams), { freq: 1200 });
+      // After the film: no bed at all (the rooms are the music's, and their own moments') — only,
+      // at the end of the journey, the air of the mist that takes the world.
+      for (const l of FILM_LAYERS) setLayer(l, 0);
+      setLayer('mistAir', 0.018 * fx.mist);
       contact.current = null;
+      // The Prodigy wall: each piece's move and its lock, going forward through the visit.
+      if (PRODIGY_ROOM >= 0 && st.phase === 'cinematic') {
+        readRoomClock(PRODIGY_ROOM, prodigyClock);
+        const u = prodigyClock.here ? prodigyClock.u : null;
+        const pu = prodigyU.current;
+        prodigyU.current = u;
+        if (u !== null && pu !== null && u > pu && u - pu < 0.3) {
+          let n = 0;
+          for (let o = 0; o < PUZZLE_PIECES && n < 3; o++) {
+            const [from, home] = puzzleSpan(o);
+            const pan = ((puzzlePiece(o) % 3) - 1) * 0.45;
+            if (pu < from && u >= from) cue('tileMove', { pan, variant: o });
+            if (pu < home && u >= home) {
+              cue('tileLock', { pan, variant: o });
+              n++;
+            }
+          }
+        }
+      } else prodigyU.current = null;
       return;
     }
+    prodigyU.current = null;
     // How fast the film is moving (beats per second), smoothed; a jump is not movement.
     const step = prev === null ? 0 : t - prev;
     const jump = Math.abs(step) > 4;
@@ -118,9 +166,17 @@ export function SoundDirector() {
       if (t < c.at - 0.5) armed.current[i] = true;
       if (prev !== null && !jump && armed.current[i] && prev < c.at && t >= c.at) {
         armed.current[i] = false;
-        cue(c.name, { pan: c.pan ?? (c.name === 'contact' || c.name === 'settle' || c.name === 'pressure' || c.name === 'release' ? canPan(t) : 0), level: c.level });
+        cue(c.name, { pan: c.pan ?? (c.name === 'contact' || c.name === 'settle' || c.name === 'pressure' || c.name === 'release' ? canPan(t) : 0), level: c.level, variant: c.variant, distance: c.distance });
       }
     });
+
+    // How fast the camera itself is travelling (m/s): the air it moves through is as loud as that.
+    const c0 = introCameraAt(t).pos;
+    const x0 = c0.x;
+    const y0 = c0.y;
+    const z0 = c0.z;
+    const c1 = introCameraAt(t + 0.05).pos;
+    const camSpeed = jump ? 0 : (Math.hypot(c1.x - x0, c1.y - y0, c1.z - z0) / 0.05) * Math.abs(bps.current);
 
     // ── the canister: contacts keyed to its rotation, friction to its speed
     const cam = introCameraAt(t).pos;
@@ -139,11 +195,13 @@ export function SoundDirector() {
     contact.current = idx;
     setLayer('roll', t > T.roll && t < T.rest + 0.5 ? 0.09 * Math.pow(sp, 1.2) * near * 1.8 : 0, { freq: 240 + 260 * sp, pan });
 
-    // ── the smog: its hiss and the air it moves
+    // ── the smog: the vent's hiss dies away after the release (it is the canister emptying, not
+    //    the air); a low breath of the air it moved lasts while you are deep in it, and is gone
+    //    before the story's first sheet — no standing hiss or wind under the film
     const since = t - T.release;
     const gas = gasAmount(t);
-    setLayer('hiss', since > 0 ? (0.03 + 0.12 * Math.exp(-since / 2.5)) * gas : 0, { freq: 2600 + 1800 * Math.exp(-since / 3) });
-    setLayer('air', since > 0 ? 0.16 * Math.exp(-since / 4) * gas + 0.03 * gas : 0);
+    setLayer('hiss', since > 0 ? 0.12 * Math.exp(-since / 2.5) * gas : 0, { freq: 2600 + 1800 * Math.exp(-since / 3) });
+    setLayer('air', since > 0 ? (0.16 * Math.exp(-since / 4) + 0.02 * (1 - smooth(T.dissolve, T.story1, t))) * gas : 0);
 
     // ── a sheet arriving: the air past it follows its speed, a flap for each flutter, the snap as
     //    it unfurls (flaps and snap forward only; the air, either way — it is moving)
@@ -158,7 +216,7 @@ export function SoundDirector() {
       const flap = flapIndex(a, f.seed);
       if (a <= 0) s.snap = true;
       if (a > 0 && a < 1) {
-        const edge = edgeFor(f.side, f.rest[0], f.rest[2] + START_AHEAD, TAN_HALF);
+        const edge = startFor(f.side, f.rest[0], f.rest[2] + START_AHEAD, TAN_HALF);
         flightAt(a, f.side, edge, f.seed, _o);
         flightAt(Math.min(1, a + 0.01), f.side, edge, f.seed, _o2);
         const x = (f.rest[0] + _o.x) / Math.max(0.5, (f.rest[2] + _o.z) * TAN_HALF);
@@ -166,12 +224,14 @@ export function SoundDirector() {
         // Metres per second along its path.
         const v = jump ? 0 : (Math.hypot(_o2.x - _o.x, _o2.y - _o.y, _o2.z - _o.z) / (0.01 * len)) * Math.abs(bps.current);
         const sp = Math.min(1, v / 6);
-        if (sp * 0.05 > air) {
-          air = sp * 0.05;
+        // (Only heard as it comes near: far off in the smog a sheet makes no sound you could hear.)
+        const close = 1 / (1 + Math.pow(Math.max(0, _o.z) / 2.5, 2));
+        if (sp * 0.035 * close > air) {
+          air = sp * 0.035 * close;
           airFreq = 650 + 1500 * sp;
           airPan = pan;
         }
-        if (s.flap !== null && flap > s.flap && a > aPrev && !jump && flutterAt(a) > 0.04) cue('flap', { pan, level: 0.35 + 0.65 * flutterAt(a) });
+        if (s.flap !== null && flap > s.flap && a > aPrev && !jump && flutterAt(a) > 0.04) cue('flap', { pan, level: (0.35 + 0.65 * flutterAt(a)) * close });
         if (s.snap && a >= SNAP && aPrev < SNAP && !jump) {
           s.snap = false;
           cue('unfurl', { pan: pan * 0.6 });
@@ -223,11 +283,29 @@ export function SoundDirector() {
     });
     setLayer('burn', bed, { freq: bedFreq, pan: bedPan });
 
-    // ── below: the shaft's resonance, then the Events through the door
-    const below = smooth(T.shaft - 1, T.shaft + 1, t);
-    setLayer('shaft', below * (0.14 - 0.06 * smooth(T.lobby, T.door, t)) * (1 - smooth(T.doorway, T.end, t)));
+    // ── the cloud: the air as the camera moves through it — soft pressure, displaced air, wide
+    //    and slowly wandering (its course is the beat's, so it plays back the same), only as loud
+    //    as the camera is fast; above the cloud, the barest high air
+    const inCloud = cloud(t);
+    const above = smooth(T.cloudOut - 1, T.cloudOut + 1.5, t) * (1 - smooth(T.descend, T.cloudTop, t));
+    const drift = Math.min(1, camSpeed / 24);
+    const wander = t * 0.35;
+    setLayer('cloudLow', inCloud * (0.01 + 0.032 * Math.pow(drift, 0.8)) + above * 0.006 * (0.4 + 0.6 * drift), { freq: 240 + 200 * drift, pan: 0.55 * Math.sin(wander) });
+    // (The mist the journey comes round through: its air, exactly as on the other side of the seam.)
+    setLayer('mistAir', 0.018 * fx.mist);
+    setLayer('cloudHigh', inCloud * (0.003 + 0.012 * drift), { freq: 1100 + 1000 * drift, pan: -0.55 * Math.sin(wander + 0.8) });
+
+    // ── the tunnel: the light-well's shaft, a tube of air — its resonances rise as the camera goes
+    //    down, the air brightens with its speed; it opens into the lobby (the release), and the
+    //    Events beyond the door are heard as the air of a room, opening as the door does
+    const inShaft = smooth(T.plaza + 1, T.shaft, t) * (1 - smooth(TIP_UP - 0.5, T.lobby, t));
+    const depth = span(t, T.shaft, TIP_UP);
+    const rush = Math.min(1, camSpeed / 14);
+    setLayer('tunnelAir', inShaft * (0.014 + 0.07 * rush), { freq: 150 + 560 * rush });
+    setLayer('tunnelRes', inShaft * (0.01 + 0.028 * rush), { freq: 96 + 74 * depth, q: 13, pan: -0.35 });
+    setLayer('tunnelRes2', inShaft * (0.005 + 0.014 * rush), { freq: 238 + 190 * depth, q: 15, pan: 0.35 });
     const open = smooth(T.door + DOOR_BEATS * 0.25, T.doorway, t);
-    setLayer('events', smooth(T.lobby - 2, T.lobby, t) * (0.04 + 0.1 * open), { freq: 260 + 1100 * open });
+    setLayer('eventsAir', smooth(T.lobby - 1, T.lobby + 1, t) * (1 - smooth(T.doorway, T.end, t)) * (0.01 + 0.04 * open), { freq: 280 + 1300 * open });
   });
 
   return null;

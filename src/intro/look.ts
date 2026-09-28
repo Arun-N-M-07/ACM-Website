@@ -344,8 +344,8 @@ const exposure = numberTrack([
   [T.end, 1.05],
 ]);
 
-/** The cloud: how much of it is around the camera (0..1). */
-const cloud = numberTrack([
+/** The cloud: how much of it is around the camera (0..1). (Also the sound's: SoundDirector.) */
+export const cloud = numberTrack([
   [T.cloudIn - 1, 0],
   [T.cloudIn + 0.8, 0.7],
   [T.cloudIn + 1.5, 1],
@@ -500,8 +500,9 @@ export const look = {
   practicals: 1,
   exposure: 1,
   cloud: 0,
-  /** Lightning's light (0..1), set by the atmosphere when a flash is struck. */
+  /** Lightning's light (0..~1.2) at this beat, and where in the sky it comes from (unit). */
   flash: 0,
+  flashDir: new Vector3(0, 1, 0),
   dark: 0,
   tunnelAmbient: 1,
   grade: { saturation: 1, contrast: 1, lift: new Color(0, 0, 0), gain: new Color(1, 1, 1), vignette: 0, bloom: 0 },
@@ -510,8 +511,8 @@ export const look = {
 /** The sun's azimuth: low in the east, so it rakes across the south facade from the right. */
 const SUN_AZIMUTH = new Vector3(0.93, 0, 0.37).normalize();
 
-/** Evaluate the script at beat t into `look`. */
-export function evaluateLook(t: number) {
+/** Evaluate the script at beat t into `look` (`reduced`: lightning without flicker). */
+export function evaluateLook(t: number, reduced = false) {
   const L = look;
   fogColor(t, L.fogColor);
   L.fogDensity = fogDensity(t);
@@ -542,13 +543,14 @@ export function evaluateLook(t: number) {
   g.bloom = bloom(t);
 
   // Lightning: a light event, a pure function of the beat. The fog brightens (the air's volume
-  // shows), the stone, the ground and the trees catch a cold light from high behind the lens,
-  // the sky lifts, the exposure opens a little.
-  const f = flashAt(t);
+  // shows) — most where the flash is (fog.ts scatters it from L.flashDir) — the stone, the ground
+  // and the trees catch a cold light from high behind the lens, the sky lifts, the exposure opens
+  // a little.
+  const f = flashAt(t, reduced, L.flashDir);
   L.flash = f;
   if (f > 0.001) {
     const k = Math.min(1, f);
-    L.fogColor.lerp(FLASH_FOG, 0.24 * k);
+    L.fogColor.lerp(FLASH_FOG, 0.14 * k);
     L.exposure += 0.18 * f;
     L.sun.dir.lerp(FLASH_DIR, Math.min(1, f * 3)).normalize();
     L.sun.color.lerp(FLASH_COLOR, Math.min(1, f * 3));

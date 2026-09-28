@@ -182,7 +182,8 @@ export function spineGeometry(): Promise<BufferGeometry> {
 }
 
 /** A helix wound round the column (the journey's signal thread, continued). */
-export function filamentPoints(turns = 6.5, samples = 900): Vector3[] {
+/** (6.5 turns over the original 18 m of spine: the same pitch all the way down it.) */
+export function filamentPoints(turns = (6.5 * (SPINE_TOP - SPINE_BOTTOM)) / 18, samples = Math.round((900 * (SPINE_TOP - SPINE_BOTTOM)) / 18)): Vector3[] {
   const pts: Vector3[] = [];
   for (let i = 0; i <= samples; i++) {
     const t = i / samples;

@@ -27,11 +27,37 @@ export function scrollToProgress(p: number, duration = 2.4) {
   else window.scrollTo({ top: y, behavior: 'auto' });
 }
 
-/** Jump to progress `p`: the camera cuts (behind a brief fade) instead of flying. */
-export function jumpToProgress(p: number) {
+/**
+ * Move the whole journey by `delta` (progress) without a cut: the scroll position, its target and
+ * the camera's damped progress all move by the same amount, and whatever the visitor's scroll was
+ * still doing — Lenis's smoothing towards where the input asked to go — carries on from the new
+ * place. (The loop, where the track's two ends meet inside the mist: JourneyLoop.)
+ */
+export function shiftProgress(delta: number) {
+  const dy = delta * maxScroll();
+  progress.target += delta;
+  progress.value += delta;
+  if (lenis) {
+    const pending = lenis.targetScroll - lenis.animatedScroll;
+    const y = lenis.animatedScroll + dy;
+    lenis.scrollTo(y, { immediate: true, force: true });
+    // The rest of the input's motion, as the input's own (not a programmatic scroll: Lenis keeps a
+    // programmatic target pinned to where it is, so the next wheel event would drop the rest).
+    if (Math.abs(pending) > 0.5) lenis.scrollTo(y + pending, { programmatic: false, lerp: lenis.options.lerp, force: true });
+  } else window.scrollTo({ top: window.scrollY + dy, behavior: 'auto' });
+}
+
+/**
+ * Jump to progress `p`: the camera cuts (behind a brief fade) instead of flying — landing `lead`
+ * short of it (progress units, within the walls) and carried the rest of the way by its own
+ * damped follow, if asked. (`fade: false`: no dip to black — for a cut hidden some other way.)
+ */
+export function jumpToProgress(p: number, lead = 0, opts: { fade?: boolean } = {}) {
   p = progress.clampToLock(p);
   progress.target = p;
   progress.snap = true;
+  progress.snapFade = opts.fade ?? true;
+  progress.snapLead = Math.max(0, Math.min(lead, p - progress.lock.min));
   const y = p * maxScroll();
   if (lenis) lenis.scrollTo(y, { immediate: true, force: true });
   else window.scrollTo({ top: y, behavior: 'auto' });

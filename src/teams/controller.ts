@@ -286,9 +286,10 @@ export function evaluateTeamsShot(dt: number, time: number, aspect: number, prev
   // mid-scroll lets the orbit's momentum settle (focus.ts has already moved the
   // scroll to where it comes to rest) instead of stopping it dead.
   if (st === 'teamsActive' || st === 'cardFocused' || st === 'domainDetail') {
-    // A jump (menu, deep link) is a cut behind a fade, not a velocity; reduced
-    // motion cuts between framed stills (progress.value holds the still).
-    const cut = reduced || fx.fade > 0.5;
+    // A jump (menu, deep link — or the loop coming round, inside the mist) is a
+    // cut, not a velocity; reduced motion cuts between framed stills
+    // (progress.value holds the still).
+    const cut = reduced || fx.fade > 0.5 || progress.cut;
     const target = carouselAt(cut ? progress.value : progress.target);
     if (cut) {
       f.c = target;

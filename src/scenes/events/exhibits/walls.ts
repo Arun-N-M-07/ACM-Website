@@ -7,7 +7,7 @@
  * prizes) comes from the event record; everything else is illustration.
  */
 import { PRODIGY_PROGRAMME } from '@/content/prodigy';
-import { fitSize, paragraph, text } from '@/systems/textures/typeset';
+import { applyType, fitSize, paragraph, text } from '@/systems/textures/typeset';
 import { BONE, clamp01, DIM, hash, openSpan, pad2, ramp, roundRect, sstep, titleBand, typed, type WallDraw } from './common';
 
 const fact = (info: { ev: { facts: { label: string; value: string }[] } }, label: string, fallback = '') => info.ev.facts.find((f) => f.label === label)?.value ?? fallback;
@@ -504,15 +504,33 @@ const patternx: WallDraw = (ctx, w, h, wall, u, _t, info) => {
     ctx.globalAlpha = 0.5;
     ctx.fillStyle = BONE;
     ctx.fillRect(x0, railY, span, s * 0.15);
+    // The words over the stages: the first set from its dot, the last to it, the rest centred. Where
+    // the open span is narrow (a tablet's, beside the dossier) they can't stand side by side: every
+    // other one goes under the rail — and, if even that is too tight, they are set smaller to fit.
+    const n = PX_STAGES.length;
+    const gap = span / (n - 1);
+    const align = (i: number) => (i === 0 ? 'left' : i === n - 1 ? 'right' : 'center');
+    applyType(ctx, { family: 'mono', size: s * 2.1, tracking: 0.2 });
+    const widths = PX_STAGES.map((st) => ctx.measureText(st.word.toUpperCase()).width);
+    const reach = (i: number, side: -1 | 1) => (align(i) === 'center' ? widths[i] / 2 : (align(i) === 'left') === (side === 1) ? widths[i] : 0);
+    /** How much the words must shrink for each to clear the next one `step` stages on (≤ 1: they fit). */
+    const fit = (step: number) => {
+      let k = Infinity;
+      for (let i = 0; i + step < n; i++) k = Math.min(k, (gap * step - s * 2.4) / (reach(i, 1) + reach(i + step, -1)));
+      return k;
+    };
+    const crowded = fit(1) < 1;
+    const size = s * 2.1 * Math.min(1, crowded ? fit(2) : 1);
     PX_STAGES.forEach((st, i) => {
-      const x = x0 + (span * i) / (PX_STAGES.length - 1);
+      const x = x0 + gap * i;
       const on = i <= stage && u > -0.05;
       ctx.globalAlpha = on ? 1 : 0.35;
-      ctx.fillStyle = on ? (i === PX_STAGES.length - 1 ? accent : BONE) : DIM;
+      ctx.fillStyle = on ? (i === n - 1 ? accent : BONE) : DIM;
       ctx.beginPath();
       ctx.arc(x, railY, s * (i === stage ? 0.8 : 0.5), 0, Math.PI * 2);
       ctx.fill();
-      text(ctx, st.word.toUpperCase(), x, railY - s * 2, { family: 'mono', size: s * 2.1, color: i === stage ? '#ffffff' : on ? BONE : DIM, tracking: 0.2, align: i === 0 ? 'left' : i === PX_STAGES.length - 1 ? 'right' : 'center' });
+      const y = crowded && i % 2 === 1 ? railY + s * 1.6 + size : railY - s * 2;
+      text(ctx, st.word.toUpperCase(), x, y, { family: 'mono', size, color: i === stage ? '#ffffff' : on ? BONE : DIM, tracking: 0.2, align: align(i) });
     });
     // The sequence, written out: the fourth term is a question until it's built.
     const solved = sstep(u, PX_U.solved - 0.03, PX_U.solved + 0.02);

@@ -18,8 +18,8 @@
 import { Vector3 } from 'three';
 import { CAMERA_STATES } from '@/config/camera';
 import { PORTAL } from '@/config/world';
-import { clamp01, easeInOutCubic, easeOutCubic, lerp, lerpAngle, lerpPose, smoothstep, type CameraPose } from '@/systems/camera/pose';
-import { C_ENTRY, C_OUTRO, C_FINAL, DWELL_SLOPE, ENTRY_Z, cardAngle, cardCenter, cardRadius, cardY, spineAxis, LAST, O, type Composition } from './layout';
+import { clamp01, easeOutCubic, lerp, lerpAngle, lerpPose, smoothstep, type CameraPose } from '@/systems/camera/pose';
+import { C_ENTRY, DWELL_SLOPE, ENTRY_Z, cardAngle, cardCenter, cardRadius, cardY, spineAxis, LAST, O, type Composition } from './layout';
 import { LETTER_DEPTH, letterLayout } from './world/letters';
 
 export interface Shot {
@@ -64,16 +64,18 @@ const _b = new Vector3();
  */
 export function orbitShot(c: number, comp: Composition, out: Shot) {
   if (c < 0) return entryShotAt(c, comp, out);
-  const intro = 0;
-  const outro = c > C_OUTRO ? easeInOutCubic(clamp01((c - C_OUTRO) / (C_FINAL - C_OUTRO))) : 0;
+  // Past the last card the camera does not move on — no pull-back, no travel: it stays on the last
+  // card, exactly as it came to rest there, while the scroll carries the world into the mist
+  // (JourneyLoop, fx.mist).
+  if (c > LAST) c = LAST;
   const onCards = c >= 0 && c <= LAST ? 1 : 0;
   // Between two cards the camera eases back a little, then in again: a breath.
   const breath = onCards * Math.sin(Math.PI * frac(c)) ** 2 * (comp.portrait ? 0.35 : 0.5);
   const phi = cardAngle(c);
   const yFocus = cardY(c, comp);
   spineAxis(yFocus, _b);
-  const dist = cardRadius(c, comp) + comp.orbitDist + breath + outro * (comp.portrait ? 15 : 12);
-  const camY = O.y + yFocus + comp.lift + intro * 0.9 + outro * (comp.portrait ? 9 : 6.5);
+  const dist = cardRadius(c, comp) + comp.orbitDist + breath;
+  const camY = O.y + yFocus + comp.lift;
   out.pos.set(O.x + _b.x + Math.sin(phi) * dist, camY, O.z + _b.z + Math.cos(phi) * dist);
   // Look through the focused card towards the spine, the gaze a little above
   // the card: the card sits low in frame (≈ 60% down, as on the reference)
@@ -81,12 +83,7 @@ export function orbitShot(c: number, comp: Composition, out: Shot) {
   const r = comp.radius * 0.7;
   const gaze = comp.portrait ? 0.12 : 0.16;
   out.target.set(O.x + _b.x + Math.sin(phi) * r, O.y + yFocus + comp.lift + gaze, O.z + _b.z + Math.cos(phi) * r);
-  if (outro > 0) {
-    // …and in the pull-back, at the middle of the whole helix.
-    _a.set(O.x, O.y + cardY(LAST, comp) * 0.5, O.z);
-    out.target.lerp(_a, outro);
-  }
-  out.fov = comp.fov + intro * 3 + outro * 8;
+  out.fov = comp.fov;
   out.roll = 0;
   return out;
 }

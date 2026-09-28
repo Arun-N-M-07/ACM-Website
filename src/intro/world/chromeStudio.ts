@@ -3,7 +3,7 @@
  * once on a canvas and prefiltered for image-based reflections — so the metal
  * reads as metal in a pre-dawn world that has almost no light of its own.
  */
-import { CanvasTexture, EquirectangularReflectionMapping, PMREMGenerator, SRGBColorSpace, type WebGLRenderer } from 'three';
+import { CanvasTexture, EquirectangularReflectionMapping, PMREMGenerator, SRGBColorSpace, type WebGLRenderer, type WebGLRenderTarget } from 'three';
 
 /**
  * A studio of light for the chrome, painted once and prefiltered for
@@ -12,7 +12,23 @@ import { CanvasTexture, EquirectangularReflectionMapping, PMREMGenerator, SRGBCo
  * horizon, grey ground. No colour in it: the red is the metal's own, on the
  * letters' extruded sides.
  */
+/**
+ * One studio per renderer, made once and kept: the stone and ACM-CEG share it,
+ * and it is never rebuilt as the opening streams out and back in (a render
+ * target made in a component's factory each time it mounts is exactly what
+ * builds up over a looping journey).
+ */
+const studios = new WeakMap<WebGLRenderer, WebGLRenderTarget>();
 export function chromeStudio(gl: WebGLRenderer) {
+  let s = studios.get(gl);
+  if (!s) {
+    s = paintStudio(gl);
+    studios.set(gl, s);
+  }
+  return s;
+}
+
+function paintStudio(gl: WebGLRenderer) {
   const c = document.createElement('canvas');
   c.width = 1024;
   c.height = 512;

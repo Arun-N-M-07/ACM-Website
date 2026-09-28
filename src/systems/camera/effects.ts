@@ -12,4 +12,10 @@ export const fx = {
   fade: 0,
   /** White camera flash 0..1 (the VDM studio). */
   flash: 0,
+  /**
+   * The opening's mist over everything 0..1 (not the interface): the world swallowed by it at the
+   * end of the journey, and the opening emerging from it again (JourneyLoop). Drawn the same over
+   * every world, so the loop has no seam.
+   */
+  mist: 0,
 };

@@ -59,9 +59,17 @@ export function CameraRig() {
     const time = clock.elapsedTime;
 
     // 1 ─ progress
+    progress.cut = false;
     if (st.reducedMotion) {
+      // (A chapter change asked for just before reduced motion came on: made now — the stills cut anyway.)
+      if (progress.pending) {
+        const run = progress.pending;
+        progress.pending = null;
+        run();
+      }
       // Cut between framed stills behind a short fade instead of flying.
       progress.snap = false;
+      progress.snapLead = 0;
       const want = nearestStop(progress.target);
       if (lastStop.current < 0) {
         lastStop.current = want;
@@ -78,10 +86,23 @@ export function CameraRig() {
       } else if (st.phase !== 'travel') fx.fade = Math.max(0, fx.fade - dt * 4);
     } else {
       lastStop.current = -1;
+      // A chapter change: the picture dims first (the camera where it is), and only at black does
+      // the journey move — then it comes up on the new place.
+      if (progress.pending) {
+        fx.fade = Math.min(1, fx.fade + dt / 0.38);
+        if (fx.fade >= 1) {
+          const run = progress.pending;
+          progress.pending = null;
+          run();
+        }
+      }
       if (progress.snap) {
         progress.snap = false;
-        progress.value = progress.target;
-        fx.fade = 1;
+        progress.cut = true;
+        progress.value = progress.target - progress.snapLead;
+        progress.snapLead = 0;
+        if (progress.snapFade) fx.fade = 1;
+        progress.snapFade = true;
       }
       const k = 1 - Math.exp(-dt * CAMERA_RESPONSE.progressDamping);
       let step = (progress.target - progress.value) * k;
@@ -93,7 +114,10 @@ export function CameraRig() {
       }
       progress.value += step;
       if (Math.abs(progress.target - progress.value) < 1e-6) progress.value = progress.target;
-      if (st.phase !== 'travel') fx.fade = Math.max(0, fx.fade - dt * 2.5);
+      if (st.phase !== 'travel' && !progress.pending) {
+        fx.fade = Math.max(0, fx.fade - dt * progress.fadeInRate);
+        if (fx.fade === 0) progress.fadeInRate = 2.5;
+      }
     }
     progress.publish(dt);
 

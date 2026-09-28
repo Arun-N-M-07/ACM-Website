@@ -4,10 +4,13 @@
  * progress `a` (0 → 1: how far the scroll is through the fragment's `arrive`
  * beats), so the arrival stops, scrubs and plays backwards with the scroll.
  *
- *   the flight   carried in on a gust from beyond the edge of the frame — the
- *                first sheet from the left, the next from the right, and so on
- *                (its `side`) — on a swooping curve: it dips, comes across a
- *                touch past its place, and back; fast, then slowing
+ *   the flight   found in the air: it is first a shape far off in the smog,
+ *                to one side of the way ahead — the first sheet to the left,
+ *                the next to the right, and so on (its `side`) — then it is
+ *                carried towards you on the air, on a swooping curve: it
+ *                dips, comes across a touch past its place, and back;
+ *                slowing as it comes (Parchment: its edge, then its fibres,
+ *                resolve out of the smog on the way — discovered, not dealt)
  *   the flutter  pitching and banking as it comes, less as it slows (each
  *                pitch is a flap of the sheet in the air — heard, too)
  *   the turn     edgewise into the air in flight; slowing, it turns to face
@@ -23,7 +26,7 @@
 import { clamp01 } from '../timeline';
 
 /** The share of the arrival spent flying in (the rest: the turn, the unfurling, the settle). */
-export const FLY = 0.6;
+export const FLY = 0.66;
 /** Pitch half-cycles in flight: one flap of the sheet each. */
 export const FLAPS = 5;
 /** How much of the sheet's width is rolled up in flight. */
@@ -48,7 +51,7 @@ const bez3 = (p0: number, p1: number, p2: number, p3: number, s: number) => {
 /** The flight's own progress (0 → 1 over the first FLY of the arrival). */
 export const flyAt = (a: number) => clamp01(a / FLY);
 /** How far along its path it is: a gust — fast, then slowing. */
-export const travelAt = (a: number) => 1 - Math.pow(1 - flyAt(a), 2.3);
+export const travelAt = (a: number) => 1 - Math.pow(1 - flyAt(a), 1.8);
 /** How hard it flutters (1 → 0 as it slows). */
 export const flutterAt = (a: number) => Math.pow(1 - flyAt(a), 1.4);
 /** How far it has turned to face you (0 edgewise → 1 square, with a small overshoot). */
@@ -73,26 +76,27 @@ export function rolledAt(a: number) {
 /** The moment it snaps flat (arrival progress). */
 export const SNAP = UNROLL[1];
 
+/** How far off it is first seen (m, beyond its resting place): deep in the air ahead. */
+export const START_AHEAD = 8.5;
+
 /**
- * Where it is at arrival progress a, as an offset from its resting place: out
- * from `edge` metres to the `side` (far enough to be beyond the frame), a
- * little above and further off; in on a swooping curve.
+ * Where it is at arrival progress a, as an offset from its resting place:
+ * `edge` metres out to the `side`, a little above, START_AHEAD further off; in
+ * on a swooping curve.
  */
 export function flightAt(a: number, side: number, edge: number, seed: number, out: { x: number; y: number; z: number }) {
   const x = flyAt(a);
   const s = travelAt(a);
-  out.x = side * bez3(edge, edge * 0.48, -0.4, 0, s);
-  out.y = bez3(0.75, -0.5, 0.2, 0, s) + 0.07 * Math.sin(x * Math.PI * 4 + seed) * (1 - s);
-  out.z = bez3(2.9, 1.5, 0.3, 0, s);
+  out.x = side * bez3(edge, edge * 0.75, -0.28, 0, s);
+  out.y = bez3(0.55, 0.9, -0.22, 0, s) + 0.07 * Math.sin(x * Math.PI * 4 + seed) * (1 - s);
+  out.z = bez3(START_AHEAD, START_AHEAD * 0.42, 0.32, 0, s);
   return out;
 }
-/** How far off it starts (m, ahead of its resting place). */
-export const START_AHEAD = 2.9;
 
 /**
- * How far out to the side it must start (m, from its resting place) to be
- * beyond the edge of the frame: `restX` its resting x, `ahead` how far in
- * front of the camera it starts, `tanHalf` the tangent of half the frame's
- * horizontal field of view.
+ * How far out to its side it starts (m, from its resting place), so that it
+ * is first seen inside the frame, part-way out towards the edge: `restX` its
+ * resting x, `ahead` how far in front of the camera it starts, `tanHalf` the
+ * tangent of half the frame's horizontal field of view.
  */
-export const edgeFor = (side: number, restX: number, ahead: number, tanHalf: number) => ahead * tanHalf + 0.6 - side * restX;
+export const startFor = (side: number, restX: number, ahead: number, tanHalf: number) => Math.max(0.3, 0.55 * ahead * tanHalf - side * restX);

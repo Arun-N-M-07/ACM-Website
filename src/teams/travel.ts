@@ -26,6 +26,7 @@ import { fx } from '@/systems/camera/effects';
 import { smoothstep } from '@/systems/camera/pose';
 import { progress } from '@/systems/scroll/progress';
 import { placeScroll } from '@/systems/scroll/ScrollTimeline';
+import { cue, portalTravel } from '@/systems/audio/sfx';
 import { ENTER_CROSS, EXIT_CROSS } from './camera';
 import { TEAMS_FLOOR, carouselAt } from './layout';
 import { teams, teamsFrame } from './state';
@@ -33,10 +34,14 @@ import { teams, teamsFrame } from './state';
 const DUR = { enter: 2.3, arrival: 1.6, exit: 2.1 };
 
 let tl: gsap.core.Timeline | null = null;
+/** The travel's sound (the build to the crossing): stopped with the travel if it is abandoned. */
+let travelSound: { stop: () => void } | null = null;
 
 function kill() {
   tl?.kill();
   tl = null;
+  travelSound?.stop();
+  travelSound = null;
 }
 
 /** Scroll walls: outside, the portal gate is a ceiling; inside, it's a floor. */
@@ -118,7 +123,9 @@ export function travelChannels() {
     tr.dark = 1 - smoothstep(0, 0.12, teamsFrame.arrival);
   } else {
     tr.inTunnel = false;
-    tr.speed = tr.warp = tr.aberration = tr.flash = tr.dark = 0;
+    tr.speed = tr.warp = tr.aberration = tr.flash = 0;
+    // (The return is lost in the mist, not the dark: JourneyLoop, fx.mist.)
+    tr.dark = 0;
   }
 }
 
@@ -169,6 +176,7 @@ export function enterTeams(opts: { reduced: boolean }) {
       .call(() => {
         teamsFrame.hold = 0;
         setInside(true);
+        cue('portalCross', { level: 0.6 });
         teamsFrame.travel.t = 1;
         arrive(true);
       })
@@ -177,6 +185,7 @@ export function enterTeams(opts: { reduced: boolean }) {
   }
   const tr = teamsFrame.travel;
   tl = gsap.timeline();
+  travelSound = portalTravel(1, DUR.enter * ENTER_CROSS, DUR.enter);
   tl.to(tr, {
     t: 1,
     duration: DUR.enter,
@@ -185,10 +194,12 @@ export function enterTeams(opts: { reduced: boolean }) {
       if (!teamsFrame.inside && tr.t >= ENTER_CROSS) {
         teamsFrame.hold = 0;
         setInside(true);
+        cue('portalCross');
       }
     },
     onComplete: () => {
       tl = null;
+      travelSound = null;
       arrive(false);
     },
   });
@@ -220,20 +231,28 @@ export function exitTeams(opts: { reduced: boolean }) {
       .call(() => {
         teamsFrame.travel.t = 1;
         setInside(false);
+        cue('portalExitCross', { level: 0.6 });
       })
       .to(fx, { fade: 0, duration: 0.6, ease: 'power1.out' });
     return;
   }
   const tr = teamsFrame.travel;
   tl = gsap.timeline();
+  travelSound = portalTravel(-1, DUR.exit * EXIT_CROSS, DUR.exit);
   tl.to(tr, {
     t: 1,
     duration: DUR.exit,
     ease: 'none',
     onUpdate: () => {
-      if (teamsFrame.inside && tr.t >= EXIT_CROSS) setInside(false);
+      if (teamsFrame.inside && tr.t >= EXIT_CROSS) {
+        setInside(false);
+        cue('portalExitCross');
+      }
     },
-    onComplete: done,
+    onComplete: () => {
+      travelSound = null;
+      done();
+    },
   });
 }
 

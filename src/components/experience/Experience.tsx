@@ -5,6 +5,7 @@
  * loads the 3D canvas; and layers the HTML interface over it. If WebGL is
  * missing or the context dies, the printed edition takes over.
  */
+import { fx } from '@/systems/camera/effects';
 import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
 import { SEGMENTS } from '@/config/timeline';
@@ -18,6 +19,7 @@ import { jumpToProgress, ScrollTimeline, scrollToProgress } from '@/systems/scro
 import { fontsReady } from '@/systems/textures/typeset';
 import { MusicDirector } from './MusicDirector';
 import { SoundDirector } from './SoundDirector';
+import { JourneyLoop } from './JourneyLoop';
 import { ChapterRail } from './ChapterRail';
 import { Dossier } from './Dossier';
 import { IndexMenu } from './IndexMenu';
@@ -72,7 +74,7 @@ export function Experience() {
     // Test hook (dev builds, or ?debug in production): lets the visual test
     // harness jump through the journey deterministically.
     if (process.env.NODE_ENV !== 'production' || new URLSearchParams(window.location.search).has('debug')) {
-      (window as unknown as { __acm: unknown }).__acm = { jump: jumpToProgress, scroll: scrollToProgress, store: useExperience, progress, segments: SEGMENTS, music, roomProgress: (i: number, d: number) => { const [a, b] = roomDwellRange(i); return a + (b - a) * d; }, teams: teamsDebug, intro: introDebug };
+      (window as unknown as { __acm: unknown }).__acm = { jump: jumpToProgress, scroll: scrollToProgress, store: useExperience, progress, segments: SEGMENTS, music, roomProgress: (i: number, d: number) => { const [a, b] = roomDwellRange(i); return a + (b - a) * d; }, teams: teamsDebug, intro: introDebug, fx };
     }
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
     const onChange = () => useExperience.getState().set({ reducedMotion: mq.matches });
@@ -141,6 +143,7 @@ export function Experience() {
       <KeyboardNav />
       <MusicDirector />
       <SoundDirector />
+      <JourneyLoop />
     </>
   );
 }

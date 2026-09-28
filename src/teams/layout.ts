@@ -119,8 +119,18 @@ const shape = (r: number) => r - (SHAPE * Math.sin(2 * Math.PI * r)) / (2 * Math
 /** d(orbit coordinate)/d(scroll coordinate) as a card settles — the entrance path lands with this speed. */
 export const DWELL_SLOPE = 1 - SHAPE;
 
+/**
+ * Past the last card the orbit coordinate runs on through the (short) return
+ * segment — linearly, with exactly the speed it had at the end of the Teams
+ * segment (no seam). It only measures how far the mist has come: the camera
+ * stays on the last card (camera.ts).
+ */
+const END_SLOPE = (1 - SHAPE * Math.cos(2 * Math.PI * C_END)) * (C_END - C_START);
+const RETURN_SPAN = (SEGMENTS.return.end - SEGMENTS.return.start) / (SEGMENTS.teams.end - SEGMENTS.teams.start);
+
 /** Orbit coordinate for scroll progress p. */
 export function carouselAt(p: number) {
+  if (p > SEGMENTS.teams.end) return shape(C_END) + END_SLOPE * RETURN_SPAN * segmentProgress(p, 'return');
   const u = segmentProgress(p, 'teams');
   const c = C_START + (C_END - C_START) * u;
   return c < 0 ? c : shape(c);
@@ -129,6 +139,10 @@ export function carouselAt(p: number) {
 /** Scroll progress at which orbit coordinate `c` is reached (exact at whole cards). */
 export function progressForCarousel(c: number) {
   const s = SEGMENTS.teams;
+  if (c > shape(C_END)) {
+    const r = SEGMENTS.return;
+    return r.start + (r.end - r.start) * Math.min(1, (c - shape(C_END)) / (END_SLOPE * RETURN_SPAN));
+  }
   // Invert the monotonic dwell curve, including fractional debug/navigation stops.
   let lo = 0, hi = C_END;
   if (c >= 0) {
@@ -156,9 +170,17 @@ export const teamsStops = () => [TEAMS_FLOOR, ...Array.from({ length: DOMAIN_COU
 
 /** The establishing coordinate the world opens on. */
 export const C_ENTRY = C_START;
-/** Where the outro begins and ends. */
-export const C_OUTRO = LAST;
+/** The end of the Teams segment's orbit (past the last card's dwell), and of the return's. */
 export const C_FINAL = shape(C_END);
+export const C_RETURN = C_FINAL + END_SLOPE * RETURN_SPAN;
+/**
+ * The end of the journey, on the orbit coordinate: the camera rests on the last card; a little
+ * further (past its dwell) the mist begins to take the world, and by 40% of the way through the
+ * return it has taken all of it. The rest of the return is wholly mist: the journey comes round
+ * inside it (JourneyLoop's seam), well short of the track's end.
+ */
+export const C_MIST = LAST + 0.3;
+export const C_MIST_FULL = C_FINAL + 0.4 * (C_RETURN - C_FINAL);
 
 /** Nearest card to the centre for an orbit coordinate. */
 export const nearestCard = (c: number) => Math.max(0, Math.min(LAST, Math.round(c)));

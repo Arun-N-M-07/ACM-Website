@@ -14,7 +14,7 @@
 import { INTRO_CHAPTERS, INTRO_VH_PER_BEAT, type IntroChapterId } from '@/intro/timeline';
 import { CORRIDOR } from './world';
 
-export type SegmentId = IntroChapterId | 'events' | 'portal' | 'teams';
+export type SegmentId = IntroChapterId | 'events' | 'portal' | 'teams' | 'return';
 
 const EVENT_VH = { regular: 85, flagship: 125 };
 const eventsVh = CORRIDOR.rooms.reduce((sum, r) => sum + (r.event.flagship ? EVENT_VH.flagship : EVENT_VH.regular), 0);
@@ -29,6 +29,13 @@ const PORTAL_VH = 150;
  * the six domain cards, and the pull-back that closes the journey.
  */
 const TEAMS_VH = 720;
+/**
+ * The return: a short continuation past the last domain, in which the world is swallowed by the
+ * mist the opening begins in — and, inside it, the journey begins again
+ * (components/experience/JourneyLoop). One finite track, read cyclically: nothing is appended,
+ * nothing grows.
+ */
+const RETURN_VH = 180;
 
 const SEGMENT_WEIGHTS: { id: SegmentId; vh: number }[] = [
   // The opening: each chapter's beats, at a fixed scroll length per beat.
@@ -36,6 +43,7 @@ const SEGMENT_WEIGHTS: { id: SegmentId; vh: number }[] = [
   { id: 'events', vh: eventsVh + 40 },
   { id: 'portal', vh: PORTAL_VH },
   { id: 'teams', vh: TEAMS_VH },
+  { id: 'return', vh: RETURN_VH },
 ];
 
 export const SCROLL_LENGTH_VH = SEGMENT_WEIGHTS.reduce((s, x) => s + x.vh, 0);
@@ -110,8 +118,9 @@ export const CHAPTERS: ChapterDef[] = [
   ...INTRO_CHAPTERS.map((c) => ({ id: c.id, number: c.number, label: c.label, jumpTo: introAt(c.enterAt), segments: [c.id] as SegmentId[], intro: true })),
   { id: 'events', number: '06', label: 'Events', jumpTo: SEGMENTS.events.start + 0.002, segments: ['events'] },
   { id: 'portal', number: '07', label: 'The Portal', jumpTo: SEGMENTS.portal.start + (SEGMENTS.portal.end - SEGMENTS.portal.start) * (PORTAL_DWELL + 0.08), segments: ['portal'] },
-  // Entered through the portal (navigation plays the travel), never jumped into.
-  { id: 'teams', number: '08', label: 'The Teams', jumpTo: null, segments: ['teams'] },
+  // Entered through the portal (navigation plays the travel), never jumped into. (Its return — into
+  // the mist, and round to the beginning — belongs to it.)
+  { id: 'teams', number: '08', label: 'The Teams', jumpTo: null, segments: ['teams', 'return'] },
 ];
 
 export function chapterForSegment(seg: SegmentId): ChapterId {

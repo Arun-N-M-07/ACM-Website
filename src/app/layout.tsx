@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Bodoni_Moda } from 'next/font/google';
+import { Montserrat } from 'next/font/google';
 import type { ReactNode } from 'react';
 import { KEYWORDS, SITE_DESCRIPTION, SITE_TITLE, SITE_URL, organizationJsonLd } from '@/lib/seo';
 import './globals.css';
@@ -7,13 +7,14 @@ import '@/teams/ui/teams.css';
 import '@/intro/ui/intro.css';
 
 /**
- * The site's one typeface: Bodoni Moda, a variable font (weight 400–900 and
- * optical size 6–96, so small labels get sturdier hairlines and large titles
- * finer ones, automatically), in roman and italic. Every role — titles, body,
- * labels, numbers — is Bodoni Moda at its own weight, size and tracking
- * (globals.css: --serif / --sans / --mono are those roles, not other families).
+ * The site's one typeface: Montserrat, a variable font (weight 100–900), in
+ * roman and italic. Every role — display, titles, body, navigation, labels,
+ * numerals — is Montserrat at its own weight and tracking: the hierarchy is
+ * defined once, as tokens, in globals.css (--w-* and --t-*). The in-world
+ * canvases read the same family (systems/textures/typeset). The one other
+ * letterform in the site is ACM-CEG's (intro/world/AcmCeg), a 3D identity.
  */
-const bodoni = Bodoni_Moda({ subsets: ['latin'], style: ['normal', 'italic'], axes: ['opsz'], variable: '--font-bodoni', display: 'swap' });
+const montserrat = Montserrat({ subsets: ['latin'], style: ['normal', 'italic'], variable: '--font-montserrat', display: 'swap' });
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -43,7 +44,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={bodoni.variable}>
+    <html lang="en" className={montserrat.variable}>
       <head>
         {/* The journey owns its scroll position: the browser must never restore a previous one. */}
         <script dangerouslySetInnerHTML={{ __html: "if('scrollRestoration' in history)history.scrollRestoration='manual';" }} />

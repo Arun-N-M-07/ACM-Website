@@ -25,7 +25,8 @@ import { TEAM_DOMAINS } from '@/content/teams';
 import { goToChapter, goToDomain, goToRoom } from './navigation';
 import { jumpToProgress } from '@/systems/scroll/ScrollTimeline';
 import { CHAPTER } from '@/content/chapter';
-import { SCORE_IN } from '@/intro/timeline';
+import { SCORE_IN, T } from '@/intro/timeline';
+import { progressAtIntroTime } from '@/intro/controller';
 
 /** Where a deep link points, as an action — or null (no link: the film plays). */
 function deepLink(): (() => void) | null {
@@ -97,7 +98,8 @@ export function LoadingScreen() {
     // A normal entry starts the journey at its beginning, deterministically: the scroll, the
     // camera's progress, and anything left open, whatever the browser restored.
     set({ phase: 'cinematic', dossier: null, menuOpen: false, activeRoom: -1 });
-    if (!link) jumpToProgress(0);
+    // (The film's first frame — the track begins a little before it, in the mist the loop comes round through.)
+    if (!link) jumpToProgress(progressAtIntroTime(T.prologue));
     // Keyboard focus must not be left on a button, or Space would press it
     // instead of scrolling the journey.
     requestAnimationFrame(() => {

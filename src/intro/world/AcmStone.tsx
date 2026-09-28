@@ -56,12 +56,16 @@ const LETTER_COLOR = /* glsl */ `
 float acmSide = 1.0 - smoothstep(0.55, 0.9, abs(vAcmN.z));
 diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.34, 0.07, 0.08), acmSide);
 `;
-/** Faces tipped a little up at the top of the name, down at its foot: a brushed, restrained chrome read. */
+/**
+ * Faces tipped a little up — a touch more at the top of the name than at its
+ * foot, for a brushed, restrained chrome read. (Never down: polished steel
+ * tipped down mirrors the dark ground, and the name's last line went grey.)
+ */
 const LETTER_NORMAL = /* glsl */ `
 #include <normal_fragment_maps>
 {
   float hy = clamp((vAcmO.y - ${(STONE.plinth + MID).toFixed(2)}) / 1.7, -0.5, 0.5);
-  normal = normalize(normal + vAcmUp * hy * 0.4 * (1.0 - acmSide));
+  normal = normalize(normal + vAcmUp * (0.14 + hy * 0.2) * (1.0 - acmSide));
 }
 `;
 const LETTER_EMISSIVE = /* glsl */ `
@@ -88,7 +92,8 @@ const STONE_FRAG = /* glsl */ `
 export function AcmStone() {
   const gl = useThree((s) => s.gl);
   const group = useRef<Group>(null);
-  const studio = useDisposable(() => chromeStudio(gl), [gl]);
+  // (Shared, and kept for the renderer's life: chromeStudio.ts.)
+  const studio = useMemo(() => chromeStudio(gl), [gl]);
 
   const res = useDisposable(() => {
     const W = STONE.width;
@@ -171,14 +176,19 @@ export function AcmStone() {
   const anchorList = useMemo(() => {
     const c = Math.cos(STONE_YAW);
     const s = Math.sin(STONE_YAW);
-    const local = new Vector3(0, STONE.plinth + 0.5, STONE.depth / 2 + 1.1);
-    // A key from above and in front of the face (a lamp on the path), raking down the letters: their
-    // top edges and faces catch it, the stone between them doesn't.
-    const key = new Vector3(0.6, STONE.plinth + STONE.height + 1.6, STONE.depth / 2 + 2.6);
+    // The uplight is the slot in the plinth, just before the face: it grazes up the stone, so the
+    // letters' lower edges and the face nearest the foot catch it — and, so low and so close, it
+    // never shows as a hot point in the polished steel from where the name is read.
+    const local = new Vector3(0, STONE.plinth + 0.03, STONE.depth / 2 + 0.6);
+    // The key: steep, from above and just in front (a lamp over the path). It rakes down the face,
+    // so the steel — the letters' top edges and bevels, their faces tipped up — takes it and the
+    // flat dark stone between them takes little: the name stands clear of the stone by light,
+    // not by paint.
+    const key = new Vector3(0.5, STONE.plinth + STONE.height + 2.4, STONE.depth / 2 + 1.3);
     const world = (v: Vector3) => new Vector3(STONE.x + v.x * c + v.z * s, v.y, STONE.z - v.x * s + v.z * c);
     return [
-      { position: world(local), color: new Color('#ffcf9e'), intensity: 16, distance: 8 },
-      { position: world(key), color: new Color('#f1eee8'), intensity: 70, distance: 12 },
+      { position: world(local), color: new Color('#ffcf9e'), intensity: 5, distance: 4 },
+      { position: world(key), color: new Color('#f1eee8'), intensity: 95, distance: 12 },
     ];
   }, []);
   const anchors = useGainedLightAnchors(anchorList);

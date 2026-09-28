@@ -11,23 +11,23 @@
  *   cursor    over a card, the ordinary hand (the card's own glint does the rest)
  *   pull      scrolling back at the start of the world: how far until the
  *             portal takes you back
- *   outro     past the sixth card, as the camera pulls back over the whole
- *             ring: the chapter's closing plate
  *
- * Per-frame values (hover cursor, pull, outro fade) are written straight to
+ * Past the last card there is no closing plate: the camera pulls back over
+ * the whole ring and runs on down the spine into the dark, and the journey
+ * begins again (components/experience/JourneyLoop) — the loop is the ending.
+ *
+ * Per-frame values (hover cursor, pull) are written straight to
  * the DOM from the progress channel; React renders only when the state or the
  * card in view changes.
  */
 import { useEffect, useRef, useState } from 'react';
-import { CHAPTER } from '@/content/chapter';
 import { DOMAIN_COUNT, TEAM_DOMAINS } from '@/content/teams';
 import { useExperience } from '@/store/experience';
 import { scrollToProgress } from '@/systems/scroll/ScrollTimeline';
 import { smooth, useProgressFrame } from '@/components/experience/useProgressFrame';
-import { backToJourney } from '@/components/experience/navigation';
 import { PULL_EXIT } from '../controller';
 import { hopTo, selectDomain } from '../focus';
-import { C_FINAL, C_OUTRO, progressForDomain } from '../layout';
+import { C_MIST, progressForDomain } from '../layout';
 import { teams, teamsFrame, useTeams } from '../state';
 import { TypeIn } from './TypeIn';
 
@@ -46,7 +46,6 @@ export function TeamsHud() {
   const current = useTeams((s) => s.current);
   const pull = useRef<HTMLDivElement>(null);
   const pullBar = useRef<HTMLSpanElement>(null);
-  const outro = useRef<HTMLDivElement>(null);
   const nav = useRef<HTMLElement>(null);
   const items = useRef<(HTMLButtonElement | null)[]>([]);
 
@@ -89,16 +88,9 @@ export function TeamsHud() {
       pl.style.opacity = String(orbiting ? smooth(0.04, 0.16, k) : 0);
       if (pullBar.current) pullBar.current.style.transform = `scaleX(${k.toFixed(3)})`;
     }
-    const o = outro.current;
-    const outroK = orbiting ? smooth(C_OUTRO + 0.3, C_FINAL - 0.12, f.c) : 0;
-    if (o) {
-      o.style.opacity = String(outroK);
-      o.style.visibility = outroK < 0.01 ? 'hidden' : 'visible';
-      o.style.transform = `translate3d(0, ${((1 - outroK) * 18).toFixed(1)}px, 0)`;
-    }
-    // The closing plate takes the corner the nav lives in.
+    // The nav steps away as the camera pulls back past the last card.
     if (nav.current) {
-      const visible = orbiting ? smooth(0.75, 1, f.reveal) * (1 - smooth(C_OUTRO + 0.1, C_OUTRO + 0.35, f.c)) : 0;
+      const visible = orbiting ? smooth(0.75, 1, f.reveal) * (1 - smooth(C_MIST, C_MIST + 0.3, f.c)) : 0;
       nav.current.style.opacity = String(visible);
       nav.current.style.visibility = visible < 0.01 ? 'hidden' : 'visible';
     }
@@ -152,36 +144,6 @@ export function TeamsHud() {
         </span>
       </div>
 
-      <div ref={outro} className="teams-outro" style={{ opacity: 0, visibility: 'hidden' }}>
-        <p className="kicker">08 / The Teams · Since {CHAPTER.established}</p>
-        <h2 className="finale-heading">
-          Made of
-          <br />
-          <em>many minds.</em>
-        </h2>
-        <p className="plate-body">Core. Six domains. A campus. A community. A place for your curiosity.</p>
-        <p className="finale-membership">
-          {CHAPTER.membership.openTo} {CHAPTER.membership.fee}
-        </p>
-        <div className="plate-actions">
-          <a className="plate-btn" href={`mailto:${CHAPTER.contact.email}`}>
-            Find your place ↗
-          </a>
-          <button className="plate-btn ghost" onClick={() => useExperience.getState().set({ textVersionOpen: true })}>
-            Read the chapter
-          </button>
-        </div>
-        <div className="finale-socials">
-          {CHAPTER.socials.map((s) => (
-            <a key={s.href} href={s.href} target="_blank" rel="noopener noreferrer">
-              {s.label} ↗
-            </a>
-          ))}
-        </div>
-        <button className="finale-replay" onClick={() => backToJourney(0)}>
-          <span aria-hidden="true">↶</span> Back to the red building
-        </button>
-      </div>
     </div>
   );
 }

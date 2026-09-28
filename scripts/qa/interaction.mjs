@@ -69,7 +69,8 @@ try {
     const reversed = await signal(0, .6);
     assert.deepEqual(reversed, first, 'Light route rewinds exactly');
 
-    // The portal: walled until held; the Teams world's closing plate appears past the sixth card.
+    // The portal: walled until held. The Teams world has no closing plate or footer: past the sixth
+    // card the return runs on down the spine, and at its end the journey begins again (the loop).
     await page.evaluate(() => { const g = window.__acm.segments.portal; window.__acm.jump(g.start + (g.end - g.start) * .9); });
     await settle(3000);
     assert.equal(await page.evaluate(() => window.__acm.teams.snapshot().state), 'portalIdle');
@@ -78,11 +79,13 @@ try {
     assert.equal(await page.evaluate(() => window.__acm.teams.snapshot().inside), false, 'The gate holds without the portal');
     await page.evaluate(() => window.__acm.teams.at(5.9));
     await settle(3000);
-    assert.ok(await page.$eval('.teams-outro', (el) => Number(getComputedStyle(el).opacity) > 0.8), 'Closing plate shows at the end of the ring');
+    assert.equal(await page.$('.teams-outro'), null, 'No closing plate or footer at the end of the ring');
     await page.screenshot({ path: `${out}/${name}-finale.png` });
-    await page.evaluate(() => window.__acm.teams.at(3));
-    await settle();
-    assert.ok(await page.$eval('.teams-outro', (el) => Number(getComputedStyle(el).opacity) < 0.05), 'Closing plate rewinds');
+    await page.evaluate(() => window.__acm.jump(1));
+    await settle(3500);
+    // (Past the end's seam the scroll carries on past the start's by as much: back in the opening, at its first beats.)
+    const wrapped = await page.evaluate(() => ({ p: window.__acm.progress.value, beat: window.__acm.intro.snapshot().t, chapter: window.__acm.store.getState().chapter, inside: window.__acm.teams.snapshot().inside, room: window.__acm.store.getState().activeRoom, dossier: window.__acm.store.getState().dossier }));
+    assert.ok(wrapped.p < 0.05 && wrapped.beat < -40 && wrapped.chapter === 'arrival' && !wrapped.inside && wrapped.room === -1 && wrapped.dossier === null, `The journey loops back to its beginning (${JSON.stringify(wrapped)})`);
     await page.evaluate(() => { window.__acm.store.getState().set({ reducedMotion: true }); });
     await settle(2500);
     assert.equal(await page.evaluate(() => window.__acm.store.getState().reducedMotion), true);
@@ -92,7 +95,7 @@ try {
     assert.equal(await page.evaluate(() => document.documentElement.dataset.archive), 'open');
     assert.ok(await page.$eval('#archive', (el) => el.textContent.includes('Head Start')));
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
-    results.push(`${name}: entrance, navigation, focus, dossier, exact signal rewind, portal gate, Teams outro, reduced motion and archive passed`);
+    results.push(`${name}: entrance, navigation, focus, dossier, exact signal rewind, portal gate, the loop at the end, reduced motion and archive passed`);
     await page.close();
   }
   const fallback = await browser.newPage();

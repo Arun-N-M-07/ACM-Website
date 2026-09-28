@@ -1,22 +1,26 @@
 'use client';
 /**
- * Chapter streaming. The world is too big to hold at once, so each chapter
- * mounts shortly before the camera can see it and unmounts (disposing its
- * geometry, materials and canvas textures) once it's behind the camera.
- * Mount/unmount decisions are debounced so scrubbing at a boundary doesn't
- * thrash the GPU.
+ * Chapter residency. The chunks of the world — the campus, the opening, the
+ * underground (the shaft, the lobby, the Events corridor) and the Teams
+ * world — are built and compiled once, behind the loader and the threshold,
+ * and then stay: nothing is built, drawn to a canvas or compiled while the
+ * visitor scrolls.
  *
- * The opening (src/intro) and the Events corridor are both mounted while the
- * world loads, so everything the opening will show — the campus, the story's
- * artefacts, the name, the cloud, the shaft, the lobby and the corridor its
- * door opens into — is built and compiled behind the loader: nothing appears
- * or compiles after Enter. Within the opening, chunks the camera can't see
- * are hidden (not unmounted), so scrolling back never has to rebuild them.
+ * (The journey is a loop — past its last card it comes round, through the
+ * mist, to the opening's first frame, and back again the other way — so there
+ * is no "behind the camera" to unmount: from any point, either end of the
+ * world is one short scroll away, and rebuilding either there — the opening's
+ * papers alone are seconds of canvas work — stalled the journey at the very
+ * moment it should be seamless.)
+ *
+ * What the camera can't see is hidden, not unmounted: the campus once the
+ * opening is down in the lobby; the facility while the camera is in the
+ * Teams world; the Teams world while it is outside it (TeamsWorld). Mount
+ * decisions are still debounced, and a jump mounts straight away.
  */
 import { useFrame } from '@react-three/fiber';
 import { useRef, useState } from 'react';
 import type { Group } from 'three';
-import { SEGMENTS, type SegmentId } from '@/config/timeline';
 import { introFrame } from '@/intro/state';
 import { T } from '@/intro/timeline';
 import { IntroWorld } from '@/intro/world/IntroWorld';
@@ -28,59 +32,41 @@ import { UndergroundKit } from '@/scenes/underground/kit';
 import { experience } from '@/store/experience';
 import { fx } from '@/systems/camera/effects';
 import { progress } from '@/systems/scroll/progress';
-import { teams, teamsFrame } from '@/teams/state';
+import { teamsFrame } from '@/teams/state';
 import { TeamsWorld } from '@/teams/world/TeamsWorld';
 
 type ChunkId = 'intro' | 'campus' | 'corridor' | 'teams' | 'underground';
 
-const at = (seg: SegmentId, t: number) => SEGMENTS[seg].start + (SEGMENTS[seg].end - SEGMENTS[seg].start) * t;
-
-/** The Teams world mounts (and compiles) while you walk down the vestibule. */
-const TEAMS_FROM = at('portal', 0.25);
-/** Past the opening, its world stays a while (in case the visitor scrolls straight back). */
-const INTRO_UNTIL = at('events', 0.1);
-
-/** Before the visitor has entered (everything compiles behind the loader), or within reach of the opening. */
-const inOpening = (p: number) => {
-  const ph = experience().phase;
-  return ph === 'loading' || ph === 'ready' || p <= INTRO_UNTIL;
-};
-
-function wanted(p: number): Record<ChunkId, boolean> {
-  // Through the portal, the facility is somewhere else entirely. Leaving,
-  // the corridor comes back before the crossing so it's there when you are.
-  const s = teams().state;
-  const inTeams = teamsFrame.inside;
-  const exiting = s === 'portalExiting';
-  const travelling = s === 'portalEntering' || exiting;
-  const out = !inTeams;
-  const opening = out && inOpening(p);
-  return {
-    intro: opening,
-    campus: opening,
-    corridor: (out && p <= SEGMENTS.portal.end) || exiting,
-    teams: inTeams || travelling || (experience().phase !== 'loading' && p >= TEAMS_FROM),
-    underground: out || exiting,
-  };
+/**
+ * Everything is resident once built: the facility from the loader on, the Teams world from the
+ * threshold on (compiled while the visitor is at "Enter", so the loader isn't longer for it).
+ */
+function wanted(): Record<ChunkId, boolean> {
+  const building = experience().phase === 'loading';
+  return { intro: true, campus: true, corridor: true, underground: true, teams: !building };
 }
 
 const DEBOUNCE = 0.25;
 
 export function SceneDirector() {
-  const [mounted, setMounted] = useState<Record<ChunkId, boolean>>(() => wanted(progress.value));
+  const [mounted, setMounted] = useState<Record<ChunkId, boolean>>(() => wanted());
   const pending = useRef<Partial<Record<ChunkId, number>>>({});
   const campus = useRef<Group>(null);
   const corridor = useRef<Group>(null);
+  const facility = useRef<Group>(null);
 
   useFrame((_, dt) => {
     // What the opening's camera can see: the campus until it is down in the
     // lobby, the corridor once the door begins to open onto it.
     const film = introFrame.active;
     const t = introFrame.t;
+    const inside = teamsFrame.inside;
     if (campus.current) campus.current.visible = film && t < T.lobby;
     if (corridor.current) corridor.current.visible = !film || t > T.door - 0.5;
+    // The facility is somewhere else entirely while the camera is in the Teams world.
+    if (facility.current) facility.current.visible = !inside;
 
-    const want = wanted(progress.value);
+    const want = wanted();
     let changed = false;
     const next = { ...mounted };
     for (const k of Object.keys(want) as ChunkId[]) {
@@ -111,21 +97,23 @@ export function SceneDirector() {
         </SafeBoundary>
       )}
       {mounted.underground && (
-        <UndergroundKit>
-          {mounted.intro && (
-            <SafeBoundary name="intro" fallback={null}>
-              <IntroWorld />
-            </SafeBoundary>
-          )}
-          <SignalThread />
-          {mounted.corridor && (
-            <SafeBoundary name="corridor" fallback={null}>
-              <group ref={corridor}>
-                <EventCorridor />
-              </group>
-            </SafeBoundary>
-          )}
-        </UndergroundKit>
+        <group ref={facility}>
+          <UndergroundKit>
+            {mounted.intro && (
+              <SafeBoundary name="intro" fallback={null}>
+                <IntroWorld />
+              </SafeBoundary>
+            )}
+            <SignalThread />
+            {mounted.corridor && (
+              <SafeBoundary name="corridor" fallback={null}>
+                <group ref={corridor}>
+                  <EventCorridor />
+                </group>
+              </SafeBoundary>
+            )}
+          </UndergroundKit>
+        </group>
       )}
       {mounted.teams && (
         <SafeBoundary name="teams" fallback={null}>

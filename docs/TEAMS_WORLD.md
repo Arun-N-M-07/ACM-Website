@@ -28,8 +28,10 @@ post-processing library.
 - **One scroll track.** `systems/scroll/ScrollTimeline.tsx` drives Lenis and a
   single ScrollTrigger, which feeds `progress.setTarget(0..1)`. Everything else
   derives from `config/timeline.ts` (segment vh weights).
-- **Streaming.** `experience/SceneDirector.tsx` mounts and unmounts world
-  chunks by progress window. `useDisposable` frees GPU memory on unmount.
+- **Residency.** `experience/SceneDirector.tsx` builds every world chunk once
+  (the Teams world at the threshold) and keeps it resident, hiding what the
+  camera can't see — the journey loops, so either end is always one short
+  scroll away. `useDisposable` frees GPU memory on unmount (leaving the page).
 - **Global look.** `Atmosphere` (fog, background, environment) and
   `WorldLights` (a constant light set plus `LightPool` point lights) blend by
   `world.underground`.
@@ -706,7 +708,7 @@ This supersedes the room design in §9. The rooms were visually overbuilt for wh
   - a thin edge, brightest along the top;
   - a shadow it throws on the cards beneath;
   - light that slides across the coat from the pointer.
-- **Typography:** the CORE language: a short rule, ROLE in mono, NAME in Instrument Serif. Members have no role in the data, so they read MEMBER. Each name is measured in the loaded serif and set as large as its card allows, with no lone initial on a line. The foot carries "0N / 0N"; a drawn card also shows the domain's name. No roll numbers, nothing invented.
+- **Typography:** the CORE language: a short rule, ROLE as a label, NAME as a display line (the site's Montserrat; see ARCHITECTURE.md → Typography). Members have no role in the data, so they read MEMBER. Each name is measured in the loaded serif and set as large as its card allows, with no lone initial on a line. The foot carries "0N / 0N"; a drawn card also shows the domain's name. No roll numbers, nothing invented.
 - **Composition by count:**
   - **one card** (Marketing): the hero, slightly off-axis;
   - **two**: an overlapping pair;

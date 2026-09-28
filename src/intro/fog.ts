@@ -26,6 +26,9 @@ export const mistUniforms = {
   uMistSun: { value: new Vector3(0.8, 0.1, 0.5) },
   /** Colour of the mist lit from behind by the sun. */
   uMistGlow: { value: new Color('#ffd2a8') },
+  /** Lightning: where in the sky it is (xyz, unit) and how much of it the air holds (w). */
+  uMistFlash: { value: new Vector4(0, 1, 0, 0) },
+  uMistFlashColor: { value: new Color('#c9d4ec') },
 };
 
 const PARS_VERTEX = /* glsl */ `
@@ -55,6 +58,8 @@ varying vec3 vMistWorld;
 uniform vec4 uMist;
 uniform vec3 uMistSun;
 uniform vec3 uMistGlow;
+uniform vec4 uMistFlash;
+uniform vec3 uMistFlashColor;
 #endif
 `;
 
@@ -82,6 +87,12 @@ const FRAGMENT = /* glsl */ `
   float fogAmount = 1.0 - ( 1.0 - haze ) * ( 1.0 - mist );
   float toward = pow( max( dot( rd, uMistSun ), 0.0 ), 5.0 );
   vec3 fc = mix( fogColor, uMistGlow, toward * 0.85 * uMist.w );
+  // Lightning in the air: the whole of it lifts, and far more towards the flash — the more air
+  // between here and the lens, the more of the light it holds (it is carried by fogAmount).
+  if ( uMistFlash.w > 0.0 ) {
+    float lobe = pow( max( dot( rd, uMistFlash.xyz ), 0.0 ), 3.0 );
+    fc += uMistFlashColor * uMistFlash.w * ( 0.22 + 1.1 * lobe );
+  }
   gl_FragColor.rgb = mix( gl_FragColor.rgb, fc, fogAmount );
 }
 #endif

@@ -25,7 +25,23 @@ import {
   type WebGLRenderer,
 } from 'three';
 
-export function buildTeamsEnvironment(gl: WebGLRenderer): Texture {
+/**
+ * One environment per renderer, made the first time the Teams world mounts and kept: it never
+ * changes, and rebuilding it on every visit leaked a prefiltered render target each time (the map
+ * is the target's texture — disposing the texture doesn't free the target — and a factory run twice
+ * in development left one behind unowned), so a looping journey built them up.
+ */
+const environments = new WeakMap<WebGLRenderer, Texture>();
+export function teamsEnvironment(gl: WebGLRenderer): Texture {
+  let env = environments.get(gl);
+  if (!env) {
+    env = buildTeamsEnvironment(gl);
+    environments.set(gl, env);
+  }
+  return env;
+}
+
+function buildTeamsEnvironment(gl: WebGLRenderer): Texture {
   const scene = new Scene();
   const disposables: { dispose: () => void }[] = [];
   const add = (geo: PlaneGeometry | SphereGeometry | TorusGeometry, color: Color, pos: [number, number, number], rot: [number, number, number] = [0, 0, 0]) => {

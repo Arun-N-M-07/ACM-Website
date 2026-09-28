@@ -20,6 +20,23 @@ export const progress = {
   /** Set by jumps (chapter index, deep links): the camera cuts instead of flying. */
   snap: false,
   /**
+   * A cut's lead-in (progress units): the camera lands this far before the destination and the
+   * damped follow carries it in — you arrive into the place, moving, instead of it snapping on.
+   * Set with a jump, used once by the rig.
+   */
+  snapLead: 0,
+  /**
+   * A chapter change waiting for the frame to go dark (navigation.goToChapter): the rig dims the
+   * picture, and at black runs this — the jump itself — so nothing changes while it can be seen.
+   */
+  pending: null as null | (() => void),
+  /** Set by the camera rig for the frame in which a jump cut the journey (through black or not). */
+  cut: false,
+  /** Whether a jump's cut goes through black (the loop's does not: it is made inside the mist). */
+  snapFade: true,
+  /** How fast the picture comes back up after a cut (per second): a chapter change, slower. */
+  fadeInRate: 2.5,
+  /**
    * While the page's scroll position is being moved to match the camera (after
    * the push through the door), stale scroll events are ignored until the
    * scroll catches up.

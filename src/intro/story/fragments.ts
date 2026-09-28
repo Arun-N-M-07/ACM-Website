@@ -57,7 +57,7 @@ export const FRAGMENTS: Fragment[] = [
   {
     id: 'began',
     // (The years are said once, by the smog itself — prologue/ — never again on paper.)
-    lines: [{ text: 'A story began.', style: 'display' }],
+    lines: [{ text: 'A STORY BEGAN.', style: 'display' }],
     size: [1.74, 1.17],
     arrive: [4, 9],
     ink: [7.5, 10.5],

@@ -51,6 +51,21 @@ export function readRoomClock(index: number, out: RoomClock) {
   return out;
 }
 
+// ─── Prodigy: when each puzzle piece moves, and when it locks into the wall ──────────────
+
+/** How many pieces the Prodigy wall has (the programme's eight, and Prodigy itself at the centre). */
+export const PUZZLE_PIECES = 9;
+/** The order a piece arrives in (the centre, Prodigy, last) — piece i as laid out on the wall. */
+export const puzzleOrder = (i: number) => (i === 4 ? 8 : i < 4 ? i : i - 1);
+/** Piece i as laid out, from its arrival order. */
+export const puzzlePiece = (order: number) => (order < 4 ? order : order === 8 ? 4 : order + 1);
+/**
+ * The room visit (its clock's u) over which the piece arriving `order`-th travels: it leaves at
+ * the first, and is home — locked into the wall — at the second. (The picture, PuzzlePieces, and
+ * the sound, SoundDirector, both read this, so each lock is heard exactly as it is seen.)
+ */
+export const puzzleSpan = (order: number): [number, number] => [0.06 + order * 0.08, 0.2 + order * 0.08];
+
 export function useRoomClock(index: number) {
   const clock = useRef<RoomClock>({ u: -0.3, here: false, near: false, presence: 0 });
   useFrame(() => {

@@ -2,6 +2,8 @@ import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // No dev-tools badge: in development it sat over the sound control on phones.
+  devIndicators: false,
   // three / drei ship modern ESM; transpiling keeps older Safari builds happy.
   transpilePackages: ['three'],
   images: {

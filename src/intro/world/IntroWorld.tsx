@@ -15,6 +15,7 @@ import { experience } from '@/store/experience';
 import { IntroPost } from '../post/IntroPost';
 import { introFrame } from '../state';
 import { T } from '../timeline';
+import { AcmCeg } from './AcmCeg';
 import { AcmStone } from './AcmStone';
 import { Clouds } from './Clouds';
 import { EventsTitle } from './EventsTitle';
@@ -51,6 +52,7 @@ export function IntroWorld() {
       <Story />
       <AcmStone />
       <Clouds />
+      <AcmCeg />
       <Motes />
       <group ref={below}>
         <DescentShaft />

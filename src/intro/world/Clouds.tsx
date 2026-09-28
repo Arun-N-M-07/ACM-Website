@@ -22,6 +22,7 @@ import { Color, DynamicDrawUsage, InstancedBufferAttribute, type InstancedMesh, 
 import { useExperience } from '@/store/experience';
 import { useDisposable } from '@/systems/performance/useDisposable';
 import { CAMPUS } from '@/config/world';
+import { ACM_CEG } from '../camera';
 import { look } from '../look';
 import { introFrame } from '../state';
 import { T } from '../timeline';
@@ -42,6 +43,14 @@ interface Mass {
   seed: number;
 }
 
+/**
+ * The air between the flight over the cloud and ACM-CEG standing on it: the
+ * cloud there stays a floor below the name (no mass rises into the line of
+ * sight), so the name is seen whole, standing on the sea — not through it.
+ */
+const inSightLine = (x: number, z: number) => Math.abs(x - ACM_CEG.x) < 240 && z > ACM_CEG.z - 40 && z < CZ + 12;
+const FLOOR_UNDER_NAME = ACM_CEG.y - 44;
+
 function makeMasses(count: number, far: number): Mass[] {
   const out: Mass[] = [];
   // Out to the horizon: a sparse ring of big masses near the layer's top, so
@@ -50,7 +59,11 @@ function makeMasses(count: number, far: number): Mass[] {
     const r = 300 + Math.pow(hash(i, 21), 0.8) * 900;
     const a = hash(i, 22) * Math.PI * 2;
     const y = CLOUD_TOP - 26 + hash(i, 23) * 18;
-    out.push({ p: new Vector3(CX + Math.cos(a) * r, y, CZ + Math.sin(a) * r), size: 150 + hash(i, 24) * 190, seed: hash(i, 25) * 100 });
+    const x = CX + Math.cos(a) * r;
+    const z = CZ + Math.sin(a) * r;
+    // (None of the far ring stands between the flight and the name.)
+    if (inSightLine(x, z)) continue;
+    out.push({ p: new Vector3(x, y, z), size: 150 + hash(i, 24) * 190, seed: hash(i, 25) * 100 });
   }
   for (let i = 0; i < count; i++) {
     // Dense around the column, a wide sea thinning outward; a few right on
@@ -61,7 +74,19 @@ function makeMasses(count: number, far: number): Mass[] {
     const x = CX + Math.cos(a) * r;
     const z = CZ + Math.sin(a) * r * 0.9;
     const y = CLOUD_BASE + 6 + Math.pow(hash(i, 3), 1.1) * (CLOUD_TOP - CLOUD_BASE - 12);
-    out.push({ p: new Vector3(x, y, z), size: (onColumn ? 30 : 40) + hash(i, 4) * 70, seed: hash(i, 5) * 100 });
+    const size = (onColumn ? 30 : 40) + hash(i, 4) * 70;
+    // In the line of sight to the name, a mass is a floor below it, not a wall before it: it keeps
+    // its size (the sea stays whole) but lies lower, its top under the name's foot.
+    const py = !onColumn && inSightLine(x, z) ? Math.min(y, FLOOR_UNDER_NAME - size * 0.4) : y;
+    out.push({ p: new Vector3(x, py, z), size, seed: hash(i, 5) * 100 });
+  }
+  // The sea carried on out to the name and past it — low and wide, so from the flight it is one
+  // unbroken floor to the horizon, with the name standing on it (none of it rises into the view).
+  for (let i = 0; i < 26; i++) {
+    const x = ACM_CEG.x + (hash(i, 31) - 0.5) * 520;
+    const z = CZ - 250 - hash(i, 32) * (CZ - 250 - (ACM_CEG.z - 260));
+    const size = 140 + hash(i, 33) * 60;
+    out.push({ p: new Vector3(x, FLOOR_UNDER_NAME - size * 0.42 - hash(i, 34) * 6, z), size, seed: hash(i, 35) * 100 });
   }
   return out;
 }

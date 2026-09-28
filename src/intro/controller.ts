@@ -14,7 +14,7 @@ import { experience } from '@/store/experience';
 import { progress } from '@/systems/scroll/progress';
 import { jumpToProgress } from '@/systems/scroll/ScrollTimeline';
 import { intro, introFrame } from './state';
-import { INTRO_END, INTRO_SPAN, INTRO_START, introChapterAt } from './timeline';
+import { INTRO_END, INTRO_SPAN, INTRO_START, introChapterAt, T } from './timeline';
 import { STORY_LINES } from './story/fragments';
 
 /** The beat at scroll progress p (the film runs from INTRO_START — the prologue's beats are negative — to INTRO_END). */
@@ -50,7 +50,7 @@ export function syncIntro(p: number) {
   if (line !== s.line) s.set({ line });
   const idle = (performance.now() - Math.max(progress.lastInputAt, shownAt)) / 1000;
   const settled = st.reducedMotion || Math.abs(progress.target - progress.value) < 1e-4;
-  const hint = idle > (f.t < INTRO_START + 1.5 ? HINT_AT_START : HINT_LATER) && settled;
+  const hint = idle > (f.t < T.prologue + 1.5 ? HINT_AT_START : HINT_LATER) && settled;
   if (hint !== s.hint) s.set({ hint });
 }
 

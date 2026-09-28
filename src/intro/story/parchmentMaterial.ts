@@ -37,6 +37,7 @@ export interface ParchmentUniforms {
   uSeed: { value: number };
   uPresence: { value: number };
   uForm: { value: number };
+  uGhost: { value: number };
   uRollX: { value: number };
   uRollDir: { value: number };
   uRollR: { value: number };
@@ -115,7 +116,7 @@ vec3 objectNormal = normalize(cross(sheetDx, sheetDy));
 const FRAGMENT_PARS = /* glsl */ `
 uniform sampler2D uTex;
 uniform sampler2D uNoise;
-uniform float uReveal, uBurn, uTime, uPresence, uFill, uForm;
+uniform float uReveal, uBurn, uTime, uPresence, uFill, uForm, uGhost;
 uniform vec2 uSize;
 uniform vec4 uLines[5];
 uniform int uLineCount;
@@ -195,8 +196,11 @@ float front = uForm * 1.5 - 0.3;
 float formed = smoothstep(front + 0.035, front - 0.035, formOrder);
 // The torn edge itself is drawn first, as a line.
 float rim = smoothstep(0.62, 0.9, 1.0 - soft) * smoothstep(0.0, 0.12, uForm);
-float cover = sil * kept * max(formed, rim * 0.85);
+// Before its edge or its fibres: a shape in the air, darker than the smog it is seen against.
+float resolved = max(formed, rim);
+float cover = sil * kept * max(max(formed, rim * 0.85), uGhost * (1.0 - formed));
 if (cover < 0.02) discard;
+col = mix(col, col * 0.1, (1.0 - resolved) * step(0.001, uGhost));
 float forming = exp(-pow((formOrder - front) / 0.045, 2.0)) * (1.0 - smoothstep(0.9, 1.0, uForm));
 if (!gl_FrontFacing) col = paper * 0.62;
 // Inside the roll, the turns shade each other.
@@ -230,6 +234,7 @@ export function createParchmentMaterial(tex: Texture, noise: Texture, size: [num
     uSeed: { value: seed },
     uPresence: { value: 0 },
     uForm: { value: 1 },
+    uGhost: { value: 0 },
     uRollX: { value: 10 },
     uRollDir: { value: 1 },
     uRollR: { value: 0.1 },

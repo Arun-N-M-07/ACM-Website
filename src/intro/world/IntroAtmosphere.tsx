@@ -25,7 +25,7 @@ export function IntroAtmosphere() {
     const ph = experience().phase;
     const film = introFrame.active || ph === 'loading' || ph === 'ready';
     world.intro = film ? 1 : 0;
-    evaluateLook(introFrame.t);
+    evaluateLook(introFrame.t, experience().reducedMotion);
 
 
     // The ground mist, and the light it scatters towards the sun: faint and
@@ -35,6 +35,9 @@ export function IntroAtmosphere() {
     const up = Math.min(1, Math.max(0, (look.sun.elevation * 180) / Math.PI / 10 + 0.55));
     _glow.copy(look.sun.color).multiplyScalar(0.55 + 0.6 * up);
     mistUniforms.uMistGlow.value.copy(look.fogColor).lerp(_glow, 0.25 + 0.55 * up);
+    // Lightning, held in the air (fog.ts).
+    const fl = mistUniforms.uMistFlash.value;
+    fl.set(look.flashDir.x, look.flashDir.y, look.flashDir.z, Math.min(1.2, look.flash) * 0.55 * world.intro);
 
     gl.toneMappingExposure = DEFAULT_EXPOSURE + (look.exposure - DEFAULT_EXPOSURE) * world.intro;
   });
@@ -43,6 +46,7 @@ export function IntroAtmosphere() {
     () => () => {
       world.intro = 0;
       mistUniforms.uMist.value.w = 0;
+      mistUniforms.uMistFlash.value.w = 0;
       gl.toneMappingExposure = DEFAULT_EXPOSURE;
     },
     [gl],

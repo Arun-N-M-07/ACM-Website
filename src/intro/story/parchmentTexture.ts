@@ -163,15 +163,15 @@ export function drawParchment(f: Fragment, pxPerMetre: number, ashCount: number)
     tx.quadraticCurveTo(x + Math.cos(a) * l * 0.5 + (hash(i, 12, seed) - 0.5) * l * 0.4, y + Math.sin(a) * l * 0.5, x + Math.cos(a) * l, y + Math.sin(a) * l);
     tx.stroke();
   }
-  // Stains: tide-marked blots.
-  for (let i = 0; i < 3; i++) {
+  // Stains: small tide-marked blots, faint (large pale rings read as lens bokeh, not as paper).
+  for (let i = 0; i < 2; i++) {
     const x = (0.15 + hash(i, 13, seed) * 0.7) * W;
     const y = (0.15 + hash(i, 14, seed) * 0.7) * H;
-    const r = (0.05 + hash(i, 15, seed) * 0.1) * W;
+    const r = (0.03 + hash(i, 15, seed) * 0.045) * W;
     const g = tx.createRadialGradient(x, y, r * 0.2, x, y, r);
-    g.addColorStop(0, 'rgba(0,0,0,0.05)');
-    g.addColorStop(0.82, 'rgba(0,0,0,0.12)');
-    g.addColorStop(0.9, 'rgba(0,0,0,0.2)');
+    g.addColorStop(0, 'rgba(0,0,0,0.03)');
+    g.addColorStop(0.8, 'rgba(0,0,0,0.06)');
+    g.addColorStop(0.9, 'rgba(0,0,0,0.1)');
     g.addColorStop(1, 'rgba(0,0,0,0)');
     tx.fillStyle = g;
     tx.beginPath();

@@ -11,6 +11,7 @@
  *                The shader never draws these as an image; it reads them as
  *                how much gas there is at each point of a slab of air.
  */
+import { fontFamilies } from '@/systems/textures/typeset';
 import { ClampToEdgeWrapping, Data3DTexture, DataTexture, LinearFilter, LinearMipmapLinearFilter, RedFormat, RepeatWrapping, RGBAFormat, UnsignedByteType } from 'three';
 
 // ─── noise ─────────────────────────────────────────────────────────────────
@@ -113,9 +114,9 @@ export function letterField(words: string, portrait: boolean): LetterField {
   c.width = W;
   c.height = H;
   const g = c.getContext('2d')!;
-  // A heavy grotesque, not the site's Bodoni: this is the gas's own letterform — a density field,
-  // blurred and eroded — and only thick, even strokes survive that (Bodoni's hairlines would vanish).
-  const fam = '"Helvetica Neue", Helvetica, Arial, sans-serif';
+  // The site's Montserrat at its heaviest: the gas's letterform is a density field, blurred and
+  // eroded, and only thick, even strokes survive that. (The fonts are ready before the world mounts.)
+  const fam = `${fontFamilies().sans}, "Helvetica Neue", Helvetica, Arial, sans-serif`;
   g.fillStyle = '#fff';
   g.textBaseline = 'alphabetic';
   // Where each word lies, for the order channel: [x0, x1, y0, y1, order].
@@ -146,19 +147,21 @@ export function letterField(words: string, portrait: boolean): LetterField {
   } else {
     let big = 300;
     g.font = `800 ${big}px ${fam}`;
-    big = Math.min(big, (big * W * 0.8) / g.measureText(num).width);
+    // (Narrower than the field: a phone's frame is, once the camera nears the words.)
+    big = Math.min(big, (big * W * 0.72) / g.measureText(num).width);
     g.font = `800 ${big}px ${fam}`;
     setWord(num, (W - g.measureText(num).width) / 2, H * 0.47, big, 0);
     let small = 150;
     g.font = `800 ${small}px ${fam}`;
     const tw = tail.split(' ');
-    small = Math.min(small, (small * W * 0.86) / (tw.reduce((a, p) => a + g.measureText(p).width, 0) + small * 0.34 * (tw.length - 1)));
+    small = Math.min(small, (small * W * 0.7) / (tw.reduce((a, p) => a + g.measureText(p).width, 0) + small * 0.34 * (tw.length - 1)));
     g.font = `800 ${small}px ${fam}`;
     const gap = small * 0.34;
     const widths = tw.map((p) => g.measureText(p).width);
     let x = (W - (widths.reduce((a, b) => a + b, 0) + gap * (tw.length - 1))) / 2;
     tw.forEach((p, i) => {
-      setWord(p, x, H * 0.84, small, 0.5 + (0.5 * i) / Math.max(1, tw.length - 1));
+      // (Close under the number — lower in the field it would sink into the mist over the road.)
+      setWord(p, x, H * 0.72, small, 0.5 + (0.5 * i) / Math.max(1, tw.length - 1));
       x += widths[i] + gap;
     });
   }

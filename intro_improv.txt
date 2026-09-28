@@ -1,0 +1,1445 @@
+CONTINUE FROM THE CURRENT IMPLEMENTATION.
+
+Do NOT restart the Intro implementation and do NOT re-read/rebuild everything from scratch.
+
+The authoritative specification remains:
+
+intro_imprv.txt
+
+Read it when you need the original requirements, but the current task is a focused SECOND REFINEMENT / POLISH PASS on top of the implementation you just completed.
+
+The previous pass already completed the major Intro refinement work and passed typecheck/build/browser console checks.
+
+Your job now is to implement the remaining corrections below AND the new cinematic/audio/looping requirements.
+
+IMPORTANT:
+- Preserve everything that is already working.
+- Do not create duplicate camera systems.
+- Do not create duplicate scroll/progress systems.
+- Do not replace the existing story architecture.
+- Do not replace the existing Teams implementation.
+- Do not replace the existing Events architecture.
+- Do not randomly redesign working sections.
+- Do not reset/revert/stash/overwrite existing work.
+- Do not push.
+- Do not commit unless explicitly asked.
+- Work directly in the current repository.
+
+==================================================
+1. CURRENT STATE — PRESERVE THIS
+==================================================
+
+The previous pass already addressed:
+
+- deterministic Intro entry
+- PatternX accidental-entry behavior
+- scroll restoration
+- unwanted pre-Teams editorial Plate removal
+- unified chapter rail progress mapping
+- red-building camera distance parameterization
+- smootherstep camera retiming
+- smog volume refinement
+- gas-shaped "22 YEARS AGO"
+- paper behavior
+- ACM stone typography
+- lightning implementation
+- rolling-object audio synchronization
+- paper → ash audio sequence
+- drone/building air-sound removal
+- stale #team hash behavior
+- rail legibility improvements
+- Bodoni Moda was previously used globally
+- 2026-only Events data
+- integrated Teams experience
+
+Do NOT undo these.
+
+However, the current implementation still has some issues, and several new requirements need to be added.
+
+==================================================
+2. FIRST PAPER — DEFINITIVE FIX
+==================================================
+
+The first paper currently displays:
+
+"A story began."
+
+Change it to EXACTLY:
+
+"A STORY BEGAN."
+
+Requirements:
+
+- uppercase
+- exact wording
+- exact punctuation
+- no duplicate "22 YEARS AGO"
+- preserve the existing paper animation
+- preserve the existing paper → ash behavior
+
+This is a straightforward specification correction.
+
+==================================================
+3. TYPOGRAPHY — REPLACE BODONI WITH MONTSERRAT
+==================================================
+
+The current global typography is using Bodoni Moda.
+
+Replace the site's global typography system with:
+
+MONTSERRAT.
+
+Do this properly rather than simply replacing one CSS font-family declaration.
+
+Audit the typography system and establish a coherent Montserrat hierarchy.
+
+Use appropriate Montserrat weights and letter spacing for each semantic role.
+
+Think in terms of a real design system:
+
+- micro labels
+- chapter numbers
+- navigation labels
+- metadata
+- section labels
+- headings
+- large display headings
+- body text
+- buttons
+- links
+- rail text
+- event labels
+- domain labels
+- Teams UI
+
+Do NOT use one weight everywhere.
+
+Use the appropriate weights for hierarchy, for example:
+
+- lighter/regular weights for body/supporting information
+- medium/semibold for navigation and UI
+- bold/extrabold where hierarchy requires it
+- very heavy display treatment only where visually justified
+
+Use letter spacing intentionally:
+
+- uppercase micro-labels → wider tracking
+- navigation → moderate tracking
+- large display text → tighter tracking when appropriate
+- body → normal readable tracking
+- numerals → controlled tracking
+- buttons → controlled uppercase tracking
+
+Do not use excessive letter spacing just because the text is uppercase.
+
+Typography must remain readable at different viewport sizes.
+
+Use responsive typography rather than fixed oversized values that break on smaller screens.
+
+Audit:
+
+- global CSS
+- components
+- chapter rail
+- Events
+- Teams
+- editorial cards
+- Intro typography
+- buttons
+- navigation
+- labels
+- overlays
+
+Remove remaining unintended Bodoni usage.
+
+Do not replace physically generated gas typography with ordinary DOM text simply to satisfy the font requirement.
+
+The gas typography remains physically generated.
+
+==================================================
+4. ACM-CEG HERO DISPLAY TEXT
+==================================================
+
+There is a new major cinematic moment required.
+
+When the camera rises vertically toward/through the cloud environment after the red-building section, the camera eventually transitions into a more horizontal aerial movement.
+
+At this moment introduce a HUGE 3D:
+
+ACM-CEG
+
+The text should be:
+
+- physically 3D
+- large enough to feel architectural/cinematic
+- unmistakably readable
+- deep purple
+- visually striking
+- modern
+- experimental
+- innovative
+- strong
+- NOT a conservative corporate serif
+- NOT a classic professional editorial font
+- NOT another Bodoni-like typeface
+
+This is the one place where a distinctive display typeface is desirable.
+
+Find an appropriate visually interesting display treatment using the project's existing capabilities/assets where possible.
+
+The global website typography remains Montserrat.
+
+The ACM-CEG display treatment is a special cinematic 3D identity object and may use a separate distinctive display face.
+
+The result should feel like a major identity reveal.
+
+Do not make it look like:
+
+- a normal website heading
+- a floating HTML overlay
+- generic 3D text
+- a default Three.js text mesh
+- a corporate logo placeholder
+
+It should feel designed into the world.
+
+==================================================
+5. ACM-CEG CAMERA HOLD
+==================================================
+
+The camera currently passes through the aerial/cloud transition too quickly.
+
+Change the pacing.
+
+When the camera reaches the ACM-CEG 3D text:
+
+- slow down
+- approach the composition smoothly
+- hold/show the composition long enough for the viewer to actually perceive it
+- maintain the composition for a meaningful cinematic beat
+- then continue naturally into the next section
+
+Do NOT create an arbitrary timer.
+
+The hold must remain scroll-driven/deterministic.
+
+Scrolling should control the progression through this cinematic beat.
+
+The camera must NOT get stuck permanently.
+
+Forward:
+
+approach
+→ reveal
+→ deliberate hold
+→ continuation
+
+Reverse:
+
+continuation
+→ return through hold
+→ leave ACM-CEG
+→ reverse through aerial section
+
+The camera must remain completely reversible.
+
+==================================================
+6. CLOUD MOVEMENT — SUBTLE ENVIRONMENTAL AUDIO
+==================================================
+
+When the camera moves through the clouds/aerial environment, add subtle environmental sound design.
+
+This should NOT be a loud "whoosh".
+
+Think:
+
+- distant air movement
+- soft atmospheric pressure
+- subtle cloud displacement
+- broad stereo movement
+- barely-there environmental texture
+
+It should support the visual motion without announcing itself.
+
+The existing background music remains the primary continuous layer.
+
+Cloud SFX must:
+
+- follow camera movement
+- remain subtle
+- not loop obviously
+- not overpower music
+- not sound like a generic wind effect
+- remain deterministic with scroll
+- behave correctly when reversing
+
+Do not introduce a constant loud wind layer.
+
+==================================================
+7. PORTAL TRANSITION SFX
+==================================================
+
+When the user travels through a portal / portal-like transition in the experience, add a dedicated SFX.
+
+The portal sound should feel:
+
+- dimensional
+- spatial
+- futuristic
+- slightly mysterious
+- physically connected to crossing the portal
+
+Avoid generic:
+
+"whoosh.wav"
+
+Instead build a short layered transition:
+
+- subtle low-frequency movement
+- spatial/airy component
+- small tonal/energy component
+- controlled transient at the crossing point
+
+The effect should be synchronized to the actual portal crossing.
+
+It must not fire repeatedly because of React re-renders.
+
+It must be deterministic on reverse.
+
+If the portal is crossed forward and then crossed backward, audio should behave naturally rather than leaving a stale sound playing.
+
+==================================================
+8. UNDERGROUND EVENTS ROOM — REMOVE BUZZ
+==================================================
+
+There is currently an unpleasant constant buzzing/humming sound in the underground Events room.
+
+REMOVE IT.
+
+Do not simply reduce its volume.
+
+Identify its source.
+
+Determine whether it comes from:
+
+- ambient loop
+- electrical hum
+- machinery layer
+- environmental loop
+- duplicated SFX
+- sound layer that is incorrectly persistent
+
+Remove the unwanted buzz entirely.
+
+The underground Events environment can retain appropriate ambience if it exists, but there must NOT be a distracting continuous "bzzzzzz" layer.
+
+After the fix, listen to the room.
+
+It should feel atmospheric rather than mechanically noisy.
+
+==================================================
+9. PRODIGY EVENT — TILE ATTACHMENT SOUND DESIGN
+==================================================
+
+There is a specific event interaction in the Prodigy event experience where tiles attach/fix into the wall.
+
+I want a very satisfying cinematic mechanical tile-lock sound design.
+
+Reference the GENERAL FEEL of premium cinema-title / architectural tile-lock sound design:
+
+- tactile
+- precise
+- layered
+- satisfying
+- small mechanical impact
+- resonant lock
+- subtle tonal body
+
+Do NOT copy or rip any proprietary Qube Cinemas sound.
+
+Instead create an ORIGINAL sound design inspired only by the general sensory idea:
+
+tile movement
+→ alignment
+→ contact
+→ lock
+→ resonance
+
+Each tile should feel like it physically fits into the wall.
+
+Possible sound layers:
+
+1. subtle movement/air displacement
+2. short contact tick
+3. slightly deeper mechanical "thunk"
+4. very short resonant tonal tail
+5. optional tiny material vibration
+
+The sound should be:
+
+- clean
+- premium
+- crisp
+- spatial
+- satisfying
+
+NOT:
+
+- cartoon click
+- generic UI click
+- loud metal clang
+- construction noise
+- repetitive identical sample with no variation
+
+If multiple tiles attach, introduce very subtle variation in timing/pitch/velocity while preserving the designed rhythm.
+
+Synchronize each sound to the actual tile attachment event.
+
+Do not trigger sounds from render loops.
+
+==================================================
+10. EVENTS TUNNEL — NEW TRANSITION SFX
+==================================================
+
+When entering the Events section through the tunnel, add an interesting dedicated transition sound.
+
+The tunnel should feel like a transition between worlds.
+
+Build an original layered sound design that evolves as the camera travels through it.
+
+Conceptually:
+
+entry
+→ spatial pull
+→ tunnel resonance
+→ increasing movement
+→ transition threshold
+→ release into Events
+
+Possible characteristics:
+
+- low-frequency spatial movement
+- subtle tonal rise
+- restrained air movement
+- environmental resonance
+- small transition transient at the exit
+
+Do NOT make it a generic fast whoosh.
+
+The sound should feel like the visual tunnel has physical acoustic space.
+
+It must follow scroll progress.
+
+Forward and reverse must be deterministic.
+
+==================================================
+11. LIGHTNING — ADD THUNDER
+==================================================
+
+The lightning visual is already implemented.
+
+Keep the current lightning behavior.
+
+Add a corresponding thunder SFX.
+
+Important:
+
+Lightning and thunder must NOT be simultaneous like a video-game lightning effect.
+
+Create a believable cinematic relationship:
+
+LIGHTNING FLASH
+→ short delay
+→ distant thunder
+→ optional low resonant tail
+
+The delay can vary subtly between lightning events.
+
+The thunder should feel:
+
+- distant
+- huge
+- atmospheric
+- deep
+- cinematic
+
+The thunder should interact with the fog/space.
+
+Do not use an exaggerated horror thunderclap.
+
+Do not make every lightning event use exactly the same sample/timing.
+
+The sound must be driven by the existing deterministic lightning/scroll state.
+
+Reduced-motion mode should remain accessible and deterministic.
+
+==================================================
+12. RED BUILDING — CAMERA CONTINUITY
+==================================================
+
+This needs another refinement.
+
+The current camera path is technically much better than before, but visually the transition still feels wrong.
+
+After the red building becomes fully visible and the fog has cleared:
+
+THE CAMERA MUST KEEP MOVING.
+
+Currently it feels like:
+
+fog clears
+→ red building appears
+→ camera moves too quickly
+→ movement stops/loses momentum
+→ composition feels interrupted
+
+Fix this.
+
+The intended behavior is:
+
+fog clears
+→ red building is fully revealed
+→ camera continues moving toward/around it
+→ movement remains smooth and uniform
+→ no sudden speed increase
+→ no sudden stop
+→ no visible keyframe handoff
+→ no snap
+→ no stutter
+→ no unexplained pause
+
+The movement should feel like one continuous camera trajectory.
+
+The camera should not appear to "finish" at the building.
+
+It should continue through the architectural reveal.
+
+Use the existing authoritative camera path.
+
+Do NOT add a second camera controller.
+
+Do NOT solve this with a timer.
+
+Do NOT use a fake interpolation layer on top of the actual camera system.
+
+The scroll position must remain the source of truth.
+
+Test:
+
+- slow scroll
+- normal scroll
+- fast scroll
+- scroll stop
+- reverse scroll
+- repeated forward/reverse
+- scrub
+
+The visual velocity should remain coherent.
+
+==================================================
+13. CHAPTER / SIDE NAVIGATION — TYPOGRAPHY + VISIBILITY
+==================================================
+
+The side chapter navigation currently has visibility problems.
+
+The wording is too difficult to read against some backgrounds.
+
+Improve it.
+
+Do NOT turn it into a large opaque panel.
+
+The rail should remain integrated into the cinematic composition.
+
+Improve:
+
+- Montserrat typography
+- font weights
+- letter spacing
+- active/inactive contrast
+- subtle shadow/halo where necessary
+- positioning
+- spacing
+- numeral hierarchy
+- chapter labels
+
+The labels must remain readable over:
+
+- dark scenes
+- purple fog
+- aerial/cloud scenes
+- bright scenes
+- Events
+- Teams
+
+Do not simply make everything white and bold.
+
+Use hierarchy.
+
+The active chapter should be unmistakable.
+
+The inactive chapters should remain visible enough to understand the navigation.
+
+Preserve the single authoritative progress mapping already implemented.
+
+Do NOT reintroduce hard-coded chapter percentages.
+
+==================================================
+14. CHAPTER CLICK BEHAVIOR
+==================================================
+
+The previous pass identified that chapter clicks currently cut behind a fade.
+
+Do not blindly implement smooth scrolling if it would cause the entire cinematic film to fast-forward unnaturally.
+
+Instead inspect the existing chapter navigation architecture and determine the most cinematic solution.
+
+The desired result:
+
+clicking a chapter should feel intentional and controlled.
+
+It should NOT feel like:
+
+instant teleport
+or
+a giant 10-second fast-forward.
+
+If a smooth camera travel is feasible within the existing architecture without breaking the story, implement it.
+
+If not, preserve the existing deterministic chapter transition while improving its visual continuity.
+
+Do not introduce a second navigation system.
+
+==================================================
+15. INFINITE LOOP AFTER THE SPIRAL / TEAMS END
+==================================================
+
+This is a major new structural requirement.
+
+Currently after the spiral/Teams experience finishes, continuing to scroll eventually exposes a normal footer/end state.
+
+I do NOT want the experience to simply end there.
+
+The cinematic website should behave like an intentional infinite loop.
+
+Conceptually:
+
+INTRO
+→ STORY
+→ ASCENT
+→ EVENTS
+→ TEAMS
+→ SPIRAL / FINAL EXPERIENCE
+→ transition
+→ back toward the beginning
+→ INTRO
+
+The user should be able to continue scrolling and eventually return to the beginning of the experience.
+
+There should NOT be a dead footer after the spiral.
+
+There should NOT be an abrupt jump.
+
+There should NOT be a visible teleport.
+
+The transition from the end back to the beginning should feel like a designed cinematic loop.
+
+==================================================
+16. INFINITE LOOP — IMPORTANT TECHNICAL RULES
+==================================================
+
+Do NOT simply duplicate the entire page infinitely.
+
+Do NOT create an ever-growing DOM.
+
+Do NOT continuously append scenes.
+
+Do NOT create an infinite array that grows on scroll.
+
+Implement a bounded/cyclic progress model.
+
+There should be one finite canonical story timeline.
+
+Map scroll position into that timeline cyclically.
+
+The loop must be:
+
+- memory-safe
+- deterministic
+- bounded
+- reversible
+- performant
+
+Forward:
+
+FINAL SPIRAL
+→ transition
+→ beginning
+
+Reverse:
+
+BEGINNING
+→ transition
+→ final spiral
+
+The transition must be visually intentional.
+
+Consider using the existing spiral as the bridge.
+
+For example, the spiral can:
+
+- continue extending
+- become a visual tunnel
+- rotate/flow
+- dissolve
+- reveal the opening environment again
+
+But choose the approach that best fits the existing world rather than inventing an unrelated animation.
+
+The user should feel:
+
+"I've travelled through the whole ACM-CEG world and arrived back at its beginning."
+
+NOT:
+
+"The website ran out of content and teleported me to the top."
+
+==================================================
+17. SPINE EXTENSION / RETURN TRANSITION
+==================================================
+
+Specifically, after Marketing / the final domain and spiral sequence:
+
+do NOT show a conventional footer.
+
+Extend the existing visual spine / structural motif.
+
+The spine should continue beyond the current final state and become the transition mechanism back toward the beginning.
+
+Possible visual evolution:
+
+domain/card system ends
+→ spine extends
+→ spiral/structure stretches
+→ environment transitions
+→ world folds back toward opening
+→ Intro begins again
+
+The transition should belong to the same visual language.
+
+Do not suddenly introduce:
+
+- a standard website footer
+- a white section
+- a generic CTA
+- a static "Back to top"
+
+This is a cinematic site.
+
+The loop itself is the ending.
+
+==================================================
+18. LOOPED PROGRESS MUST REMAIN DETERMINISTIC
+==================================================
+
+The loop must work correctly with:
+
+- forward wheel
+- reverse wheel
+- trackpad
+- slow scrolling
+- fast scrolling
+- stopping
+- scrubbing
+- repeated looping
+- reload
+
+Do not let the loop corrupt:
+
+- chapter rail
+- selected Event
+- Teams state
+- PatternX state
+- audio state
+- camera state
+
+Avoid state accumulation.
+
+Audio must not multiply after multiple loops.
+
+React components must not be duplicated endlessly.
+
+The canonical progress value must remain authoritative.
+
+==================================================
+19. AUDIO ARCHITECTURE
+==================================================
+
+You already fixed the major audio timing architecture.
+
+Preserve it.
+
+For the new sounds, use the same authoritative audio architecture.
+
+Every new sound must have:
+
+- one clear trigger
+- deterministic timing
+- cleanup
+- reverse behavior
+- volume hierarchy
+- no duplicate playback caused by React renders
+- no persistent sound after leaving the scene
+
+Background music remains continuous.
+
+Do NOT accidentally restart the music when:
+
+- entering Events
+- entering Teams
+- looping
+- reversing
+- crossing chapters
+
+The music is the continuous bed.
+
+New SFX should sit underneath it.
+
+==================================================
+20. AUDIO MIXING / HIERARCHY
+==================================================
+
+The hierarchy should roughly feel like:
+
+BACKGROUND MUSIC
+        ↓
+major cinematic events
+        ↓
+environmental movement
+        ↓
+micro interaction details
+
+Therefore:
+
+Thunder > tiny cloud movement
+
+Portal transition > tiny ambient texture
+
+Tile attachment > background room noise
+
+But none should overpower the music unnecessarily.
+
+The result should feel cinematic, not like a collection of UI sounds.
+
+Use subtle spatialization/variation where supported.
+
+Avoid constant loops that announce themselves.
+
+==================================================
+21. OBJECT AUDIO — DO NOT BREAK IT
+==================================================
+
+You said the existing audio now works properly.
+
+Therefore:
+
+DO NOT rewrite the rolling-object audio unless the new changes accidentally break it.
+
+Preserve:
+
+contact
+→ rolling/friction
+→ deceleration
+→ settle
+
+and reverse behavior.
+
+==================================================
+22. GAS TYPOGRAPHY — DO NOT REGRESS
+==================================================
+
+The "22 YEARS AGO" gas typography was already substantially improved.
+
+Preserve it.
+
+Do not convert it into ordinary text.
+
+Do not replace it with a simple particle text effect.
+
+Only touch it if necessary for:
+
+- performance
+- portrait layout
+- typography interaction with the new Montserrat system
+- regressions caused by other changes
+
+==================================================
+23. PERFORMANCE
+==================================================
+
+The previous pass did not fully verify actual-device performance.
+
+Do a realistic performance review.
+
+Pay particular attention to:
+
+- gas volume
+- 3D ACM-CEG text
+- clouds
+- particles
+- spiral
+- Teams
+- audio layers
+- infinite loop
+
+The infinite loop MUST NOT increase memory usage over time.
+
+After multiple loops:
+
+- no duplicated meshes
+- no duplicated event listeners
+- no growing audio nodes
+- no accumulating React state
+- no growing arrays
+- no runaway particle systems
+
+==================================================
+24. PORTRAIT / RESPONSIVE BEHAVIOR
+==================================================
+
+The portrait gas words were not fully rechecked.
+
+Verify them.
+
+The gas typography must remain visually coherent in portrait.
+
+The new ACM-CEG cinematic text must also have a sensible mobile/portrait behavior.
+
+Do not simply scale everything down until it becomes unreadable.
+
+If necessary, adjust:
+
+- camera framing
+- text scale
+- fog density
+- composition
+- rail visibility
+
+for smaller screens.
+
+==================================================
+25. EXISTING SHARP CAMERA TILTS
+==================================================
+
+There were existing sharp camera tilts around beats 142 and 168.
+
+These were previously identified as outside the original specification.
+
+Do NOT automatically remove them.
+
+First determine whether they are intentional parts of the existing story.
+
+Only modify them if they conflict with the newly requested camera continuity or create an obvious visual defect.
+
+Preserve intentional cinematic movement.
+
+==================================================
+26. RED BUILDING → CLOUDS → ACM-CEG SEQUENCE
+==================================================
+
+This entire sequence should now feel like ONE cinematic movement.
+
+Target flow:
+
+RED BUILDING FULL REVEAL
+        ↓
+smooth continued architectural movement
+        ↓
+camera begins rising
+        ↓
+environment opens
+        ↓
+clouds become dominant
+        ↓
+camera transitions into a more horizontal aerial movement
+        ↓
+HUGE ACM-CEG appears
+        ↓
+camera slows
+        ↓
+ACM-CEG holds as a major identity reveal
+        ↓
+camera continues
+        ↓
+next chapter
+
+There must be no abrupt mode switches.
+
+The viewer should not feel:
+
+"the previous camera ended and a new animation started."
+
+It should feel like one continuous shot.
+
+==================================================
+27. DO NOT OVER-POLISH THE WRONG THINGS
+==================================================
+
+Prioritize in this order:
+
+P0 — structural/cinematic correctness
+- infinite loop
+- red-building camera continuity
+- ACM-CEG reveal
+- typography replacement
+- chapter rail readability
+
+P1 — audio storytelling
+- thunder
+- portal
+- cloud ambience
+- Events tunnel
+- Prodigy tile locks
+- underground buzz removal
+
+P2 — visual polish
+- typography spacing
+- rail refinement
+- portrait gas
+- ACM-CEG styling
+- cloud composition
+
+P3 — micro polish
+- tiny timing variations
+- subtle sound tails
+- small spacing refinements
+
+Do NOT spend the majority of the session tweaking tiny shadows while the infinite loop or camera continuity remains broken.
+
+==================================================
+28. IMPLEMENTATION METHOD
+==================================================
+
+Before modifying a system:
+
+1. Find its existing source of truth.
+2. Understand how it currently works.
+3. Modify that system.
+4. Do not create a parallel replacement.
+
+For camera:
+use the existing camera path architecture.
+
+For scroll:
+use the existing Lenis/progress architecture.
+
+For chapter state:
+use the existing chapter mapping.
+
+For audio:
+use the existing SoundDirector/SFX architecture.
+
+For Events:
+use the existing Events implementation.
+
+For Teams:
+use the existing Teams implementation.
+
+For typography:
+centralize the Montserrat decision rather than scattering random overrides.
+
+==================================================
+29. BROWSER QA
+==================================================
+
+After implementation, actually run the site.
+
+Test the complete sequence:
+
+1. Fresh load
+2. ENTER
+3. Intro start
+4. rolling object
+5. pressure release
+6. 22 YEARS AGO
+7. papers
+8. ACM stone
+9. lightning + thunder
+10. drone
+11. red building
+12. fog clearing
+13. continued red-building movement
+14. camera rising
+15. clouds + subtle cloud audio
+16. ACM-CEG reveal
+17. ACM-CEG cinematic hold
+18. portal crossing + portal SFX
+19. Events tunnel + tunnel SFX
+20. Events room
+21. verify underground buzz is gone
+22. Prodigy tile attachment
+23. tile-lock sound
+24. remaining Events
+25. Teams
+26. Marketing
+27. spiral
+28. continue scrolling
+29. infinite return transition
+30. Intro again
+
+Then test:
+
+- reverse scroll
+- rapid reverse
+- rapid forward
+- slow scroll
+- stop/start
+- chapter navigation
+- reload
+- repeated loop
+- portrait viewport
+- reduced motion if practical
+
+==================================================
+30. AUDIO QA
+==================================================
+
+Do not judge the new audio only from code.
+
+Actually listen.
+
+Specifically listen for:
+
+- thunder
+- cloud ambience
+- portal
+- tunnel
+- Prodigy tile attachment
+- underground buzz removal
+- existing paper burn
+- existing rolling object
+- music continuity
+
+The new effects should sound like part of one sound world.
+
+If a sound is obviously a generic stock "whoosh/click", replace/refine it.
+
+==================================================
+31. BUILD / VALIDATION
+==================================================
+
+Before finishing:
+
+npm run typecheck
+
+npm run build
+
+git diff --check
+
+Run relevant existing QA scripts.
+
+Check browser console for:
+
+- React errors
+- hydration errors
+- WebGL errors
+- audio errors
+- repeated event listeners
+- warnings caused by the new loop
+
+Inspect the final diff.
+
+Do not commit.
+
+Do not push.
+
+==================================================
+32. FINAL REPORT
+==================================================
+
+When finished, report concisely:
+
+### Completed
+List the actual changes.
+
+### Preserved
+List the major systems that were intentionally left untouched.
+
+### Audio
+List each new sound and where it occurs.
+
+### Loop
+Explain exactly how the bounded cyclic loop works.
+
+### Camera
+Explain the red-building → clouds → ACM-CEG continuity.
+
+### Typography
+Explain the Montserrat hierarchy and ACM-CEG display treatment.
+
+### Validation
+Give typecheck/build/QA/browser results.
+
+### Remaining
+Only list genuine remaining issues.
+
+Do NOT claim something is complete unless you actually verified it.
+
+The goal is NOT merely to satisfy a checklist.
+
+The goal is for the entire ACM CEG experience to feel like one continuous, premium, cinematic world from the first frame through the final spiral and back into the beginning.
+
+
+ASCENT — VERTICAL DESCENT / POST-CLOUD LAYOUT ORIENTATION BUG
+===============================================================
+
+There is one remaining visual continuity bug in the ASCENT section.
+
+After the camera moves through the cloud/aerial section and begins the subsequent vertical descent, the scene temporarily appears with its layout/orientation reversed or incorrectly arranged.
+
+
+
+IMPORTANT:
+The problem is NOT that the final layout is permanently wrong.
+
+The current behavior is approximately:
+
+cloud / aerial movement
+        ↓
+camera begins coming vertically down
+        ↓
+INCORRECT / REVERSED LAYOUT APPEARS
+        ↓
+user scrolls further
+        ↓
+layout suddenly corrects itself
+
+That intermediate state is the bug.
+
+The user should NEVER see the incorrect intermediate arrangement.
+
+==================================================
+REQUIRED BEHAVIOR
+==================================================
+
+Find the root cause of the temporary reversed/inconsistent layout.
+
+Do NOT simply add a later correction when the user scrolls farther.
+
+The scene must already be in the correct orientation/layout at the moment the camera enters this section.
+
+The transition should be:
+
+clouds
+  ↓
+vertical descent begins
+  ↓
+correct scene orientation/layout immediately
+  ↓
+smooth continuation of the ASCENT sequence
+
+There must be no:
+
+- reversed layout
+- mirrored composition
+- flipped orientation
+- incorrect object ordering
+- temporary wrong transforms
+- one-frame/short-duration incorrect state
+- sudden correction after additional scrolling
+
+==================================================
+ROOT-CAUSE INVESTIGATION
+==================================================
+
+Inspect the actual implementation of the ASCENT transition.
+
+Pay particular attention to:
+
+- camera progress mapping
+- camera path interpolation
+- object/world transforms
+- scene orientation
+- coordinate-system assumptions
+- scroll progress boundaries
+- chapter/beat transitions
+- keyframe interpolation
+- conditional visibility
+- responsive transforms
+- initialization of the scene at this progress range
+- any state that updates only after additional scroll
+- any delayed synchronization between camera and scene objects
+
+Determine why the layout is initially incorrect and why scrolling farther causes it to correct itself.
+
+The fact that additional scrolling fixes the layout strongly suggests that some state/transform/derived value is being updated too late or is being evaluated from an incorrect progress range.
+
+Verify this rather than adding a visual patch.
+
+==================================================
+IMPORTANT — NO BAND-AID FIX
+==================================================
+
+Do NOT solve this with:
+
+- a timeout
+- delayed setState
+- "after X milliseconds, correct orientation"
+- an arbitrary extra scroll threshold
+- a second camera controller
+- a forced correction animation after the bug appears
+- hard-coded user-scroll detection
+- hiding the scene until it becomes correct
+
+The scene must be correct directly from the authoritative scroll/camera state.
+
+If the issue is caused by interpolation between two incompatible coordinate frames or transform states, fix the interpolation itself.
+
+If it is caused by a keyframe boundary, fix the keyframe/path mapping.
+
+If it is caused by scene/object transforms being derived from a different progress source than the camera, unify them using the existing authoritative progress architecture.
+
+==================================================
+CAMERA + WORLD CONTINUITY
+===============================================================
+
+The camera and the world layout must remain synchronized throughout:
+
+cloud approach
+→ aerial movement
+→ vertical descent
+→ descent reveal
+→ continuation of the ASCENT section.
+
+There should be no moment where:
+
+camera has entered the new composition
+
+while
+
+the world objects are still using the previous composition's orientation.
+
+Everything should transition from the same authoritative timeline.
+
+==================================================
+REVERSE SCROLL
+===============================================================
+
+This fix must also work in reverse.
+
+Forward:
+
+clouds
+→ descent
+→ correct layout
+
+Reverse:
+
+correct layout
+→ ascent back toward clouds
+→ correct aerial composition
+
+Do not introduce a fix that only works while scrolling forward.
+
+Test:
+
+- slow forward scroll
+- normal forward scroll
+- fast forward scroll
+- stopping exactly at the transition
+- slow reverse
+- fast reverse
+- repeated forward/reverse scrubbing
+
+The scene must remain visually consistent at every point.
+
+==================================================
+BOUNDARY TESTING
+===============================================================
+
+Pay special attention to the exact transition boundary.
+
+Test slightly before the problematic point.
+
+Test exactly at the problematic point.
+
+Test slightly after it.
+
+The scene should remain correct continuously.
+
+There must not be a tiny progress interval where the layout flips and then corrects itself.
+
+==================================================
+RESPONSIVE CHECK
+===============================================================
+
+Verify that the issue is not caused by a viewport/aspect-ratio-specific transform.
+
+Check at least:
+
+- desktop landscape
+- narrower desktop/tablet
+- portrait if practical
+
+Do not introduce a desktop-only fix that breaks another viewport.
+
+==================================================
+PERFORMANCE
+===============================================================
+
+Keep the fix lightweight.
+
+Do not introduce:
+
+- per-frame expensive calculations
+- additional render loops
+- duplicated scene state
+- duplicated camera logic
+
+Use the existing architecture.
+
+==================================================
+ACCEPTANCE CRITERIA
+===============================================================
+
+This issue is considered fixed only when:
+
+✓ The post-cloud vertical descent begins with the correct layout.
+
+✓ No reversed/mirrored/intermediate layout is visible.
+
+✓ Scrolling farther does NOT trigger a sudden correction.
+
+✓ The camera and scene objects remain synchronized.
+
+✓ Forward scrolling works.
+
+✓ Reverse scrolling works.
+
+✓ Scrubbing works.
+
+✓ Stopping at the transition works.
+
+✓ Reloading and entering this section deterministically works.
+
+✓ No new camera/scroll/state architecture is introduced.
+
+✓ No timeout or delayed correction is used.
+
+The screenshot I provided represents the incorrect intermediate state that must no longer occur.
+
+Fix the ROOT CAUSE of this transition inconsistency, not merely its visible symptom.
+
+
+PRODIGY EVENT — STUDENT REGISTRATION
+
+In the Prodigy event section, verify the available registration actions.
+
+Currently only the School Registration button is present.
+
+If Student Registration is missing, add a clearly visible Student Registration button alongside School Registration.
+
+Preserve the existing design, typography, spacing, interaction style, and event flow.
+
+Do not remove or break School Registration.
+
+Verify both buttons work correctly and remain accessible/responsive.

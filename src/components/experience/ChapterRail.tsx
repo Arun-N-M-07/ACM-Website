@@ -14,9 +14,14 @@
  */
 import { useMemo, useRef } from 'react';
 import { CHAPTERS, isIntroChapter, SEGMENTS } from '@/config/timeline';
+import { progressAtIntroTime } from '@/intro/controller';
+import { T } from '@/intro/timeline';
 import { useExperience } from '@/store/experience';
 import { goToChapter } from './navigation';
 import { useProgressFrame } from './useProgressFrame';
+
+/** Where the journey's first frame is on the track (the film's; see intro/timeline T.mist). */
+const FILM_START = progressAtIntroTime(T.prologue);
 
 /** Each chapter's span of the journey's progress. */
 function chapterSpans() {
@@ -50,7 +55,9 @@ export function ChapterRail() {
 
   useProgressFrame((p) => {
     if (fill.current) fill.current.style.transform = `scaleY(${railPosition(p, spans)})`;
-    if (counter.current) counter.current.textContent = `${String(Math.round(p * 100)).padStart(2, '0')}%`;
+    // (Counted from the film's first frame: the few beats of mist before it are where the loop comes round.)
+    const done = Math.max(0, (p - FILM_START) / (1 - FILM_START));
+    if (counter.current) counter.current.textContent = `${String(Math.round(done * 100)).padStart(2, '0')}%`;
   });
 
   if (phase === 'loading' || phase === 'ready') return null;

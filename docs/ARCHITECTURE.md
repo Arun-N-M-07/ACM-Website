@@ -86,29 +86,37 @@ Camera framing is designed around them: rooms, the board and the monument are fr
 - **Adaptive near plane** (`CameraRig`): above ground the near plane scales with altitude (0.25 m at eye level, up to 3 m at drone height), so the campus's stacked flat layers never z-fight; interiors use 0.1 m.
 - **Flat layers** are ≥ 1 cm apart: OSM areas < roads < footpaths < the forecourt, lawns and plaza in `Grounds.tsx`.
 - **Resolution** only steps down (rarely) under load — it never flips back and forth mid-scroll.
-- **Warm-up**: the Teams world mounts during the walk down the vestibule and compiles its materials then (`compileAsync`), so the crossing never hitches; its spine geometry is built in idle-time slices.
+- **Warm-up**: the Teams world mounts at the threshold and compiles its materials then — twice, for the canvas and for a render target, since inside the world everything is drawn through the post-processing composer and three links a separate program for that — and uploads its textures, so neither the portal crossing nor the loop's seam waits on a shader; its spine geometry is built in idle-time slices.
 - **Portrait phones**: below ground the lens widens and the camera steps back so interiors keep landscape-like coverage.
 
-## Streaming (`experience/SceneDirector.tsx`)
+## Residency (`experience/SceneDirector.tsx`)
 
-| Chunk | Mounted while |
-|---|---|
-| campus | arrival → 70% of the descent |
-| shaft | topdown → 30% into the facility |
-| hall | 30% into the descent → 30% into the events |
-| corridor (+ portal) | 72% into the descent → the portal gate; rooms stream within `roomWindow` of the current station. Remounted as soon as the visitor starts travelling back out. |
-| teams | from a quarter of the way down the vestibule, while travelling, and inside |
+The journey is a loop (`components/experience/JourneyLoop.tsx`): from any point, either end of the world is one short scroll away, so nothing is unmounted behind the camera — rebuilding the opening's papers alone is seconds of canvas work, and it stalled the loop's seam. Every chunk is built and compiled once and then stays resident; what the camera can't see is hidden (`visible = false`), not unmounted.
 
-Decisions are debounced (0.25 s) except during jump fades. Unmounting disposes geometry, materials and canvas textures (`useDisposable`, `CanvasPanel`, shared prop geometry is ref-counted).
+| Chunk | Built | Hidden while |
+|---|---|---|
+| campus | behind the loader | the opening's camera is down in the lobby, or outside the film |
+| intro, underground kit, signal thread | behind the loader | the camera is in the Teams world |
+| corridor (+ portal) | behind the loader | the film is still above the door |
+| teams | at the threshold ("Enter"), compiled and its textures uploaded then | the camera is outside it (`TeamsWorld`) |
+
+Mount decisions are debounced (0.25 s) except during jump fades. Unmounting (only on leaving the page) still disposes geometry, materials and canvas textures (`useDisposable`, `CanvasPanel`, shared prop geometry is ref-counted).
+
+The Events rooms are the one thing still streamed (all nine would hold ~100 MB of canvas textures): `EventCorridor` mounts those within `roomWindow` of the camera's station — outside the Events, the corridor end the track is on — and they come in **one a frame, nearest first** (rooms that left go at once). One room's build fits a frame; three at once did not, and the window jumps from one end of the corridor to the other at the loop's seam and on a jump.
+
+## The loop (`components/experience/JourneyLoop.tsx`)
+
+The track's two ends are the same mist (`fx.mist`, one DOM layer over every world, a pure function of progress): past the last Teams card the mist takes the world through the short `return` segment; the track begins with a few beats of that mist before the film (`T.mist` → `T.prologue`). The loop is a seam between two points inside those whole-mist margins (`END_SEAM`, `START_SEAM`), short of the hard ends, tested on the scroll target. Crossing one, `navigation.wrapToStart / wrapToEnd` → `ScrollTimeline.shiftProgress(delta)` moves the scroll target, the camera's progress and Lenis by exactly the seam's length and carries Lenis's pending smoothing across — the scroll's speed and direction continue, nothing fades or snaps. `progress.cut` makes the Teams orbit cut rather than spring. `wheelShape`'s input shaping is faded in through the return so a wheel notch moves the same distance on both sides of the seam. Reduced motion keeps still-to-still jumps (`loopToStart / loopToEnd`).
 
 ## Systems
 
 - **Lighting** — `scenes/shared/WorldLights.tsx` mounts every light once (three.js recompiles every shader when the light count changes). Chapters only change intensities. Below ground, `LightPool` moves a fixed handful of point lights to the fixtures nearest the camera; scenes register fixtures with `useLightAnchor(s)`.
 - **Shader warm-up** — `experience/ShaderWarmup.tsx` compiles all material variants against the real light rig while the loader is up.
-- **Typography in 3D** — every sign, poster, plaque and screen is a `CanvasPanel` drawn with the page's own web fonts (read from the next/font CSS variables).
-- **Post-processing** — only near the portal and in the Teams world (`teams/post/PostProcessing.tsx`: three's own RenderPass → bloom → OutputPass → one final pass for warp / aberration / flash). Everywhere else the canvas renders directly.
+- **Typography** — one family, Montserrat (`app/layout.tsx`, next/font, variable weight, roman and italic), and one hierarchy defined once in `globals.css`: weight tokens (`--w-display` 700 … `--w-body` 400; semibold interface and uppercase labels) and tracking tokens (`--t-display` −0.035em … `--t-label` 0.14em, `--t-mark` 0.22em for the wordmark only). Rules take their role's tokens rather than choosing their own; `--serif` / `--sans` / `--mono` remain as the role names (display, text, label), all Montserrat. The one other letterform is ACM-CEG's own 3D blade face (`intro/world/AcmCeg.tsx`); the building's clock keeps its Roman numerals.
+- **Typography in 3D** — every sign, poster, plaque and screen is a `CanvasPanel` drawn with the page's own web fonts (read from the next/font CSS variables), with the same roles (`systems/textures/typeset.ts`: a display line is semibold, a label semibold with its tracking held in; the gas "22 YEARS AGO" is Montserrat at its heaviest, as a density field).
+- **Post-processing** — only near the portal, in the Teams world, and while the opening's first beats are wholly mist (drawing under the mist, where nothing shows), so a backward pass through the loop's seam finds it built (`teams/post/PostProcessing.tsx`: three's own RenderPass → bloom → OutputPass → one final pass for warp / aberration / flash). Everywhere else the canvas renders directly.
 - **Campus data** — `scripts/build-campus.mjs` (`npm run campus:build`) queries OpenStreetMap (Overpass API) around CEG, projects everything into world metres (rotated so the red building's front faces +z and centred on the clock tower) and writes `public/data/campus.json`. `CampusModel.tsx` extrudes the buildings, lays roads and green areas, and scatters instanced trees away from buildings and roads. Map data © OpenStreetMap contributors, ODbL.
-- **Music** — `systems/audio/music.ts` plays one track (`config/music.ts`) through a Web Audio low-pass: open above ground, muffled as the journey goes underground (`MusicDirector.tsx`), ducked through the portal and clear again in the Teams world. There are no sound effects. Nothing plays until the visitor chooses music; without the file installed the music controls are disabled.
+- **Music** — `systems/audio/music.ts` plays one track (`config/music.ts`) through a Web Audio low-pass: open above ground, muffled as the journey goes underground (`MusicDirector.tsx`), ducked through the portal and clear again in the Teams world. Sound design (`systems/audio/sfx.ts`, directed by `SoundDirector.tsx`) is procedural Web Audio — layers (mist air, cloud air, tunnel air, room air) and cues (thunder, tunnel, Prodigy tiles, portal) — every level derived from where the journey is (and, for motion sounds, how fast the camera moves), so it plays the same forwards and backwards. Nothing plays until the visitor chooses sound; without the music file installed the music controls are disabled.
 
 ## Performance notes
 

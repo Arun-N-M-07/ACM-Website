@@ -20,7 +20,8 @@
  *                 building, held; a glide over the fountain pool to hover
  *                 before the tower
  *   04 Ascent     straight up the face of the tower, over the campus, through
- *                 the cloud, out above it
+ *                 the cloud, out above it; levelling into a flight over the
+ *                 sea of cloud, where ACM-CEG stands, huge, and is held
  *   05 Descent    straight down again through the cloud onto the glass
  *                 light-well, which opens; down its shaft into the lobby; the
  *                 EVENTS door opens; through it into the Events
@@ -45,6 +46,12 @@ export const INTRO_MAX_BEATS_PER_SECOND = 10;
 export const SCORE_IN = 70.0;
 
 export const T = {
+  /**
+   * Before the film: the mist the journey comes round through (JourneyLoop). Scrolling back from
+   * the film's first frame thickens it; at the very start of the track the journey continues from
+   * its end, inside the same mist. (Entering, the film starts at `prologue`, clear.)
+   */
+  mist: -55,
   // 01 Arrival — the prologue lives on the beats before 0, so every beat of the story keeps its place.
   /** The film begins: the camera almost on the ground, in the mist. */
   prologue: -44,
@@ -98,33 +105,39 @@ export const T = {
   cloudIn: 132,
   /** …out of its top. */
   cloudOut: 135.5,
-  /** Above the cloud: looking out at the horizon. */
+  /** Above the cloud: the rise levels out into flight over the sea of cloud. */
   apex: 138,
+  /** ACM-CEG rises out of the cloud ahead… */
+  acmCegIn: 139.5,
+  /** …the camera slows into its composition… */
+  acmCeg: 144,
+  /** …and holds it (a deliberate beat), drifting in a little, until here. */
+  acmCegHold: 150.5,
   // 05 Descent
-  /** Tilting down; straight down. */
-  descend: 142.5,
+  /** Tilting down; into the drop. */
+  descend: 155.5,
   /** Into the cloud's top… */
-  cloudTop: 145,
+  cloudTop: 158,
   /** …out of its base: the campus below, the light-well at the centre. */
-  cloudBase: 150.5,
+  cloudBase: 163.5,
   /** Low over the light-well. */
-  plaza: 159,
+  plaza: 172,
   /** The well's glass leaves slide open (over 2 beats). */
-  wellOpen: 159,
+  wellOpen: 172,
   /** Through the ground, down the shaft. */
-  shaft: 162,
+  shaft: 175,
   /** Level, in the lobby. */
-  lobby: 169.5,
+  lobby: 182.5,
   /** The door wakes, unlocks and opens (over 6.5 beats). */
-  door: 176.5,
+  door: 189.5,
   /** Through the door. */
-  doorway: 184,
+  doorway: 197,
   /** The Events. */
-  end: 188,
+  end: 201,
 } as const;
 
-/** The film's first and last beats. */
-export const INTRO_START = T.prologue;
+/** The track's first beat (the mist before the film — the film itself begins at T.prologue) and its last. */
+export const INTRO_START = T.mist;
 export const INTRO_END = T.end;
 export const INTRO_SPAN = INTRO_END - INTRO_START;
 
@@ -142,7 +155,7 @@ export interface IntroChapter {
 
 /** User-facing chapters (numbered so the journey's own 06–08 follow on). */
 export const INTRO_CHAPTERS: IntroChapter[] = [
-  { id: 'arrival', number: '01', label: 'Arrival', from: INTRO_START, to: T.story1, enterAt: INTRO_START },
+  { id: 'arrival', number: '01', label: 'Arrival', from: INTRO_START, to: T.story1, enterAt: T.prologue },
   { id: 'story', number: '02', label: 'The Story', from: T.story1, to: T.clearing, enterAt: 12 },
   { id: 'ceg', number: '03', label: 'CEG', from: T.clearing, to: T.rise, enterAt: T.reveal + 2 },
   { id: 'ascent', number: '04', label: 'Ascent', from: T.rise, to: T.descend, enterAt: T.rise + 0.5 },
@@ -157,10 +170,10 @@ export function introChapterAt(t: number): IntroChapterId {
 /**
  * Reduced motion: framed stills the camera cuts between instead of flying —
  * the canister come to rest, the words in the gas, each fragment legible, the
- * name, the building, the tower, the rise, above the cloud, the well below,
- * the lobby, the open door.
+ * name, the building, the tower, the rise, ACM-CEG over the cloud, the well
+ * below, the lobby, the open door.
  */
-export const STILLS = [-32, -11, 13, 28, 45, 64, 79, 95, 117, 127, 139.5, 154, 172, 182];
+export const STILLS = [-32, -11, 13, 28, 45, 64, 79, 95, 117, 127, 147, 167, 185, 195];
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 

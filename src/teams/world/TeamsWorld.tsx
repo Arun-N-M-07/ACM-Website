@@ -14,7 +14,7 @@
  */
 import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
-import { type Group, type Material, type Object3D, Vector3 } from 'three';
+import { type Group, HalfFloatType, type Material, type Object3D, type Texture, Vector3, WebGLRenderTarget } from 'three';
 import { useExperience } from '@/store/experience';
 import { useLightAnchor } from '@/systems/lighting/lightPool';
 import { smoothstep } from '@/systems/camera/pose';
@@ -22,7 +22,7 @@ import { cardCenter, composition, O } from '../layout';
 import { teams, teamsFrame } from '../state';
 import { Backdrop } from './Backdrop';
 import { DomainCards } from './DomainCards';
-import { buildTeamsEnvironment } from './environment';
+import { teamsEnvironment } from './environment';
 import { ParticleField } from './ParticleField';
 import { Spine } from './Spine';
 import { Tunnel } from './Tunnel';
@@ -41,8 +41,8 @@ export function TeamsWorld() {
   const group = useRef<Group>(null);
   const ready = useRef(false);
 
-  const env = useMemo(() => buildTeamsEnvironment(gl), [gl]);
-  useEffect(() => () => env.dispose(), [env]);
+  // (Shared for the renderer's life — see environment.ts: never disposed per visit.)
+  const env = useMemo(() => teamsEnvironment(gl), [gl]);
 
   // The frosted cards' transmission pass redraws only the spine behind them;
   // on smaller tiers it runs at reduced resolution (it's blurred anyway).
@@ -80,13 +80,39 @@ export function TeamsWorld() {
         }
       });
       let materials: Set<Material>;
+      // (Twice: for the canvas, and for a render target — inside this world everything is drawn
+      // through the post-processing composer (teams/post), and three links a separate program for
+      // drawing into a target (no tone mapping, linear output). Without it those programs linked the
+      // first frame the world was seen — a dropped frame as the loop came round into it.)
+      const target = new WebGLRenderTarget(1, 1, { type: HalfFloatType });
+      const previous = gl.getRenderTarget();
       try {
         materials = gl.compile(g, camera, scene) as unknown as Set<Material>;
+        gl.setRenderTarget(target);
+        gl.compile(g, camera, scene);
       } catch {
         hidden.forEach((o) => (o.visible = false));
         return done();
+      } finally {
+        gl.setRenderTarget(previous);
+        target.dispose();
       }
       hidden.forEach((o) => (o.visible = false));
+      // …and its textures uploaded now too (the card faces, the spine's maps): compiling doesn't upload
+      // them, and the first frame the world is seen would otherwise do it all at once.
+      const uploaded = new Set<Texture>();
+      const upload = (v: unknown) => {
+        const t = v as Texture & { isRenderTargetTexture?: boolean };
+        if (t && t.isTexture && !t.isRenderTargetTexture && !uploaded.has(t)) {
+          uploaded.add(t);
+          gl.initTexture(t);
+        }
+      };
+      for (const m of materials) {
+        for (const v of Object.values(m)) upload(v);
+        const uniforms = (m as Material & { uniforms?: Record<string, { value?: unknown }> }).uniforms;
+        if (uniforms) for (const u of Object.values(uniforms)) upload(u?.value);
+      }
       const started = performance.now();
       const check = () => {
         if (!alive) return;

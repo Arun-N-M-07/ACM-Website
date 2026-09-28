@@ -21,14 +21,43 @@
 
   --gutter: clamp(16px, 3.6vw, 52px);
   --ease: cubic-bezier(0.2, 0.7, 0.1, 1);
-  /* Typography: one family, Bodoni Moda, in three roles (display, text, label) — see layout.tsx.
-     The --font-* names are what the in-world canvases read (systems/textures/typeset). */
-  --font-serif: var(--font-bodoni);
-  --font-sans: var(--font-bodoni);
-  --font-mono: var(--font-bodoni);
-  --serif: var(--font-bodoni), 'Bodoni 72', Didot, 'Bodoni MT', Georgia, serif;
-  --sans: var(--font-bodoni), 'Bodoni 72', Didot, 'Bodoni MT', Georgia, serif;
-  --mono: var(--font-bodoni), 'Bodoni 72', Didot, 'Bodoni MT', Georgia, serif;
+  /* Typography — one family, Montserrat (layout.tsx), and one hierarchy. Rules don't choose
+     weights or tracking of their own: each takes its role's, below, so the site's voice is set
+     here. (--serif / --sans / --mono are kept as the role names the rules use — display, text,
+     label — all Montserrat; the --font-* names are what the in-world canvases read,
+     systems/textures/typeset.) */
+  --font-family: var(--font-montserrat), Montserrat, 'Helvetica Neue', Arial, sans-serif;
+  --font-serif: var(--font-montserrat);
+  --font-sans: var(--font-montserrat);
+  --font-mono: var(--font-montserrat);
+  --serif: var(--font-family);
+  --sans: var(--font-family);
+  --mono: var(--font-family);
+  /* Weights: very heavy only for the largest display type; titles bold; headings and interface
+     semibold; small uppercase labels semibold (so they hold up at 9–11px); metadata medium; text regular. */
+  --w-display: 700;
+  --w-title: 600;
+  --w-heading: 600;
+  --w-sub: 500;
+  --w-quote: 400;
+  --w-body: 400;
+  --w-strong: 600;
+  --w-ui: 600;
+  --w-label: 600;
+  --w-meta: 500;
+  /* Tracking: the larger the type, the tighter; text as drawn; numerals just open; uppercase
+     interface and labels open by degrees — never more than a mark (the wordmark, the threshold)
+     needs. Montserrat is wide already. */
+  --t-display: -0.035em;
+  --t-title: -0.025em;
+  --t-heading: -0.015em;
+  --t-sub: -0.005em;
+  --t-body: 0;
+  --t-num: 0.02em;
+  --t-meta: 0.05em;
+  --t-ui: 0.1em;
+  --t-label: 0.14em;
+  --t-mark: 0.22em;
   color-scheme: dark;
 }
 
@@ -50,9 +79,10 @@ body {
   background: var(--ink);
   color: var(--bone);
   font-family: var(--sans);
+  font-weight: var(--w-body);
   font-size: 16px;
-  line-height: 1.55;
-  font-optical-sizing: auto;
+  line-height: 1.6;
+  letter-spacing: var(--t-body);
   font-variant-numeric: lining-nums;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
@@ -80,19 +110,19 @@ img {
 /* ── Type primitives ───────────────────────────────────────────────────── */
 .kicker {
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-label);
   font-size: 11px;
-  letter-spacing: 0.22em;
+  letter-spacing: var(--t-label);
   text-transform: uppercase;
   color: var(--bone-dim);
   margin: 0 0 14px;
 }
 .display {
   font-family: var(--serif);
-  font-weight: 400;
+  font-weight: var(--w-title);
   font-size: clamp(32px, 4.4vw, 68px);
   line-height: 1.02;
-  letter-spacing: -0.01em;
+  letter-spacing: var(--t-title);
   margin: 0 0 18px;
 }
 .body {
@@ -107,9 +137,9 @@ img {
 }
 .text-link {
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-meta);
   font-size: 12px;
-  letter-spacing: 0.06em;
+  letter-spacing: var(--t-meta);
   text-decoration: underline;
   text-decoration-color: currentColor;
   text-underline-offset: 4px;
@@ -129,9 +159,9 @@ img {
 }
 .kbd {
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-meta);
   font-size: 10px;
-  letter-spacing: 0.1em;
+  letter-spacing: var(--t-ui);
   border: 1px solid var(--line);
   padding: 2px 6px;
   border-radius: 2px;
@@ -139,9 +169,9 @@ img {
 }
 .btn {
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-label);
   font-size: 11px;
-  letter-spacing: 0.18em;
+  letter-spacing: var(--t-label);
   text-transform: uppercase;
   border: 1px solid var(--line);
   padding: 12px 18px;
@@ -177,7 +207,7 @@ img {
   background: var(--bone);
   color: var(--ink);
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-meta);
   font-size: 12px;
   padding: 10px 14px;
   transform: translateY(-160%);
@@ -211,6 +241,53 @@ html.scroll-locked .experience-canvas {
 .scroll-track {
   position: relative;
   width: 1px;
+  pointer-events: none;
+}
+
+/* The opening's mist over the world (ScreenFx, fx.mist): its tones are the opening's first frame's —
+   the mist above, the darker road below — so the loop's two ends meet in the same air. Under the
+   vignette and the grain; never over the interface. */
+.fx-mist {
+  position: fixed;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  overflow: hidden;
+  visibility: hidden;
+}
+.fx-mist-base {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background: linear-gradient(180deg, #444850 0%, #484b50 45%, #3a3c40 70%, #303134 100%);
+}
+.fx-mist-cloud {
+  position: absolute;
+  inset: -20% -100% -20% -100%;
+  opacity: 0;
+  background-repeat: repeat;
+  background-size: 64vmax 64vmax;
+  /* The mist's own lighter wisps over its body, never bright: the opening is before dawn. */
+  filter: blur(6px) brightness(0.36);
+  will-change: transform, opacity;
+}
+.fx-mist-cloud-b {
+  background-size: 110vmax 110vmax;
+  filter: blur(14px) brightness(0.3);
+}
+/* Deep in the mist the interface recedes with the world (it comes back as the mist thins): where
+   the journey comes round, one chrome gives way to the other unseen. */
+.rail,
+.topbar,
+.teams-hud,
+.intro-layer {
+  transition: opacity 0.6s var(--ease);
+}
+html[data-mist='deep'] .rail,
+html[data-mist='deep'] .topbar,
+html[data-mist='deep'] .teams-hud,
+html[data-mist='deep'] .intro-layer {
+  opacity: 0 !important;
   pointer-events: none;
 }
 
@@ -324,10 +401,10 @@ html.scroll-locked .experience-canvas {
 }
 .hero-title {
   font-family: var(--serif);
-  font-weight: 400;
+  font-weight: var(--w-display);
   font-size: clamp(76px, 10.5vw, 168px);
   line-height: 0.84;
-  letter-spacing: -0.03em;
+  letter-spacing: var(--t-display);
   margin: 0 0 18px;
   display: flex;
   flex-direction: column;
@@ -337,9 +414,9 @@ html.scroll-locked .experience-canvas {
 }
 .hero-sub {
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-label);
   font-size: 12px;
-  letter-spacing: 0.2em;
+  letter-spacing: var(--t-label);
   text-transform: uppercase;
   color: var(--bone-2);
   margin: 0 0 18px;
@@ -347,8 +424,9 @@ html.scroll-locked .experience-canvas {
 .hero-place { color: var(--bone-2); font: 12px/1.7 var(--sans); margin: 0 0 24px; }
 .hero-sub em {
   font-family: var(--serif);
+  font-weight: var(--w-quote);
   font-size: 26px;
-  letter-spacing: 0;
+  letter-spacing: var(--t-sub);
   text-transform: none;
   font-style: italic;
   color: var(--bone);
@@ -365,9 +443,9 @@ html.scroll-locked .experience-canvas {
 }
 .scroll-cue {
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-label);
   font-size: 11px;
-  letter-spacing: 0.22em;
+  letter-spacing: var(--t-label);
   text-transform: uppercase;
   color: var(--bone-dim);
   display: flex;
@@ -416,8 +494,8 @@ html.scroll-locked .experience-canvas {
 .wordmark {
   font-family: var(--mono);
   font-size: 13px;
-  font-weight: 500;
-  letter-spacing: 0.32em;
+  font-weight: var(--w-meta);
+  letter-spacing: var(--t-mark);
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -431,9 +509,9 @@ html.scroll-locked .experience-canvas {
 .chapter-indicator {
   margin: 0;
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-label);
   font-size: 11px;
-  letter-spacing: 0.2em;
+  letter-spacing: var(--t-label);
   text-transform: uppercase;
   display: flex;
   gap: 10px;
@@ -452,9 +530,9 @@ html.scroll-locked .experience-canvas {
 }
 .ctl {
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-label);
   font-size: 11px;
-  letter-spacing: 0.16em;
+  letter-spacing: var(--t-label);
   text-transform: uppercase;
   color: var(--bone-2);
   display: inline-flex;
@@ -507,15 +585,32 @@ html.scroll-locked .experience-canvas {
   top: 50%;
   transform: translateY(-50%);
   z-index: 30;
-  transition: opacity 0.6s var(--ease);
+  /* A secondary guide, not a headline: subdued over the film until it is wanted — hovered, or
+     focused from the keyboard — then clear. (Only its opacity changes: nothing moves.) */
+  opacity: 0.5;
+  transition: opacity 0.5s var(--ease);
 }
-.rail[data-film='true'] {
-  opacity: 0.55;
-}
-.rail[data-film='true']:hover,
-.rail[data-film='true']:focus-within {
+.rail:hover,
+.rail:focus-within {
   opacity: 1;
 }
+/* (Touch screens can't hover: a little more present at rest.) */
+@media (hover: none) {
+  .rail {
+    opacity: 0.62;
+  }
+}
+/* Not a panel: a soft pool of shade under the column, so its type holds over the brightest frames
+   (the cloud, the aerial campus, the lit rooms) and all but vanishes over dark ones. */
+.rail::before {
+  content: '';
+  position: absolute;
+  inset: -40px -22px -40px -40px;
+  background: radial-gradient(ellipse 50% 50% at 66% 50%, rgba(6, 6, 8, 0.3), rgba(6, 6, 8, 0.14) 55%, rgba(6, 6, 8, 0) 100%);
+  pointer-events: none;
+  z-index: -1;
+}
+
 .rail ol {
   position: relative;
   list-style: none;
@@ -537,6 +632,8 @@ html.scroll-locked .experience-canvas {
   bottom: calc(var(--rail-row) / 2);
   width: 1px;
   background: var(--line);
+  /* (A breath of shade so the track still reads over bright scenes — the aerial campus, the cloud.) */
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.5);
   pointer-events: none;
 }
 .rail-fill {
@@ -553,12 +650,20 @@ html.scroll-locked .experience-canvas {
   column-gap: 10px;
   height: var(--rail-row);
   padding: 0 0 0 8px;
+  /* Numerals: the navigation's figures — medium when inactive, bold when active (below). */
   font-family: var(--sans);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: var(--w-meta);
   font-variant-numeric: lining-nums tabular-nums;
-  letter-spacing: 0.08em;
-  color: var(--bone-dim);
+  letter-spacing: var(--t-num);
+  color: rgba(239, 233, 223, 0.84);
+  /* Legible over any frame the film passes through, without a panel behind it. */
+  /* Each glyph carries its own close, dark halo — legible on the cloud and the sky without a
+     panel behind the column. */
+  text-shadow:
+    0 0 1px rgba(0, 0, 0, 0.9),
+    0 0 3px rgba(0, 0, 0, 0.75),
+    0 0 7px rgba(0, 0, 0, 0.5);
 }
 .rail .num {
   text-align: right;
@@ -570,11 +675,13 @@ html.scroll-locked .experience-canvas {
   background: var(--bone-dim);
   transform: scaleX(0.5);
   transform-origin: right;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.6);
   transition: transform 0.35s var(--ease), background-color 0.35s var(--ease);
 }
 .rail .label {
-  font-size: 11px;
-  letter-spacing: 0.16em;
+  font-size: 10.5px;
+  font-weight: var(--w-label);
+  letter-spacing: var(--t-label);
   text-transform: uppercase;
   white-space: nowrap;
   opacity: 0;
@@ -585,12 +692,17 @@ html.scroll-locked .experience-canvas {
 }
 .rail button:hover .label,
 .rail button:focus-visible .label,
-.rail:hover li.active .label {
+.rail li.active .label {
   opacity: 1;
   transform: none;
 }
+/* The active chapter is unmistakable: its name always shown, its figure bold and full white, its tick lit. */
 .rail li.active button {
   color: var(--bone);
+  font-weight: var(--w-title);
+}
+.rail li.active .label {
+  font-weight: var(--w-ui);
 }
 .rail li.active .tick {
   background: var(--warm);
@@ -601,10 +713,16 @@ html.scroll-locked .experience-canvas {
   margin-top: 10px;
   padding-right: 0;
   text-align: right;
-  font: 500 11px/1 var(--sans);
+  font: var(--w-ui) 11px/1 var(--sans);
   font-variant-numeric: lining-nums tabular-nums;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--t-num);
   color: var(--warm);
+  /* Each glyph carries its own close, dark halo — legible on the cloud and the sky without a
+     panel behind the column. */
+  text-shadow:
+    0 0 1px rgba(0, 0, 0, 0.9),
+    0 0 3px rgba(0, 0, 0, 0.75),
+    0 0 7px rgba(0, 0, 0, 0.5);
 }
 @media (max-height: 640px) {
   .rail {
@@ -667,9 +785,9 @@ html.scroll-locked .experience-canvas {
 }
 .plate-pin {
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-meta);
   font-size: 10px;
-  letter-spacing: 0.2em;
+  letter-spacing: var(--t-label);
   fill: var(--bone);
   paint-order: stroke;
   stroke: rgba(8, 8, 10, 0.55);
@@ -708,24 +826,31 @@ html.scroll-locked .experience-canvas {
   left: var(--gutter);
 }
 .plate[data-side='right'] .plate-card {
-  right: calc(var(--gutter) + 72px);
+  /* Clear of the chapter rail — its figures, ticks and the active chapter's name, always shown. */
+  right: calc(var(--gutter) + 136px);
+}
+/* (Tablets: a little narrower, so the card's left edge — and the room it leaves open — stays put.) */
+@media (max-width: 1080px) {
+  .plate-card {
+    width: min(384px, calc(100vw - 2 * var(--gutter)));
+  }
 }
 .plate-kicker {
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-label);
   font-size: 9px;
   line-height: 1.8;
-  letter-spacing: 0.14em;
+  letter-spacing: var(--t-ui);
   text-transform: uppercase;
   color: var(--paper-dim);
   margin: 0 0 14px;
 }
 .plate-title {
   font-family: var(--serif);
-  font-weight: 400;
+  font-weight: var(--w-title);
   font-size: clamp(30px, 2.9vw, 44px);
   line-height: 1.04;
-  letter-spacing: -0.01em;
+  letter-spacing: var(--t-title);
   margin: 0 0 14px;
   color: var(--paper-ink);
 }
@@ -737,6 +862,8 @@ html.scroll-locked .experience-canvas {
 }
 .plate-quote {
   font-family: var(--serif);
+  letter-spacing: var(--t-sub);
+  font-weight: var(--w-quote);
   font-style: italic;
   font-size: clamp(22px, 2.1vw, 30px);
   line-height: 1.3;
@@ -758,9 +885,9 @@ html.scroll-locked .experience-canvas {
 }
 .plate-facts dt {
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-label);
   font-size: 10.5px;
-  letter-spacing: 0.14em;
+  letter-spacing: var(--t-ui);
   text-transform: uppercase;
   color: var(--paper-dim);
   padding-top: 3px;
@@ -783,9 +910,9 @@ html.scroll-locked .experience-canvas {
   padding: 12px 16px;
   min-height: 44px;
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-label);
   font-size: 11.5px;
-  letter-spacing: 0.12em;
+  letter-spacing: var(--t-ui);
   text-transform: uppercase;
   text-decoration: none;
   color: var(--bone);
@@ -846,9 +973,9 @@ html.scroll-locked .experience-canvas {
   margin-bottom: clamp(28px, 5vh, 52px);
   border-bottom: 1px solid var(--line);
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-label);
   font-size: 10px;
-  letter-spacing: 0.22em;
+  letter-spacing: var(--t-label);
   text-transform: uppercase;
   color: var(--bone-dim);
 }
@@ -858,9 +985,9 @@ html.scroll-locked .experience-canvas {
 .dossier-close {
   margin-left: auto;
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-label);
   font-size: 11px;
-  letter-spacing: 0.18em;
+  letter-spacing: var(--t-label);
   text-transform: uppercase;
   color: var(--bone-2);
 }
@@ -873,10 +1000,10 @@ html.scroll-locked .experience-canvas {
 }
 .dossier-title {
   font-family: var(--serif);
-  font-weight: 400;
+  font-weight: var(--w-display);
   font-size: clamp(52px, 8vw, 112px);
   line-height: 0.9;
-  letter-spacing: -0.01em;
+  letter-spacing: var(--t-display);
   margin: 10px 0 26px;
 }
 .dossier-essence {
@@ -887,6 +1014,8 @@ html.scroll-locked .experience-canvas {
 }
 .dossier-character {
   font-family: var(--serif);
+  letter-spacing: var(--t-sub);
+  font-weight: var(--w-quote);
   font-style: italic;
   font-size: clamp(17px, 1.4vw, 20px);
   color: var(--accent);
@@ -909,9 +1038,9 @@ html.scroll-locked .experience-canvas {
   align-items: baseline;
   gap: 6px 14px;
   font-family: var(--mono);
-  font-weight: 400;
+  font-weight: var(--w-label);
   font-size: 10px;
-  letter-spacing: 0.24em;
+  letter-spacing: var(--t-mark);
   text-transform: uppercase;
   color: var(--bone-dim);
   margin: 0 0 16px;
@@ -957,7 +1086,7 @@ html.scroll-locked .experience-canvas {
 .fig-thread { stroke: var(--bone-dim); stroke-width: 0.8; fill: none; stroke-dasharray: 2 3; }
 .fig-ring { stroke: var(--bone); stroke-width: 1.4; fill: none; }
 .fig-label { font-family: var(--mono);
-  font-weight: 500; font-size: 9px; letter-spacing: 0.14em; fill: var(--bone-dim); text-transform: uppercase; }
+  font-weight: var(--w-label); font-size: 9px; letter-spacing: var(--t-ui); fill: var(--bone-dim); text-transform: uppercase; }
 .fig-title { font-family: var(--serif); font-size: 26px; fill: var(--bone); }
 .fig-title-sm { font-family: var(--serif); font-size: 17px; fill: var(--bone); }
 .fig-accent-text { fill: var(--accent); }
@@ -976,14 +1105,15 @@ html.scroll-locked .experience-canvas {
 }
 .flow-n {
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-meta);
   font-size: 10px;
-  letter-spacing: 0.12em;
+  letter-spacing: var(--t-ui);
   color: var(--accent);
 }
 .flow strong {
   font-family: var(--serif);
-  font-weight: 400;
+  letter-spacing: var(--t-sub);
+  font-weight: var(--w-sub);
   font-size: 21px;
   color: var(--bone);
 }
@@ -1041,9 +1171,9 @@ html.scroll-locked .experience-canvas {
 }
 .dossier-meta dt {
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-label);
   font-size: 9px;
-  letter-spacing: 0.2em;
+  letter-spacing: var(--t-label);
   text-transform: uppercase;
   color: var(--bone-dim);
   padding-top: 3px;
@@ -1059,6 +1189,8 @@ html.scroll-locked .experience-canvas {
   align-items: baseline;
   gap: 12px;
   font-family: var(--serif);
+  letter-spacing: var(--t-heading);
+  font-weight: var(--w-heading);
   font-size: 30px;
   color: var(--bone) !important;
 }
@@ -1081,6 +1213,8 @@ html.scroll-locked .experience-canvas {
 .dossier-related button {
   justify-self: start;
   font-family: var(--serif);
+  letter-spacing: var(--t-sub);
+  font-weight: var(--w-sub);
   font-size: 24px;
   color: var(--bone);
   text-align: left;
@@ -1095,9 +1229,9 @@ html.scroll-locked .experience-canvas {
 }
 .dossier-related .dossier-visit {
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-label);
   font-size: 10px;
-  letter-spacing: 0.2em;
+  letter-spacing: var(--t-label);
   text-transform: uppercase;
   color: var(--bone-dim);
 }
@@ -1130,9 +1264,9 @@ html.scroll-locked .experience-canvas {
 }
 .facts dt {
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-label);
   font-size: 10px;
-  letter-spacing: 0.2em;
+  letter-spacing: var(--t-label);
   text-transform: uppercase;
   color: var(--bone-dim);
   margin-bottom: 6px;
@@ -1146,7 +1280,7 @@ html.scroll-locked .experience-canvas {
   gap: 18px;
   flex-wrap: wrap;
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-meta);
   font-size: 12px;
 }
 .programme {
@@ -1192,9 +1326,9 @@ html.scroll-locked .experience-canvas {
 }
 .descent-value {
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-meta);
   font-size: 28px;
-  letter-spacing: 0.02em;
+  letter-spacing: var(--t-num);
 }
 
 /* ── Loader ───────────────────────────────────────────────────────────── */
@@ -1225,9 +1359,9 @@ html.scroll-locked .experience-canvas {
 .loader-title {
   font-family: var(--serif);
   font-size: clamp(64px, 6.8vw, 116px);
-  font-weight: 400;
+  font-weight: var(--w-display);
   line-height: 0.96;
-  letter-spacing: -0.035em;
+  letter-spacing: var(--t-display);
   margin: 26px 0;
   display: flex;
   flex-direction: column;
@@ -1259,9 +1393,9 @@ html.scroll-locked .experience-canvas {
   display: flex;
   justify-content: space-between;
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-label);
   font-size: 11px;
-  letter-spacing: 0.22em;
+  letter-spacing: var(--t-label);
   text-transform: uppercase;
   color: var(--bone-dim);
   margin: 12px 0 28px;
@@ -1284,9 +1418,9 @@ html.scroll-locked .experience-canvas {
   flex-basis: 100%;
   margin: 6px 0 0;
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-meta);
   font-size: 11px;
-  letter-spacing: 0.1em;
+  letter-spacing: var(--t-ui);
   color: var(--bone-2);
 }
 .loader-track span {
@@ -1294,7 +1428,7 @@ html.scroll-locked .experience-canvas {
 }
 .loader-track code {
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-meta);
   color: var(--warm);
 }
 .ctl-music .note {
@@ -1319,9 +1453,9 @@ html.scroll-locked .experience-canvas {
 }
 .loader-foot {
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-meta);
   font-size: 11px;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--t-meta);
   color: var(--bone-dim);
   margin: 24px 0 0;
 }
@@ -1338,8 +1472,8 @@ html.scroll-locked .experience-canvas {
   display: flex;
   justify-content: space-between;
   gap: 20px;
-  font: 500 10px/1.8 var(--mono);
-  letter-spacing: .13em;
+  font: var(--w-label) 10px/1.8 var(--mono);
+  letter-spacing: var(--t-ui);
   text-transform: uppercase;
   color: var(--bone-dim);
 }
@@ -1354,7 +1488,7 @@ html.scroll-locked .experience-canvas {
 .world-map { display: block; width: 100%; overflow: visible; }
 .map-plane { fill: url(#map-plane); stroke: #a6bdd2; stroke-opacity: .25; }
 .map-annotations { font-family: var(--mono);
-  font-weight: 500; font-size: 8px; letter-spacing: 1.4px; }
+  font-weight: var(--w-meta); font-size: 8px; letter-spacing: 1.4px; }
 .map-signal { stroke: #ffb86b; stroke-width: 1.8; stroke-dasharray: 500; stroke-dashoffset: 500; transition: stroke-dashoffset 2.8s var(--ease); }
 .loader[data-state='ready'] .map-signal { stroke-dashoffset: 0; }
 .map-core { filter: drop-shadow(0 0 8px #ffb86b); }
@@ -1363,16 +1497,6 @@ html.scroll-locked .experience-canvas {
 .loader-bar span { background: #c9a58a; }
 .loader-foot { letter-spacing: 0; }
 
-.finale-heading { font: 400 clamp(40px, 4.5vw, 72px)/.98 var(--serif); letter-spacing: -.025em; margin: 25px 0; }
-.finale-heading em { color: #ceb397; }
-.finale-membership { color: var(--bone-dim); font-size: 13px; line-height: 1.7; margin: 0; }
-.finale-route { display: flex; align-items: center; gap: 8px; margin: 24px 0; color: var(--bone-2); font: 500 9px var(--mono); text-transform: uppercase; letter-spacing: .1em; }
-.finale-route i { flex: 1; height: 1px; background: linear-gradient(90deg, #81baff, #e8b487); }
-.finale-route span::before { content: ''; display: inline-block; width: 4px; height: 4px; margin: 0 6px 2px 0; background: var(--warm); border-radius: 50%; }
-.finale-socials { display: flex; gap: 20px; margin-top: 22px; font: 500 10px var(--mono); color: var(--bone-dim); }
-.finale-socials a { text-decoration: none; padding: 8px 0; }
-.finale-replay { display: flex; gap: 12px; align-items: center; margin-top: 16px; min-height: 44px; border-top: 1px solid var(--line); width: 100%; font: 500 10px var(--mono); color: var(--bone-2); text-align: left; }
-.finale-replay span { font-size: 22px; color: var(--warm); }
 
 /* ── Index ────────────────────────────────────────────────────────────── */
 .index {
@@ -1390,8 +1514,8 @@ html.scroll-locked .experience-canvas {
   align-items: center;
   margin-bottom: 24px;
 }
-.index-intro { display: flex; align-items: end; justify-content: space-between; gap: 30px; padding-bottom: 32px; margin-bottom: 34px; border-bottom: 1px solid var(--line); }
-.index-intro h2 { font: 400 clamp(40px, 5vw, 78px)/1.05 var(--serif); letter-spacing: -.025em; margin: 0; }
+.index-intro { display: flex; align-items: flex-end; justify-content: space-between; gap: 30px; padding-bottom: 32px; margin-bottom: 34px; border-bottom: 1px solid var(--line); }
+.index-intro h2 { font: var(--w-title) clamp(40px, 5vw, 78px)/1.05 var(--serif); letter-spacing: var(--t-title); margin: 0; }
 .index-intro em { color: #ceb397; }
 .index-intro p { font-size: 13px; line-height: 1.8; color: var(--bone-dim); margin: 0; }
 .index-motion { margin-bottom: 28px; font-size: 9px; letter-spacing: .05em; }
@@ -1403,17 +1527,17 @@ html.scroll-locked .experience-canvas {
   display: block;
   margin: 2px 0 4px;
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-label);
   font-size: 10px;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--t-meta);
   text-transform: uppercase;
   color: var(--bone-dim);
 }
 .index-more .credit {
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-meta);
   font-size: 10px;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--t-meta);
   color: var(--bone-dim);
   margin-top: 8px;
 }
@@ -1443,12 +1567,14 @@ html.scroll-locked .experience-canvas {
 }
 .index-chapters .num {
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-meta);
   font-size: 12px;
   color: var(--bone-dim);
 }
 .index-chapters .label {
   font-family: var(--serif);
+  letter-spacing: var(--t-title);
+  font-weight: var(--w-title);
   font-size: clamp(30px, 3.6vw, 54px);
   line-height: 1;
   transition: color 0.2s;
@@ -1484,9 +1610,9 @@ html.scroll-locked .experience-canvas {
 .index-rooms em {
   font-style: normal;
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-label);
   font-size: 10px;
-  letter-spacing: 0.14em;
+  letter-spacing: var(--t-ui);
   text-transform: uppercase;
   color: var(--bone-dim);
   grid-column: 2;
@@ -1599,10 +1725,10 @@ html[data-fallback='true'] .archive-controls {
 }
 .archive-title {
   font-family: var(--serif);
-  font-weight: 400;
+  font-weight: var(--w-display);
   font-size: clamp(72px, 14vw, 220px);
   line-height: 0.85;
-  letter-spacing: -0.03em;
+  letter-spacing: var(--t-display);
   margin: 0 0 18px;
 }
 .archive-title span {
@@ -1618,6 +1744,8 @@ html[data-fallback='true'] .archive-controls {
 }
 .archive-sub em {
   font-family: var(--serif);
+  letter-spacing: var(--t-sub);
+  font-weight: var(--w-sub);
   font-size: 1.2em;
 }
 .archive-toc {
@@ -1625,9 +1753,9 @@ html[data-fallback='true'] .archive-controls {
   flex-wrap: wrap;
   gap: 8px 22px;
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-label);
   font-size: 12px;
-  letter-spacing: 0.12em;
+  letter-spacing: var(--t-ui);
   text-transform: uppercase;
 }
 .archive-toc a {
@@ -1641,31 +1769,32 @@ html[data-fallback='true'] .archive-controls {
 }
 .section-no {
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-meta);
   font-size: 11px;
-  letter-spacing: 0.2em;
+  letter-spacing: var(--t-label);
   color: var(--paper-dim);
   margin: 0 0 10px;
 }
 .archive h2 {
   font-family: var(--serif);
-  font-weight: 400;
+  font-weight: var(--w-title);
   font-size: clamp(40px, 5.6vw, 84px);
   line-height: 0.98;
-  letter-spacing: -0.01em;
+  letter-spacing: var(--t-title);
   margin: 0 0 32px;
 }
 .archive h3 {
   font-family: var(--mono);
   font-size: 12px;
-  font-weight: 500;
-  letter-spacing: 0.2em;
+  font-weight: var(--w-label);
+  letter-spacing: var(--t-label);
   text-transform: uppercase;
   margin: 36px 0 16px;
 }
 .archive h4 {
   font-family: var(--serif);
-  font-weight: 400;
+  letter-spacing: var(--t-heading);
+  font-weight: var(--w-heading);
   font-size: 28px;
   margin: 26px 0 12px;
   padding-top: 14px;
@@ -1690,6 +1819,8 @@ html[data-fallback='true'] .archive-controls {
 }
 .archive .quote {
   font-family: var(--serif);
+  letter-spacing: var(--t-sub);
+  font-weight: var(--w-quote);
   font-size: 26px;
   line-height: 1.25;
   font-style: italic;
@@ -1720,15 +1851,16 @@ html[data-fallback='true'] .archive-controls {
 }
 .archive .stats strong {
   font-family: var(--serif);
-  font-weight: 400;
+  letter-spacing: var(--t-title);
+  font-weight: var(--w-title);
   font-size: clamp(44px, 6vw, 84px);
   line-height: 1;
 }
 .archive .stats span {
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-label);
   font-size: 11px;
-  letter-spacing: 0.18em;
+  letter-spacing: var(--t-label);
   text-transform: uppercase;
   color: var(--paper-dim);
 }
@@ -1746,8 +1878,9 @@ html[data-fallback='true'] .archive-controls {
 }
 .archive .event h3 {
   font-family: var(--serif);
+  font-weight: var(--w-title);
   font-size: clamp(34px, 3.6vw, 52px);
-  letter-spacing: -0.01em;
+  letter-spacing: var(--t-title);
   text-transform: none;
   margin: 0 0 10px;
 }
@@ -1783,9 +1916,9 @@ html[data-fallback='true'] .archive-controls {
 }
 .archive figcaption {
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-meta);
   font-size: 11px;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--t-meta);
   margin-top: 8px;
   display: flex;
   justify-content: space-between;
@@ -1812,6 +1945,8 @@ html[data-fallback='true'] .archive-controls {
 .photo-slot span {
   position: relative;
   font-family: var(--serif);
+  letter-spacing: var(--t-sub);
+  font-weight: var(--w-quote);
   font-style: italic;
   font-size: 20px;
   line-height: 1.1;
@@ -1843,7 +1978,7 @@ html[data-fallback='true'] .archive-controls {
 }
 .archive .people a {
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-meta);
   font-size: 11px;
 }
 .archive .faculty {
@@ -1861,16 +1996,16 @@ html[data-fallback='true'] .archive-controls {
 .archive .portrait.photo-slot span {
   font-size: 11px;
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-meta);
   font-style: normal;
   line-height: 1.1;
 }
 .archive .role {
   display: block;
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-label);
   font-size: 10px;
-  letter-spacing: 0.14em;
+  letter-spacing: var(--t-ui);
   text-transform: uppercase;
   color: var(--paper-dim);
   margin: 2px 0 4px;
@@ -1898,20 +2033,22 @@ html[data-fallback='true'] .archive-controls {
 }
 .archive .issues a {
   font-family: var(--serif);
+  letter-spacing: var(--t-sub);
+  font-weight: var(--w-sub);
   font-size: 24px;
   text-decoration: none;
 }
 .archive .issues time {
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-meta);
   font-size: 11px;
   color: var(--paper-dim);
 }
 .archive .badge {
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-label);
   font-size: 10px;
-  letter-spacing: 0.16em;
+  letter-spacing: var(--t-label);
   text-transform: uppercase;
   background: var(--ceg);
   color: var(--paper);
@@ -1924,6 +2061,8 @@ html[data-fallback='true'] .archive-controls {
 }
 .archive summary {
   font-family: var(--serif);
+  letter-spacing: var(--t-sub);
+  font-weight: var(--w-sub);
   font-size: 22px;
   cursor: pointer;
   list-style: none;
@@ -1934,7 +2073,7 @@ html[data-fallback='true'] .archive-controls {
 .archive summary::before {
   content: '+';
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-meta);
   display: inline-block;
   width: 1.4em;
   color: var(--paper-dim);
@@ -1952,9 +2091,9 @@ html[data-fallback='true'] .archive-controls {
 .archive-foot {
   padding: 32px 0;
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-meta);
   font-size: 11px;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--t-meta);
   color: var(--paper-dim);
 }
 .archive a:hover {
@@ -1975,6 +2114,8 @@ html[data-fallback='true'] .archive-controls {
   justify-content: space-between;
   padding: 28px 0;
   font-family: var(--serif);
+  letter-spacing: var(--t-sub);
+  font-weight: var(--w-sub);
   font-size: 22px;
 }
 .not-found {
@@ -2110,13 +2251,6 @@ html[data-fallback='true'] .archive-controls {
   .descent-scale {
     height: 18vh;
   }
-  .finale-heading { font-size: 40px; margin: 10px 0 14px; }
-  .finale-heading br { display: none; }
-  .finale-heading em { margin-left: .15em; }
-  .finale-membership { font-size: 12px; }
-  .finale-route { margin: 15px 0; }
-  .finale-socials { margin-top: 8px; }
-  .finale-replay { margin-top: 4px; }
   .archive .gallery {
     grid-template-columns: 1fr 1fr;
     gap: 10px;

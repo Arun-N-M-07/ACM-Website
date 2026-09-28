@@ -6,10 +6,14 @@
  * tall vestibule ending at the portal to the Teams world.
  *
  * Rooms stream: only those within `roomWindow` of the camera's current station
- * are mounted (their canvases and geometry are disposed when they leave).
+ * are mounted (their canvases and geometry are disposed when they leave). They
+ * come in one a frame, nearest first: building a room (its canvases drawn, its
+ * exhibit made) fits in a frame; building three at once doesn't — and the
+ * journey's loop moves the window from one end of the corridor to the other in
+ * a single step (JourneyLoop), as does a jump.
  */
 import { useFrame } from '@react-three/fiber';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Color, type BufferGeometry, Vector3 } from 'three';
 import { QUALITY } from '@/config/quality';
 import { CORRIDOR, DOOR, FLOOR_Y, UNDERGROUND } from '@/config/world';
@@ -137,11 +141,20 @@ function RoomSign({ index }: { index: number }) {
   );
 }
 
+/** The rooms wanted with the camera at station `focus`, nearest first. */
+function roomsAround(focus: number, win: number) {
+  return rooms
+    .map((_, i) => i)
+    .filter((i) => Math.abs(i - focus) <= win || (rooms[i].event.flagship && focus >= rooms.length - 3))
+    .sort((a, b) => Math.abs(a - focus) - Math.abs(b - focus));
+}
+
 export function EventCorridor() {
   const quality = useExperience((s) => s.quality);
   const activeRoom = useExperience((s) => s.activeRoom);
   const win = QUALITY[quality].roomWindow;
-  const [focus, setFocus] = useState(0);
+  const [shown, setShown] = useState<number[]>(() => roomsAround(0, win));
+  const wanted = useRef({ focus: 0, win, rooms: shown });
 
   useFrame(() => {
     const p = progress.value;
@@ -149,7 +162,16 @@ export function EventCorridor() {
     if (p < SEGMENTS.events.start) f = 0;
     else if (p > SEGMENTS.events.end) f = rooms.length - 1;
     else f = Math.max(0, eventStationAt(p).index);
-    if (f !== focus) setFocus(f);
+    const w = wanted.current;
+    if (f !== w.focus || win !== w.win) wanted.current = { focus: f, win, rooms: roomsAround(f, win) };
+    const want = wanted.current.rooms;
+    // Rooms that have left the window go first (all at once: letting go is cheap); then the missing
+    // ones come in, one a frame, the nearest first.
+    if (shown.some((i) => !want.includes(i))) setShown(shown.filter((i) => want.includes(i)));
+    else {
+      const next = want.find((i) => !shown.includes(i));
+      if (next !== undefined) setShown([...shown, next]);
+    }
   });
 
   return (
@@ -161,9 +183,7 @@ export function EventCorridor() {
         <RoomSign key={`sign-${r.event.slug}`} index={i} />
       ))}
       {rooms.map((r, i) =>
-        Math.abs(i - focus) <= win || (r.event.flagship && focus >= rooms.length - 3) ? (
-          <EventRoom key={r.event.slug} layout={r} total={rooms.length} active={activeRoom === i} />
-        ) : null,
+        shown.includes(i) ? <EventRoom key={r.event.slug} layout={r} total={rooms.length} active={activeRoom === i} /> : null,
       )}
       <Portal />
     </group>

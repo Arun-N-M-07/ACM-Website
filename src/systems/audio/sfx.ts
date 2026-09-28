@@ -8,14 +8,21 @@
  *   layers    continuous beds whose level (and colour) the sound director
  *             sets every frame from where the film is: the canister's
  *             friction, the gas, the air past a sheet in flight, a burning
- *             sheet's combustion, the shaft's resonance, the Events heard
- *             through the door (no wind: the flight is carried by the music)
+ *             sheet's combustion, the air of the cloud as the camera moves
+ *             through it, the light-well's shaft (air and its resonances),
+ *             the room beyond the Events door. All are noise, shaped: nothing
+ *             here is a sustained tone (no hum, no drone), and no bed plays
+ *             after the film — the music is the continuous bed.
  *   cues      short events, played when the film makes them: the canister's
  *             contact, each contact as it turns, its settle; the pressure and
  *             the release; the swell of the words; a sheet's flaps in the air
  *             and its snap as it unfurls; a burning sheet's ignition,
  *             crackles, pops, brittle curling, ash crumbling and last breath;
- *             thunder; the door's mechanism
+ *             thunder after lightning (each storm its own distance); the
+ *             shaft's entry, its release into the lobby, the threshold into
+ *             the Events; the door's mechanism; the Prodigy wall's pieces
+ *             moving and locking; the portal's crossing (and the travel's
+ *             build to it — portalTravel)
  *
  * It uses the music player's audio context (made in the gesture that
  * enabled sound) and its own bus, so the music's filter never touches it;
@@ -23,7 +30,7 @@
  */
 import { music } from './music';
 
-type Layer = { gain: GainNode; filter: BiquadFilterNode; pan?: StereoPannerNode; osc?: OscillatorNode[] };
+type Layer = { gain: GainNode; filter: BiquadFilterNode; pan?: StereoPannerNode };
 
 let bus: GainNode | null = null;
 let noiseBuf: AudioBuffer | null = null;
@@ -32,7 +39,8 @@ const layers = new Map<string, Layer>();
 let built: AudioContext | null = null;
 
 function makeNoise(ctx: AudioContext, brown: boolean) {
-  const len = ctx.sampleRate * 3;
+  // (Six seconds, started at a random point: long enough that a filtered bed's loop isn't heard.)
+  const len = ctx.sampleRate * 6;
   const buf = ctx.createBuffer(2, len, ctx.sampleRate);
   for (let ch = 0; ch < 2; ch++) {
     const d = buf.getChannelData(ch);
@@ -61,6 +69,8 @@ function ensure(): AudioContext | null {
   comp.threshold.value = -16;
   comp.ratio.value = 3;
   bus.connect(comp).connect(ctx.destination);
+  // (Dev only, for the audio QA: the effects bus, to measure without the music.)
+  if (process.env.NODE_ENV !== 'production') (globalThis as unknown as { __sfxBus?: GainNode }).__sfxBus = bus;
   noiseBuf = makeNoise(ctx, false);
   brownBuf = makeNoise(ctx, true);
   return ctx;
@@ -85,31 +95,8 @@ function bed(ctx: AudioContext, name: string, type: BiquadFilterType, freq: numb
     node = node.connect(pan);
   }
   node.connect(bus!);
-  src.start(0, Math.random() * 2);
+  src.start(0, Math.random() * 5);
   const layer: Layer = { gain, filter, pan };
-  layers.set(name, layer);
-  return layer;
-}
-
-/** A low tonal bed (a few soft sines) through a filter. */
-function drone(ctx: AudioContext, name: string, freqs: number[], cutoff: number) {
-  const filter = ctx.createBiquadFilter();
-  filter.type = 'lowpass';
-  filter.frequency.value = cutoff;
-  const gain = ctx.createGain();
-  gain.gain.value = 0;
-  filter.connect(gain).connect(bus!);
-  const osc = freqs.map((f, i) => {
-    const o = ctx.createOscillator();
-    o.type = i === 0 ? 'sine' : 'triangle';
-    o.frequency.value = f;
-    const g = ctx.createGain();
-    g.gain.value = 1 / freqs.length / (i + 1);
-    o.connect(g).connect(filter);
-    o.start();
-    return o;
-  });
-  const layer: Layer = { gain, filter, osc };
   layers.set(name, layer);
   return layer;
 }
@@ -135,12 +122,28 @@ function layer(name: string): Layer | null {
     // A sheet of paper being consumed: the thin breath of its combustion (level follows the fire's front).
     case 'burn':
       return bed(ctx, name, 'bandpass', 2400, 0.9, false, true);
-    // The shaft and the lobby: an enclosed resonance.
-    case 'shaft':
-      return drone(ctx, name, [55, 82.4, 110.6], 380);
-    // The Events, heard through the door: a room's hum and air.
-    case 'events':
-      return drone(ctx, name, [98, 147, 196.3], 900);
+    // The cloud, moving through it: soft pressure low down, and the displaced air higher up — two
+    // broad bands, each panned on its own slow course so the space is wide, never a wind.
+    case 'cloudLow':
+      return bed(ctx, name, 'bandpass', 300, 0.7, true, true);
+    case 'cloudHigh':
+      return bed(ctx, name, 'bandpass', 1400, 0.6, false, true);
+    // The mist the journey ends and begins in: one soft band of air, the same on both sides of the
+    // loop's seam (its level is the mist's; nothing else about it changes there).
+    case 'mistAir':
+      return bed(ctx, name, 'bandpass', 280, 0.7, true);
+    // The light-well's shaft: the air rushing in a tube (its brightness is the descent's speed)…
+    case 'tunnelAir':
+      return bed(ctx, name, 'lowpass', 200, 0.7, true);
+    // …and the tube's own resonances, excited by that air (narrow bands of noise — a pipe's voice,
+    // not an oscillator's hum), rising as the camera goes down.
+    case 'tunnelRes':
+      return bed(ctx, name, 'bandpass', 110, 12, false, true);
+    case 'tunnelRes2':
+      return bed(ctx, name, 'bandpass', 270, 14, false, true);
+    // The Events beyond their door: the air of a large room, opening as the door does.
+    case 'eventsAir':
+      return bed(ctx, name, 'lowpass', 300, 0.6, true);
     default:
       return null;
   }
@@ -149,6 +152,9 @@ function layer(name: string): Layer | null {
 /** Set a layer's level (and, optionally, its filter and pan) — smoothed; cheap to call every frame. */
 export function setLayer(name: string, level: number, opts: { freq?: number; pan?: number; q?: number } = {}) {
   const ctx = music.context;
+  // (For the QA harness: each layer's level as the director last set it.)
+  const dbg = (globalThis as unknown as { __sfxLayers?: Record<string, number> }).__sfxLayers;
+  if (dbg && ctx && music.wantsSound) dbg[name] = level;
   if (level < 0.0005 && !layers.has(name)) return;
   const l = layer(name);
   if (!l || !ctx) return;
@@ -230,12 +236,25 @@ export type Cue =
   | 'doorWake'
   | 'doorPressure'
   | 'doorRetract'
-  | 'doorHome';
+  | 'doorHome'
+  | 'tunnelEnter'
+  | 'tunnelRelease'
+  | 'threshold'
+  | 'tileMove'
+  | 'tileLock'
+  | 'portalCross'
+  | 'portalExitCross';
+
+/** A fixed pseudo-random 0..1 for (variant, k): variation that is the same every time. */
+const vary = (variant: number, k: number) => {
+  const x = Math.sin((variant + 1) * (12.9898 + k * 7.133)) * 43758.5453;
+  return x - Math.floor(x);
+};
 
 const rnd = (a: number, b: number) => a + Math.random() * (b - a);
 
 /** Play a cue once (the director decides when). */
-export function cue(name: Cue, opts: { pan?: number; level?: number } = {}) {
+export function cue(name: Cue, opts: { pan?: number; level?: number; variant?: number; distance?: number } = {}) {
   const ctx = ensure();
   if (!ctx) return;
   // (For the QA harness: what played, and when.)
@@ -321,11 +340,34 @@ export function cue(name: Cue, opts: { pan?: number; level?: number } = {}) {
       noiseBurst(ctx, { type: 'lowpass', f0: 900, f1: 400, q: 0.5, attack: 0.5, hold: 0.3, release: 1.2, level: 0.012 * L, pan });
       break;
     // ── the world ────────────────────────────────────────────────────────────
-    case 'thunder':
-      // Far away: after the flash, the rumble arrives late and low, and rolls on.
-      noiseBurst(ctx, { type: 'lowpass', f0: 220, f1: 60, q: 0.7, attack: 0.5, hold: 0.8, release: 4.5, level: 0.22 * L, brown: true, delay: 1.1 });
-      noiseBurst(ctx, { type: 'lowpass', f0: 140, f1: 45, q: 0.6, attack: 0.9, hold: 0.5, release: 3.5, level: 0.14 * L, brown: true, delay: 2.2 });
+    case 'thunder': {
+      // After the flash, the sound of it — late, and the later the farther: each storm its own
+      // distance (0 overhead … 1 far off) and its own roll, the same every time. Nearer, the first
+      // tearing edge (low, not a crack); then the rumble rolling in two or three swells, darker
+      // and slower the farther it has come through the air; then the air itself, very low, a
+      // long while.
+      const d = Math.min(1, Math.max(0, opts.distance ?? 0.5));
+      const v = opts.variant ?? 0;
+      const delay = 0.7 + d * 2.3 + vary(v, 1) * 0.5;
+      const cut = 280 - 160 * d;
+      if (d < 0.45) noiseBurst(ctx, { type: 'lowpass', f0: 900, f1: 170, q: 0.6, attack: 0.02, hold: 0.06, release: 0.5, level: 0.05 * (1 - d) * L, brown: true, delay });
+      const rolls = 2 + Math.round(vary(v, 2) * 1.4);
+      for (let i = 0; i < rolls; i++)
+        noiseBurst(ctx, {
+          type: 'lowpass',
+          f0: cut * (1 - 0.16 * i),
+          f1: 42,
+          q: 0.7,
+          attack: 0.3 + 0.4 * d + 0.25 * vary(v, 3 + i),
+          hold: 0.35 + 0.5 * vary(v, 6 + i),
+          release: 2.6 + 2.2 * d + vary(v, 9 + i),
+          level: (0.2 - 0.045 * i) * (0.8 + 0.2 * (1 - d)) * L,
+          brown: true,
+          delay: delay + i * (0.5 + 0.7 * vary(v, 12 + i)),
+        });
+      noiseBurst(ctx, { type: 'lowpass', f0: 90, f1: 36, q: 0.9, attack: 1.1, hold: 0.9, release: 5 + 2.5 * d, level: 0.075 * L, brown: true, delay: delay + 0.8 });
       break;
+    }
     case 'doorWake':
       // The seams light: a low electrical wake, and a click.
       tone(ctx, { f0: 60, attack: 0.3, hold: 0.6, release: 1.2, level: 0.05 * L });
@@ -345,5 +387,134 @@ export function cue(name: Cue, opts: { pan?: number; level?: number } = {}) {
       // …and home, into their channels.
       noiseBurst(ctx, { type: 'lowpass', f0: 300, f1: 90, q: 1, attack: 0.008, hold: 0.05, release: 0.7, level: 0.24 * L, brown: true });
       break;
+    // ── the tunnel: into the light-well's shaft, out into the lobby, through into the Events ──
+    case 'tunnelEnter':
+      // Into the tube: the pressure of a closed space closing round you — a low push, and the air.
+      noiseBurst(ctx, { type: 'lowpass', f0: 150, f1: 60, q: 0.9, attack: 0.12, hold: 0.2, release: 1.5, level: 0.1 * L, brown: true });
+      noiseBurst(ctx, { type: 'bandpass', f0: 900, f1: 380, q: 0.8, attack: 0.3, hold: 0.1, release: 1.2, level: 0.028 * L });
+      break;
+    case 'tunnelRelease':
+      // The shaft opens into the lobby: pressure let go — the air widening, a low bloom.
+      noiseBurst(ctx, { type: 'bandpass', f0: 500, f1: 1900, q: 0.7, attack: 0.25, hold: 0.1, release: 1.1, level: 0.03 * L });
+      noiseBurst(ctx, { type: 'lowpass', f0: 120, f1: 55, q: 0.8, attack: 0.2, hold: 0.3, release: 2, level: 0.07 * L, brown: true });
+      break;
+    case 'threshold':
+      // Through into the Events: one soft transient — a low thump of the room's air, a bright
+      // breath, and a small tone that settles a step down.
+      noiseBurst(ctx, { type: 'lowpass', f0: 190, f1: 70, q: 1, attack: 0.01, hold: 0.04, release: 0.9, level: 0.09 * L, brown: true });
+      noiseBurst(ctx, { type: 'highpass', f0: 5000, f1: 7000, q: 0.7, attack: 0.05, hold: 0.05, release: 0.7, level: 0.012 * L });
+      tone(ctx, { f0: 220, f1: 196, attack: 0.02, hold: 0.1, release: 1.3, level: 0.018 * L });
+      break;
+    // ── the Prodigy wall: each piece moving into its place, and locking there ────────────────
+    case 'tileMove': {
+      // The piece's travel: a soft push of air.
+      const v = opts.variant ?? 0;
+      noiseBurst(ctx, { type: 'bandpass', f0: 700 + 300 * vary(v, 1), f1: 2100, q: 0.9, attack: 0.3, hold: 0.05, release: 0.14, level: 0.011 * L, pan });
+      break;
+    }
+    case 'tileLock': {
+      // Contact → lock → resonance. A crisp tick as the edge meets its seat; a hair later the
+      // piece's weight going home (a short, deep, damped thunk); a brief struck-plate ring — a
+      // fundamental and one inharmonic partial — and a tiny buzz of material. Each piece its own
+      // pitch and weight (the same every time); the last, the centre, a fuller, lower lock.
+      const v = opts.variant ?? 0;
+      const last = v >= 8;
+      const pitch = (1 + (vary(v, 1) - 0.5) * 0.08) * (last ? 0.75 : 1);
+      const vel = (0.85 + 0.15 * vary(v, 2)) * L;
+      const dt = vary(v, 3) * 0.012;
+      noiseBurst(ctx, { type: 'bandpass', f0: 3400 * pitch, f1: 2600 * pitch, q: 6, attack: 0.001, hold: 0.002, release: 0.03, level: 0.03 * vel, pan, delay: dt });
+      noiseBurst(ctx, { type: 'lowpass', f0: 230 * pitch, f1: 85, q: 1.1, attack: 0.004, hold: 0.018, release: last ? 0.32 : 0.16, level: (last ? 0.11 : 0.07) * vel, brown: true, pan, delay: dt + 0.008 });
+      tone(ctx, { f0: 392 * pitch, attack: 0.003, hold: 0.01, release: last ? 0.9 : 0.28, level: 0.017 * vel, delay: dt + 0.01 });
+      tone(ctx, { f0: 392 * 2.76 * pitch, attack: 0.002, hold: 0.005, release: last ? 0.5 : 0.14, level: 0.006 * vel, delay: dt + 0.01 });
+      noiseBurst(ctx, { type: 'bandpass', f0: 1150 * pitch, f1: 1000 * pitch, q: 14, attack: 0.002, hold: 0.02, release: 0.12, level: 0.011 * vel, pan, delay: dt + 0.012 });
+      break;
+    }
+    // ── the portal: the instant of crossing (the build to it is portalTravel) ────────────────
+    case 'portalCross':
+      // Through: a low displacement, a bright tear of air, and a tone that blooms and hangs.
+      noiseBurst(ctx, { type: 'lowpass', f0: 170, f1: 55, q: 1, attack: 0.006, hold: 0.05, release: 1, level: 0.15 * L, brown: true });
+      noiseBurst(ctx, { type: 'bandpass', f0: 5200, f1: 1100, q: 0.8, attack: 0.01, hold: 0.04, release: 1, level: 0.06 * L });
+      tone(ctx, { f0: 164.8, attack: 0.03, hold: 0.2, release: 1.8, level: 0.03 * L });
+      tone(ctx, { f0: 247.2, attack: 0.05, hold: 0.15, release: 1.5, level: 0.016 * L });
+      break;
+    case 'portalExitCross':
+      // Back through, the other way: the tone falls away beneath you.
+      noiseBurst(ctx, { type: 'lowpass', f0: 150, f1: 50, q: 1, attack: 0.01, hold: 0.05, release: 0.9, level: 0.12 * L, brown: true });
+      noiseBurst(ctx, { type: 'bandpass', f0: 1400, f1: 4400, q: 0.8, attack: 0.02, hold: 0.05, release: 0.8, level: 0.05 * L });
+      tone(ctx, { f0: 247.2, f1: 123.6, attack: 0.02, hold: 0.1, release: 1.4, level: 0.024 * L });
+      break;
   }
+}
+
+/**
+ * The travel through the portal (teams/travel.ts), as sound: a build that starts with the travel
+ * and peaks exactly at its crossing (`toCross` seconds on) — low movement gathering, air rising
+ * (falling, going back out), two close tones whose beating quickens — then falls away inside the
+ * tunnel. The crossing's own transient is a cue (portalCross / portalExitCross), fired by the
+ * travel at the instant it crosses. Returns a handle: a travel that is abandoned (a jump, the
+ * reduced path) stops its sound, so nothing is left playing.
+ */
+export function portalTravel(dir: 1 | -1, toCross: number, total: number): { stop: () => void } {
+  const ctx = ensure();
+  if (!ctx || !bus) return { stop: () => undefined };
+  const t0 = ctx.currentTime;
+  const tc = t0 + Math.max(0.1, toCross);
+  const end = t0 + total + 1.2;
+  const out = ctx.createGain();
+  out.gain.value = 1;
+  out.connect(bus);
+  const sources: AudioScheduledSourceNode[] = [];
+  const env = (g: GainNode, peak: number, after: number) => {
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(peak, tc);
+    g.gain.exponentialRampToValueAtTime(peak * after, tc + 0.35);
+    g.gain.exponentialRampToValueAtTime(0.0001, end);
+  };
+  const noise = (brown: boolean, type: BiquadFilterType, f0: number, fc: number, q: number, peak: number, after: number) => {
+    const src = ctx.createBufferSource();
+    src.buffer = brown ? brownBuf : noiseBuf;
+    src.loop = true;
+    const f = ctx.createBiquadFilter();
+    f.type = type;
+    f.Q.value = q;
+    f.frequency.setValueAtTime(f0, t0);
+    f.frequency.exponentialRampToValueAtTime(fc, tc);
+    const g = ctx.createGain();
+    env(g, peak, after);
+    src.connect(f).connect(g).connect(out);
+    src.start(t0, Math.random() * 5);
+    src.stop(end + 0.1);
+    sources.push(src);
+  };
+  const tone2 = (f0: number, fc: number, peak: number) => {
+    const o = ctx.createOscillator();
+    o.frequency.setValueAtTime(f0, t0);
+    o.frequency.exponentialRampToValueAtTime(fc, tc);
+    const g = ctx.createGain();
+    env(g, peak, 0.3);
+    o.connect(g).connect(out);
+    o.start(t0);
+    o.stop(end + 0.1);
+    sources.push(o);
+  };
+  const up = dir === 1;
+  noise(true, 'lowpass', 70, up ? 230 : 150, 0.9, 0.09, 0.45);
+  noise(false, 'bandpass', up ? 700 : 3600, up ? 3800 : 800, 1.1, 0.03, 0.3);
+  tone2(up ? 110 : 165, up ? 164.8 : 110, 0.014);
+  tone2(up ? 111.3 : 167.2, up ? 167.6 : 111.5, 0.01);
+  return {
+    stop: () => {
+      const now = ctx.currentTime;
+      out.gain.cancelScheduledValues(now);
+      out.gain.setValueAtTime(out.gain.value, now);
+      out.gain.linearRampToValueAtTime(0, now + 0.2);
+      for (const n of sources) {
+        try {
+          n.stop(now + 0.25);
+        } catch {
+          // (already stopped)
+        }
+      }
+    },
+  };
 }

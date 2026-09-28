@@ -53,9 +53,9 @@ html[data-teams='inside'] .plates {
   align-items: center;
   gap: 10px;
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-meta);
   font-size: 12px;
-  letter-spacing: 0.32em;
+  letter-spacing: var(--t-mark);
   color: var(--bone);
   text-shadow: 0 0 18px rgba(11, 11, 12, 0.9);
   white-space: nowrap;
@@ -135,10 +135,10 @@ html[data-teams-hover='true'] body {
      left edge sits at max(22vw, 50vw − 42.5vh). */
   max-width: min(46ch, calc(max(22vw, 50vw - 42.5vh) - var(--gutter) - 16px));
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-label);
   font-size: 11px;
   line-height: 1.5;
-  letter-spacing: 0.08em;
+  letter-spacing: var(--t-meta);
   text-transform: uppercase;
   transition: opacity 0.45s var(--ease);
 }
@@ -211,9 +211,9 @@ html[data-teams-hover='true'] body {
   align-items: center;
   gap: 10px;
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-label);
   font-size: 10px;
-  letter-spacing: 0.16em;
+  letter-spacing: var(--t-label);
   text-transform: uppercase;
   color: var(--bone-2);
   opacity: 0;
@@ -235,45 +235,6 @@ html[data-teams-hover='true'] body {
   background: #9fb8ff;
   transform-origin: left;
   transform: scaleX(0);
-}
-
-.teams-outro {
-  position: fixed;
-  left: var(--gutter);
-  top: 22vh;
-  width: min(420px, 38vw);
-  padding: 26px 28px 20px;
-  background: rgba(10, 12, 16, 0.86);
-  -webkit-backdrop-filter: blur(14px);
-  backdrop-filter: blur(14px);
-  border: 1px solid var(--line);
-  border-top: 2px solid #cbb7e8;
-  will-change: opacity, transform;
-}
-.teams-outro .kicker {
-  color: #cbb7e8;
-}
-.teams-outro .plate-body {
-  color: var(--bone);
-  font-size: 15px;
-  line-height: 1.6;
-}
-.teams-outro .plate-btn {
-  color: var(--ink);
-  background: var(--bone);
-  border-color: var(--bone);
-  font-size: 10px;
-  letter-spacing: 0.06em;
-  padding: 11px 13px;
-}
-.teams-outro .plate-btn.ghost {
-  color: var(--bone);
-  background: transparent;
-  border-color: var(--line);
-}
-.teams-outro .plate-btn:hover {
-  background: #cbb7e8;
-  color: var(--ink);
 }
 
 /* ── The member hand (MemberHand.tsx) ───────────────────────────────────────
@@ -309,15 +270,14 @@ html[data-teams-hover='true'] body {
 .hand-index,
 .hand-count {
   margin: 0;
-  font: 500 11px/1 var(--mono);
-  letter-spacing: 0.2em;
+  font: var(--w-label) 11px/1 var(--mono);
+  letter-spacing: var(--t-label);
   text-transform: uppercase;
   color: var(--bone-dim);
 }
 .hand-title {
   margin: 14px 0 0;
-  font: 600 clamp(22px, 2.4vw, 38px)/1.02 var(--sans);
-  font-stretch: 125%;
+  font: var(--w-heading) clamp(22px, 2.4vw, 38px)/1.02 var(--sans);
   letter-spacing: 0.01em;
   text-transform: uppercase;
   color: var(--bone);
@@ -413,16 +373,16 @@ html[data-teams-hover='true'] body {
   background: rgba(239, 233, 223, 0.42);
 }
 .hand-card__role {
-  font: 500 calc(var(--u) * 0.036) / 1.2 var(--mono);
-  letter-spacing: 0.18em;
+  font: var(--w-label) calc(var(--u) * 0.036) / 1.2 var(--mono);
+  letter-spacing: var(--t-label);
   text-transform: uppercase;
   color: rgba(239, 233, 223, calc(0.56 + 0.2 * var(--lift, 0)));
 }
 .hand-card__name {
   max-width: calc(var(--u) * 0.66);
   margin-top: calc(var(--u) * 0.05);
-  font: 400 var(--name, calc(var(--u) * 0.125)) / 1.02 var(--serif);
-  letter-spacing: -0.005em;
+  font: var(--w-sub) var(--name, calc(var(--u) * 0.125)) / 1.02 var(--serif);
+  letter-spacing: var(--t-sub);
   color: rgba(239, 233, 223, calc(0.86 + 0.14 * var(--lift, 0)));
 }
 .hand-card__foot {
@@ -430,8 +390,8 @@ html[data-teams-hover='true'] body {
   justify-content: space-between;
   gap: 12px;
   margin-top: auto;
-  font: 500 calc(var(--u) * 0.03) / 1.3 var(--mono);
-  letter-spacing: 0.16em;
+  font: var(--w-label) calc(var(--u) * 0.03) / 1.3 var(--mono);
+  letter-spacing: var(--t-label);
   text-transform: uppercase;
   color: rgba(239, 233, 223, 0.38);
 }
@@ -483,7 +443,7 @@ html[data-teams-hover='true'] body {
   z-index: 27;
   pointer-events: none;
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-label);
   text-transform: uppercase;
 }
 .domain-controls {
@@ -496,8 +456,8 @@ html[data-teams-hover='true'] body {
   align-items: center;
   gap: clamp(12px, 4vw, 64px);
   white-space: nowrap;
-  font: 500 11px var(--mono);
-  letter-spacing: 0.06em;
+  font: var(--w-meta) 11px var(--mono);
+  letter-spacing: var(--t-meta);
 }
 .domain-controls button { color: var(--bone); padding: 14px 4px; min-height: 44px; font: inherit; }
 .domain-detail[data-open='true'] .domain-controls { pointer-events: auto; }
@@ -533,8 +493,8 @@ html[data-teams-hover='true'] body {
 }
 .domain-title {
   margin: 0 0 12px;
-  font: 500 clamp(28px, 4.3vw, 68px)/1.05 var(--sans);
-  letter-spacing: -0.035em;
+  font: var(--w-title) clamp(28px, 4.3vw, 68px)/1.05 var(--sans);
+  letter-spacing: var(--t-title);
   outline: none;
 }
 .domain-meta {
@@ -587,7 +547,7 @@ html[data-teams='inside'] .fx-grain { opacity: 0; }
 }
 .archive .domain-no {
   font-family: var(--mono);
-  font-weight: 500;
+  font-weight: var(--w-meta);
   font-size: 0.7em;
   color: var(--paper-dim);
   margin-right: 6px;
@@ -621,19 +581,6 @@ html[data-teams='inside'] .fx-grain { opacity: 0; }
   }
   .teams-nav li[data-current='true'] .num {
     border-bottom: 1px solid var(--bone);
-  }
-  .teams-outro {
-    left: 12px;
-    right: 12px;
-    top: auto;
-    bottom: calc(12px + env(safe-area-inset-bottom));
-    width: auto;
-    max-height: 58svh;
-    overflow-y: auto;
-    padding: 18px 20px 14px;
-  }
-  .teams-outro .finale-heading {
-    margin: 12px 0;
   }
   .domain-panel {
     left: var(--gutter);

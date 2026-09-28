@@ -15,7 +15,7 @@ import { fitSize, makeCanvas, paragraph, text, toTexture } from '@/systems/textu
 import { CanvasPanel } from '../../shared/CanvasPanel';
 import { Chair, Desk, Laptop, Monitor } from '../../shared/props';
 import { useKit } from '../../underground/kit';
-import { clamp01, codeScreen, hash, openSpan, type PieceProps, pointerNear, ramp, sstep, swell } from './common';
+import { clamp01, codeScreen, hash, openSpan, type PieceProps, pointerNear, puzzleOrder, puzzleSpan, ramp, sstep, swell } from './common';
 import { BALLOON_COLORS, contestT, LOOM_U, LOOM_WOVEN, PX_U, SORT, solveAt, sortStep, STAIRS } from './walls';
 
 const dummy = new Object3D();
@@ -245,8 +245,8 @@ export function PuzzlePieces({ event, width, depth, clock }: PieceProps) {
     if (!g) return;
     const u = clock.current.u;
     g.children.forEach((piece, i) => {
-      const order = i === 4 ? 8 : i < 4 ? i : i - 1;
-      const k = easeIO(ramp(u, 0.06 + order * 0.08, 0.2 + order * 0.08));
+      const [from, home] = puzzleSpan(puzzleOrder(i));
+      const k = easeIO(ramp(u, from, home));
       const st = starts[i];
       const t = targets[i];
       const float = (1 - k) * Math.sin(c.elapsedTime * 0.8 + i) * 0.15;

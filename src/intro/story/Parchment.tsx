@@ -8,13 +8,15 @@
  * part of it is a function of the scroll (the arrival's progress `a`), so it
  * can be stopped anywhere and played backwards.
  *
- * The arrival (flight.ts): each sheet is carried in on the air from beyond
- * the edge of the frame — the first from the left, the next from the right,
- * and so on — rolled up at its leading edge like a scroll, fluttering and
- * banking on a swooping path with a wake of mist behind it, parting the
- * smog; slowing, it turns to face you and its roll runs out ahead of it until
- * it snaps flat in front of you, shaking a little dust off its edge
- * (UnfurlDust); then its ink surfaces.
+ * The arrival (flight.ts): each sheet is discovered in the air. It is first
+ * a dark shape far off in the smog, to one side of the way ahead (the first
+ * to the left, the next to the right…); as the air carries it closer its torn
+ * edge shows, the smog parts around it and its fibres resolve (uForm), while
+ * it comes rolled up at its leading edge like a scroll, fluttering and
+ * banking on a swooping path with a wake of mist behind it; slowing, it turns
+ * to face you and its roll runs out ahead of it until it snaps flat in front
+ * of you, shaking a little dust off its edge (UnfurlDust); then its ink
+ * surfaces.
  *
  * Settled, it breathes in the air; burning, it lifts on its own heat. The
  * camera it is placed against is the opening's path, not the breathing
@@ -34,7 +36,7 @@ import { introFrame } from '../state';
 import { gasAmount } from '../prologue/layout';
 import { ease, span } from '../timeline';
 import { Ash } from './Ash';
-import { bankAt, edgeFor, FLY, flightAt, flyAt, pitchAt, rolledAt, START_AHEAD, travelAt, yawAt } from './flight';
+import { bankAt, FLY, flightAt, flyAt, pitchAt, rolledAt, START_AHEAD, startFor, travelAt, yawAt } from './flight';
 import type { Fragment } from './fragments';
 import { paperOccluder } from './paperOccluders';
 import { UnfurlDust } from './UnfurlDust';
@@ -149,12 +151,12 @@ export function Parchment({ fragment, art, noise }: { fragment: Fragment; art: P
       x *= 0.12;
       y += (fit - 1) * 0.1;
     }
-    // The flight: in from beyond the edge of the frame, whatever its shape.
+    // The flight: in from deep in the air ahead, to its side, whatever the frame's shape.
     const restX = aspect < 1 ? f.rest[0] * 0.12 : f.rest[0];
     const restY = f.rest[1] + (fit - 1) * 0.1;
     const restZ = f.rest[2] * fit;
     const tanHalf = Math.tan((cam.fov * Math.PI) / 360) * aspect;
-    const edge = edgeFor(f.side, restX, restZ + START_AHEAD, tanHalf);
+    const edge = startFor(f.side, restX, restZ + START_AHEAD, tanHalf);
     flightAt(a, f.side, edge, f.seed, _p);
     x += _p.x;
     y += _p.y;
@@ -197,7 +199,10 @@ export function Parchment({ fragment, art, noise }: { fragment: Fragment; art: P
     const u = res.uniforms;
     u.uTime.value = w;
     u.uPresence.value = ease(t, f.arrive[0], f.arrive[0] + 0.6);
-    u.uForm.value = 1;
+    // Discovered, not dealt: far off it is only a shape in the smog; its torn edge shows as it
+    // comes, then its fibres resolve in towards the middle; the ink waits until it lies open.
+    u.uForm.value = ease(a, 0.04, 0.6);
+    u.uGhost.value = a < 1 ? 0.6 : 0;
     u.uRollDir.value = dir;
     u.uRollX.value = rolled > 0.001 ? rollX : 10;
     u.uRollR.value = rollR;

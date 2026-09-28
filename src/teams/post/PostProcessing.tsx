@@ -22,6 +22,8 @@
  * (Grain and the base vignette stay in the DOM overlay, as for the rest of
  * the site.)
  */
+import { progressAtIntroTime } from '@/intro/controller';
+import { T } from '@/intro/timeline';
 import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { HalfFloatType, Vector2, Vector4, WebGLRenderTarget } from 'three';
@@ -219,6 +221,9 @@ function Composer() {
   return null;
 }
 
+/** The whole mist before the film (intro/timeline T.mist), where the journey's loop comes round. */
+const LOOP_SEAM_ZONE = progressAtIntroTime(T.mist + 5);
+
 /** Decide whether the composer should run (with a little hysteresis). */
 export function PostProcessing() {
   const [on, setOn] = useState(false);
@@ -226,7 +231,10 @@ export function PostProcessing() {
   useFrame((_, dt) => {
     const st = teams().state;
     const nearPortal = progress.value > 0 && segmentProgress(progress.value, 'portal') > PORTAL_DWELL * 0.5 && progress.value <= 1;
-    const want = teamsFrame.inside || st === 'portalEntering' || st === 'portalExiting' || (nearPortal && useExperience.getState().segment === 'portal');
+    // (…and ready before the loop brings the journey round into this world from the opening's start:
+    // it is built while the scroll is in the whole mist before the film, where nothing can be seen.)
+    const loopSeam = !teamsFrame.inside && progress.target < LOOP_SEAM_ZONE;
+    const want = teamsFrame.inside || st === 'portalEntering' || st === 'portalExiting' || (nearPortal && useExperience.getState().segment === 'portal') || loopSeam;
     if (want === on) {
       wait.current = 0;
       return;

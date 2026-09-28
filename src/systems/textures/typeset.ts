@@ -18,14 +18,14 @@ export interface TypeSpec {
   tracking?: number;
   align?: CanvasTextAlign;
   baseline?: CanvasTextBaseline;
-  /** Archivo width axis ('condensed' | 'expanded' ...). */
+  /** (Width axis — no longer used: Montserrat has none.) */
   stretch?: 'condensed' | 'semi-condensed' | 'normal' | 'semi-expanded' | 'expanded';
 }
 
 const FALLBACK: Record<Family, string> = {
-  serif: 'Georgia, "Times New Roman", serif',
-  sans: '"Helvetica Neue", Arial, sans-serif',
-  mono: '"SFMono-Regular", Menlo, Consolas, monospace',
+  serif: 'Montserrat, "Helvetica Neue", Arial, sans-serif',
+  sans: 'Montserrat, "Helvetica Neue", Arial, sans-serif',
+  mono: 'Montserrat, "Helvetica Neue", Arial, sans-serif',
 };
 
 let familyCache: Record<Family, string> | null = null;
@@ -46,25 +46,46 @@ export function fontFamilies(): Record<Family, string> {
 export async function fontsReady(): Promise<void> {
   if (typeof document === 'undefined' || !document.fonts) return;
   const f = fontFamilies();
+  // (One variable family: these make sure each style and the weights the roles use are ready.)
   await Promise.all([
-    document.fonts.load(`64px ${f.serif}`),
-    document.fonts.load(`italic 64px ${f.serif}`),
+    document.fonts.load(`400 64px ${f.sans}`),
+    document.fonts.load(`italic 400 64px ${f.serif}`),
     document.fonts.load(`500 64px ${f.sans}`),
+    document.fonts.load(`600 64px ${f.serif}`),
     document.fonts.load(`700 64px ${f.sans}`),
-    document.fonts.load(`400 64px ${f.mono}`),
+    document.fonts.load(`800 64px ${f.sans}`),
   ]).catch(() => undefined);
   await document.fonts.ready;
 }
 
+/**
+ * The in-world type's hierarchy, as the page's (globals.css --w-* / --t-*): one family, Montserrat,
+ * so the roles are weights and tracking. A display line ('serif') set at a text weight is a title
+ * — semibold, a touch tighter; a label ('mono') is semibold, and its tracking is held to what
+ * Montserrat (already wide) needs; text ('sans') is as specified.
+ */
+function roleWeight(spec: TypeSpec) {
+  const w = spec.weight ?? 400;
+  if (spec.family === 'serif' && !spec.italic) return Math.max(w, 600);
+  if (spec.family === 'mono') return Math.max(w, 600);
+  return w;
+}
+function roleTracking(spec: TypeSpec) {
+  const t = spec.tracking ?? 0;
+  if (spec.family === 'serif') return t - 0.01;
+  if (spec.family === 'mono') return Math.min(t, 0.16);
+  return t;
+}
+
 export function applyType(ctx: CanvasRenderingContext2D, spec: TypeSpec) {
   const fam = fontFamilies()[spec.family];
-  ctx.font = `${spec.italic ? 'italic ' : ''}${spec.weight ?? 400} ${spec.size}px ${fam}`;
+  ctx.font = `${spec.italic ? 'italic ' : ''}${roleWeight(spec)} ${spec.size}px ${fam}`;
   ctx.fillStyle = spec.color ?? '#efe9df';
   ctx.textAlign = spec.align ?? 'left';
   ctx.textBaseline = spec.baseline ?? 'alphabetic';
   const c = ctx as CanvasRenderingContext2D & { letterSpacing?: string; fontStretch?: string };
-  if ('letterSpacing' in c) c.letterSpacing = `${(spec.tracking ?? 0) * spec.size}px`;
-  if ('fontStretch' in c) c.fontStretch = spec.stretch ?? 'normal';
+  if ('letterSpacing' in c) c.letterSpacing = `${roleTracking(spec) * spec.size}px`;
+  if ('fontStretch' in c) c.fontStretch = 'normal';
 }
 
 export function text(ctx: CanvasRenderingContext2D, value: string, x: number, y: number, spec: TypeSpec) {

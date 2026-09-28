@@ -10,9 +10,13 @@
  * replayed: the page's scroll position is still the only clock, and stopping
  * stops it.
  *
- * Only before the portal: the Teams world keeps its own feel.
+ * Before the portal. The Teams world keeps its own feel — until the journey's
+ * end, where it comes round into the opening through the mist: there the
+ * shaping fades back in with the mist (whole where the mist is whole), so the
+ * same input moves the scroll exactly the same on both sides of the loop's
+ * seam, whichever way it is crossed.
  */
-import { PORTAL_GATE } from '@/config/timeline';
+import { PORTAL_GATE, SEGMENTS, segmentProgress } from '@/config/timeline';
 import { progress } from './progress';
 
 /** How quickly the input-speed estimate follows (s): a few frames. */
@@ -34,6 +38,11 @@ export function wheelGain(dx: number, dy: number, now = performance.now()) {
   last = now;
   const k = 1 - Math.exp(-dt / TAU);
   speed += (Math.hypot(dx, dy) / dt - speed) * k;
-  if (progress.target >= PORTAL_GATE - 1e-4) return 1;
-  return Math.max(FLOOR, 1 / (1 + Math.pow(speed / KNEE, SHARP)));
+  const shaped = Math.max(FLOOR, 1 / (1 + Math.pow(speed / KNEE, SHARP)));
+  const p = progress.target;
+  if (p < PORTAL_GATE - 1e-4) return shaped;
+  // (The Teams world's own feel; the opening's again through the end's mist — the return, whole by 40% of it.)
+  const w = p <= SEGMENTS.return.start ? 0 : Math.min(1, segmentProgress(p, 'return') / 0.4);
+  const blend = w * w * (3 - 2 * w);
+  return 1 + (shaped - 1) * blend;
 }

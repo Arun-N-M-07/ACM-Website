@@ -15,7 +15,17 @@ type V3 = [number, number, number];
 
 const cache = new Map<string, { geo: BufferGeometry; users: number }>();
 
-/** Shared geometry cache with reference counting (disposed when the last user unmounts). */
+/**
+ * Shared geometry cache with reference counting (disposed when the last user unmounts).
+ *
+ * A user is counted when its effect runs, against the geometry it actually renders. An effect can
+ * be cleaned up and run again while the component stays mounted (React's strict mode does exactly
+ * that; so does Fast Refresh): the cleanup may have disposed the entry and removed it, so the
+ * re-run puts the geometry it holds back in the cache — otherwise the component would go on
+ * drawing a geometry the cache no longer knew about, and it would never be disposed (a leak each
+ * time the room streamed in). A geometry that lost the race to another instance is its holder's
+ * alone, and is disposed with it.
+ */
 export function useCachedGeometry(key: string, build: () => BufferGeometry) {
   const geo = useMemo(() => {
     let entry = cache.get(key);
@@ -27,18 +37,26 @@ export function useCachedGeometry(key: string, build: () => BufferGeometry) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
   useEffect(() => {
-    const entry = cache.get(key);
-    if (entry) entry.users++;
+    let entry = cache.get(key);
+    if (!entry) {
+      entry = { geo, users: 0 };
+      cache.set(key, entry);
+    }
+    const shared = entry.geo === geo;
+    if (shared) entry.users++;
     return () => {
       const e = cache.get(key);
-      if (!e) return;
+      if (!shared || !e || e.geo !== geo) {
+        geo.dispose();
+        return;
+      }
       e.users--;
       if (e.users <= 0) {
         e.geo.dispose();
         cache.delete(key);
       }
     };
-  }, [key]);
+  }, [key, geo]);
   return geo;
 }
 

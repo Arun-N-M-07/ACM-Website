@@ -119,5 +119,7 @@ export const smogOn = (t: number) => t > T.release - 0.5 && t < T.acm + 7.5;
  */
 export const formAt = (t: number) => clamp01((t - T.form) / (T.legible - 0.6 - T.form));
 export const dissolveAt = (t: number) => ease(t, T.dissolve, T.mixed);
+/** The restlessness before it goes (0 → 1): read, then wavering and fraying as it begins to loosen. */
+export const unstableAt = (t: number) => ease(t, T.dissolve - 3, T.dissolve + 1);
 /** How much of the prologue is to be drawn at all. */
 export const prologueOn = (t: number) => t < T.story1 + 1;
