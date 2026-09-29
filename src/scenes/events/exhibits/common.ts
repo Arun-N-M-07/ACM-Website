@@ -174,3 +174,48 @@ export function codeScreen(ctx: CanvasRenderingContext2D, w: number, h: number, 
   }
   ctx.globalAlpha = 1;
 }
+
+/**
+ * A code review on a dark screen (decorative), for the mentors' monitors: a diff, its added and
+ * removed lines marked in the gutter, and a comment left beside it.
+ */
+export function reviewScreen(ctx: CanvasRenderingContext2D, w: number, h: number, seed: number) {
+  ctx.fillStyle = '#0b100e';
+  ctx.fillRect(0, 0, w, h);
+  ctx.fillStyle = 'rgba(239,233,223,0.07)';
+  ctx.fillRect(0, 0, w, h * 0.1);
+  ctx.fillStyle = 'rgba(143,217,180,0.75)';
+  ctx.fillRect(w * 0.04, h * 0.035, w * 0.1, h * 0.035);
+  ctx.fillStyle = 'rgba(239,233,223,0.35)';
+  ctx.fillRect(w * 0.17, h * 0.035, w * 0.22, h * 0.035);
+  const colors = ['#9fb8c9', '#d8c9a3', '#c9c4bb', '#a9cdb8'];
+  const lh = (h * 0.84) / 12;
+  for (let i = 0; i < 12; i++) {
+    const y = h * 0.13 + i * lh;
+    const kind = (i * 5 + seed) % 7 === 0 ? -1 : (i * 3 + seed) % 5 === 0 || (i * 3 + seed) % 5 === 1 ? 1 : 0;
+    if (kind) {
+      ctx.fillStyle = kind > 0 ? 'rgba(95,181,138,0.16)' : 'rgba(201,128,114,0.15)';
+      ctx.fillRect(0, y, w * 0.64, lh * 0.9);
+      ctx.fillStyle = kind > 0 ? '#8fd9b4' : '#d49a8f';
+      ctx.fillRect(w * 0.025, y + lh * 0.38, w * 0.014, lh * 0.16);
+      if (kind > 0) ctx.fillRect(w * 0.028, y + lh * 0.26, w * 0.008, lh * 0.4);
+    }
+    let x = w * 0.06 + ((i * 7 + seed) % 3) * w * 0.035;
+    const n = 1 + ((i * 3 + seed) % 3);
+    for (let k = 0; k < n; k++) {
+      const len = w * (0.05 + (((i + k + seed) * 13) % 6) * 0.022);
+      ctx.fillStyle = colors[(i + k + seed) % colors.length];
+      ctx.globalAlpha = 0.8;
+      ctx.fillRect(x, y + lh * 0.3, len, lh * 0.34);
+      x += len + w * 0.02;
+    }
+    ctx.globalAlpha = 1;
+  }
+  // The review comment, beside the diff.
+  ctx.fillStyle = 'rgba(239,233,223,0.08)';
+  ctx.fillRect(w * 0.68, h * 0.3, w * 0.28, h * 0.36);
+  ctx.fillStyle = 'rgba(143,217,180,0.8)';
+  ctx.fillRect(w * 0.68, h * 0.3, w * 0.008, h * 0.36);
+  ctx.fillStyle = 'rgba(239,233,223,0.55)';
+  for (let i = 0; i < 4; i++) ctx.fillRect(w * 0.71, h * (0.36 + i * 0.07), w * (i === 3 ? 0.12 : 0.21), h * 0.025);
+}

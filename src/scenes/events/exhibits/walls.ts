@@ -388,7 +388,107 @@ const prodigy: WallDraw = (ctx, w, h, wall, u, t, info) => {
   });
 };
 
-// ─── CodHer: the commit wall ───────────────────────────────────────────────
+// ─── CodHer: the span ──────────────────────────────────────────────────────
+//
+// One structure, built across the back wall as the night runs (pieces.tsx, CodherSpan): a
+// cable-stayed bridge. Its pylon stands on the room's axis behind the trophy (the platform), and its
+// deck is built out from the pylon both ways at once, one segment at a time. Each segment hangs on its
+// own stay as it is set. It is a balanced cantilever: neither side can run ahead of the other. When
+// submissions close, the last joints close at both banks and light runs out along the finished span.
+// The projection behind it is the drawing it was built from.
+
+/**
+ * The span, as fractions of the back wall's projection (x from its left, y from its top). The
+ * drawing and the structure built in front of it share these numbers.
+ */
+export const CODHER_SPAN = {
+  /** The top of the deck, and its depth. */
+  deckY: 0.62,
+  deckDepth: 0.03,
+  /** The banks: a stone pier at each end, the deck's seat on top of it. */
+  bankL: 0.06,
+  bankR: 0.94,
+  pier: 0.02,
+  /** The pylon: on the axis, tapering from its foot to its head. */
+  headY: 0.19,
+  footWidth: 0.026,
+  headWidth: 0.0135,
+  /** Segments either side of the pylon, and where their stays are anchored up it: innermost lowest, outermost highest. */
+  segments: 8,
+  anchorLow: 0.365,
+  anchorHigh: 0.225,
+  /** Between the last segment and each bank's seat: the closing joint. */
+  gap: 0.006,
+};
+
+/** The span's parts, worked out from CODHER_SPAN. Every x here is an offset from the axis, mirrored either side. */
+export const SPAN = (() => {
+  const g = CODHER_SPAN;
+  /** The pylon's half-width at height y. */
+  const halfAt = (y: number) => (g.headWidth + (g.footWidth - g.headWidth) * clamp01((y - g.headY) / (1 - g.headY))) / 2;
+  const root = halfAt(g.deckY) + 0.002;
+  const seat = 0.5 - g.bankL - g.pier;
+  const seg = (seat - g.gap - root) / g.segments;
+  const stays = Array.from({ length: g.segments }, (_, j) => {
+    const ay = g.anchorLow + ((g.anchorHigh - g.anchorLow) * j) / (g.segments - 1);
+    return { ay, ax: halfAt(ay) * 0.6, tx: root + (j + 0.72) * seg };
+  });
+  return { halfAt, root, seat, seg, stays };
+})();
+
+/** The night in the visit: the segments set, a side at a time, from `from` to `to`; the banks closed by `close`; the light run out by `lit`. */
+export const SPAN_U = { from: 0.05, to: 0.8, close: 0.86, lit: 0.95 };
+
+/** The visit progress over which segment j (0 beside the pylon) on side s (−1 left, 1 right) is lifted into place and hung on its stay. */
+export function spanPlacement(j: number, s: number): [number, number] {
+  const n = 2 * j + (s > 0 ? 1 : 0);
+  const step = (SPAN_U.to - SPAN_U.from) / (2 * CODHER_SPAN.segments + 1);
+  return [SPAN_U.from + n * step, SPAN_U.from + (n + 1.8) * step];
+}
+
+/** The drawing the span was built from: fine gold line on the wall behind it, with its centre line, joints and span dimension. */
+function spanDrawing(ctx: CanvasRenderingContext2D, w: number, h: number) {
+  const g = CODHER_SPAN;
+  const s = h / 100;
+  const cx = w / 2;
+  const line = (x0: number, y0: number, x1: number, y1: number) => {
+    ctx.beginPath();
+    ctx.moveTo(x0, y0);
+    ctx.lineTo(x1, y1);
+    ctx.stroke();
+  };
+  const top = g.deckY * h;
+  const under = (g.deckY + g.deckDepth) * h;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(212,162,76,0.26)';
+  ctx.lineWidth = Math.max(1, s * 0.14);
+  // The centre line (long dash, short dash).
+  ctx.setLineDash([s * 2.6, s * 0.9, s * 0.5, s * 0.9]);
+  line(cx, (g.headY - 0.05) * h, cx, h * 0.99);
+  // The stays, dashed: where each will run.
+  ctx.setLineDash([s * 0.8, s * 0.8]);
+  for (const side of [-1, 1]) for (const st of SPAN.stays) line(cx + side * st.ax * w, st.ay * h, cx + side * st.tx * w, top);
+  ctx.setLineDash([]);
+  // The pylon, the deck and its joints, the piers.
+  ctx.beginPath();
+  ctx.moveTo(cx - SPAN.halfAt(1) * w, h);
+  ctx.lineTo(cx - SPAN.halfAt(g.headY) * w, g.headY * h);
+  ctx.lineTo(cx + SPAN.halfAt(g.headY) * w, g.headY * h);
+  ctx.lineTo(cx + SPAN.halfAt(1) * w, h);
+  ctx.stroke();
+  ctx.strokeRect(g.bankL * w, top, (g.bankR - g.bankL) * w, under - top);
+  for (const side of [-1, 1]) {
+    for (let j = 1; j <= g.segments; j++) line(cx + side * (SPAN.root + j * SPAN.seg) * w, top, cx + side * (SPAN.root + j * SPAN.seg) * w, under);
+    const x = side < 0 ? g.bankL * w : (g.bankR - g.pier) * w;
+    ctx.strokeRect(x, under, g.pier * w, h - under);
+  }
+  // The span's dimension, below the deck: bank to bank, with the axis marked.
+  const dy = under + s * 5;
+  ctx.strokeStyle = 'rgba(212,162,76,0.2)';
+  line(g.bankL * w, dy, g.bankR * w, dy);
+  for (const x of [g.bankL * w, cx, g.bankR * w]) line(x - s * 0.9, dy + s * 0.9, x + s * 0.9, dy - s * 0.9);
+  ctx.restore();
+}
 
 const codher: WallDraw = (ctx, w, h, wall, u, t, info) => {
   const s = h / 100;
@@ -396,27 +496,12 @@ const codher: WallDraw = (ctx, w, h, wall, u, t, info) => {
   ctx.fillRect(0, 0, w, h);
   const gold = '#d4a24c';
   if (wall === 'back') {
-    const y0 = titleBand(ctx, w, h, info);
-    const cols = 40;
-    const rows = 7;
-    const gx = w * 0.05;
-    const cell = (w * 0.9) / cols;
-    const gy = y0 + s * 8;
-    let commits = 0;
-    for (let c = 0; c < cols; c++)
-      for (let r = 0; r < rows; r++) {
-        const at = hash(c * 7 + r * 131) * 0.8 + (c / cols) * 0.15;
-        const lvl = u > at ? 1 + Math.floor(hash(c * 3 + r) * 3.99) : 0;
-        commits += lvl;
-        ctx.fillStyle = lvl ? `rgba(212,162,76,${0.2 + lvl * 0.2})` : 'rgba(255,255,255,0.05)';
-        roundRect(ctx, gx + c * cell + cell * 0.1, gy + r * cell + cell * 0.1, cell * 0.8, cell * 0.8, cell * 0.12);
-        ctx.fill();
-      }
-    text(ctx, `${commits} commits tonight`, gx, gy + rows * cell + s * 7, { family: 'mono', size: s * 3.6, color: DIM });
-    if (u > 0.86) {
-      const k = sstep(u, 0.86, 0.93);
-      ctx.globalAlpha = k;
-      text(ctx, 'Ship it.', w * 0.95, gy + rows * cell + s * 10, { family: 'serif', italic: true, size: s * 12, color: gold, align: 'right' });
+    titleBand(ctx, w, h, info);
+    // (The span is built in front of this wall; this keeps the drawing it was built from, and the last word.)
+    spanDrawing(ctx, w, h);
+    if (u > SPAN_U.close) {
+      ctx.globalAlpha = sstep(u, SPAN_U.close, SPAN_U.close + 0.07);
+      text(ctx, 'Ship it.', w * (CODHER_SPAN.bankL + CODHER_SPAN.pier + 0.015), h * 0.75, { family: 'serif', italic: true, size: s * 8, color: gold });
       ctx.globalAlpha = 1;
     }
     return;
@@ -572,18 +657,66 @@ const patternx: WallDraw = (ctx, w, h, wall, u, _t, info) => {
   ctx.globalAlpha = 1;
 };
 
-// ─── Open Source Mentorship Program: the loom ──────────────────────────────
+// ─── Open Source Mentorship Program: the contribution wall ─────────────────
 //
-// Scrubbed by scroll (pieces.tsx builds the loom in the room): a frame held up
-// by ACM-CEG and GDG-AU; the warp hanging from the mentors' beam; the project
-// as a cloth already begun; and the cohort's contributions woven into it, one
-// row at a time — until a light passes up through the finished piece. The
-// back wall carries only the key to the drawing.
+// The cohort's work as a history built into the back wall (pieces.tsx, ContributionWall). One line
+// runs across the wall: main, the project. Six branches fork from it, and each runs down into its own
+// row of the contribution field. The field is a relief of cells that light as the programme's weeks
+// pass, left to right, and stand out from the wall by how much was committed. The pair stations in
+// front of it feed it. Then each branch leaves the field as a pull request, passes through a
+// mentor's review ring, and merges back into main, one after another, until main runs lit to its
+// head. The projection behind keeps the title, the key to the drawing, and the last word.
 
-/** The weaving, as fractions of the visit (u): the cohort's rows, one `row` apart from `start`; then the light through the whole. */
-export const LOOM_U = { start: -0.12, row: 0.048, rows: 10, sweep: 0.37, whole: 0.45 };
-/** When the cohort's last row is beaten in. */
-export const LOOM_WOVEN = LOOM_U.start + LOOM_U.rows * LOOM_U.row;
+/** Where it stands, as fractions of the back wall's projection (x from its left, y from its top); the projection and the built wall share these. */
+export const OSS_WALL = {
+  /** Main: its height, where it starts, where it ends, and its head (where the merged work arrives). */
+  mainY: 0.37,
+  mainFrom: 0.06,
+  mainTo: 0.905,
+  headAt: 0.885,
+  /** The contribution field. */
+  fieldLeft: 0.31,
+  fieldRight: 0.73,
+  fieldTop: 0.5,
+  fieldBottom: 0.76,
+  /** The height at which each pull request passes through its review ring. */
+  reviewY: 0.445,
+};
+/** Where branch k (0 is the top row) forks from main, and where it merges back: outer rows fork earlier and merge later, so no two cross. */
+export const forkAt = (k: number) => 0.25 - k * 0.03;
+export const mergeAt = (k: number) => 0.765 + k * 0.018;
+
+/** The field: the programme's weeks across it, a row per contributor, and how much each committed each week (0 to 4). */
+export const CONTRIBUTIONS = (() => {
+  const cols = 19;
+  const rows = 6;
+  /** Where the programme runs in the visit: from its first commits to its last. */
+  const t0 = 0.04;
+  const t1 = 0.6;
+  const cells: { c: number; r: number; level: number; at: number }[] = [];
+  for (let r = 0; r < rows; r++)
+    for (let c = 0; c < cols; c++) {
+      // The first weeks are quiet (learning the codebase); each contributor then finds a rhythm of their own.
+      const busy = (0.22 + 0.62 * Math.min(1, c / 7)) * (0.78 + 0.22 * Math.sin(c * 0.9 + r * 2.1));
+      const most = 1.6 + 2.39 * Math.min(1, c / 10);
+      const level = hash(c * 17 + r * 131 + 11) < busy ? Math.min(4, 1 + Math.floor(hash(c * 5 + r * 71 + 3) * most)) : 0;
+      cells.push({ c, r, level, at: t0 + (c / cols) * (t1 - t0) + hash(c * 7 + r * 131) * 0.02 });
+    }
+  return { cols, rows, t0, t1, cells };
+})();
+
+/** How far a cell's week has landed (0 → 1) at visit progress u: it lights, with a brief flare, and stays. */
+export const cellLanded = (u: number, at: number) => clamp01((u - at) / 0.012);
+
+/** The history in the visit (u): each branch forks during the walk up; its pull request rises, is reviewed, and merges; then main runs to its head. */
+export const OSS_U = {
+  /** Branch k forks (its rail runs down from main into its row) over [fork(k), fork(k) + 0.05]: the outermost first. */
+  fork: (k: number) => -0.16 + (CONTRIBUTIONS.rows - 1 - k) * 0.025,
+  /** Branch k's pull request: it rises from the field to its ring from pr(k), is reviewed from pr(k) + 0.02, merges from pr(k) + 0.03 and is in by pr(k) + 0.05. */
+  pr: (k: number) => 0.62 + k * 0.035,
+  /** Main runs lit from the last merge to its head. */
+  head: [0.85, 0.93] as [number, number],
+};
 
 const openSource: WallDraw = (ctx, w, h, wall, u, _t, info) => {
   ctx.fillStyle = '#070d0a';
@@ -592,24 +725,38 @@ const openSource: WallDraw = (ctx, w, h, wall, u, _t, info) => {
   const accent = info.ev.accent;
   if (wall === 'back') {
     titleBand(ctx, w, h, info);
-    // The key to the loom, low on the wall beside it; and, once the cloth is whole, what it has become.
-    const [, f1] = openSpan(info.index);
-    const xr = (f1 - 0.07) * w;
-    const y = h * 0.8;
-    const key: [string, string][] = [
-      ['WARP', 'THE MENTORS’ GUIDANCE'],
-      ['WEFT', 'THE COHORT’S CONTRIBUTIONS'],
+    // (The wall itself is built in front of this: main, the branches, the field, the rings.) Main is named where it begins.
+    const g = OSS_WALL;
+    text(ctx, 'main', w * g.mainFrom, h * (g.mainY - 0.028), { family: 'mono', size: s * 2.6, color: DIM, tracking: 0.08 });
+    // The key, over the wall: each step lights as the work reaches it.
+    const steps: [string, number][] = [
+      ['FORK', OSS_U.fork(0) + 0.05],
+      ['COMMIT', CONTRIBUTIONS.t0],
+      ['PULL REQUEST', OSS_U.pr(0)],
+      ['MENTOR REVIEW', OSS_U.pr(0) + 0.02],
+      ['MERGE', OSS_U.pr(0) + 0.05],
     ];
-    key.forEach(([term, meaning], i) => {
-      ctx.globalAlpha = 0.8;
-      text(ctx, meaning, xr, y + i * s * 4.4, { family: 'mono', size: s * 2.2, color: BONE, tracking: 0.22, align: 'right' });
-      const mw = ctx.measureText(meaning).width;
-      text(ctx, term, xr - mw - s * 3, y + i * s * 4.4, { family: 'mono', size: s * 2.2, color: accent, tracking: 0.22, align: 'right' });
+    const font = { family: 'mono' as const, size: s * 2.1, tracking: 0.22 };
+    applyType(ctx, font);
+    const arrow = '   →   ';
+    const widths = steps.map(([label]) => ctx.measureText(label).width);
+    const arrowW = ctx.measureText(arrow).width;
+    let x = w * g.fieldLeft;
+    const y = h * 0.305;
+    steps.forEach(([label, at], i) => {
+      text(ctx, label, x, y, { ...font, color: u >= at ? BONE : 'rgba(239,233,223,0.32)' });
+      x += widths[i];
+      if (i < steps.length - 1) {
+        text(ctx, arrow, x, y, { ...font, color: 'rgba(239,233,223,0.28)' });
+        x += arrowW;
+      }
     });
-    const whole = sstep(u, LOOM_U.sweep, LOOM_U.whole);
-    if (whole > 0.01) {
-      ctx.globalAlpha = whole;
-      text(ctx, 'Woven into one project.', xr, y - s * 6, { family: 'serif', italic: true, size: s * 4.4, color: '#ffffff', align: 'right' });
+    // The last word, under main's head, once the work is in.
+    const k = sstep(u, OSS_U.head[0], OSS_U.head[1]);
+    if (k > 0.01) {
+      ctx.globalAlpha = k;
+      text(ctx, 'Merged', w * g.mainTo, h * 0.585, { family: 'serif', italic: true, size: s * 4, color: '#f4ecdc', align: 'right' });
+      text(ctx, 'upstream.', w * g.mainTo, h * 0.635, { family: 'serif', italic: true, size: s * 4, color: '#f4ecdc', align: 'right' });
     }
     ctx.globalAlpha = 1;
     return;

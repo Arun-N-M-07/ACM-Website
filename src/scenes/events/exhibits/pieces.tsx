@@ -6,7 +6,7 @@
  */
 import { useFrame, useThree } from '@react-three/fiber';
 import { useEffect, useMemo, useRef } from 'react';
-import { AdditiveBlending, BufferAttribute, BufferGeometry, CatmullRomCurve3, Color, CurvePath, CylinderGeometry, DoubleSide, DynamicDrawUsage, Euler, type Group, type InstancedMesh, LineCurve3, type Mesh, MeshBasicMaterial, type PerspectiveCamera, MeshStandardMaterial, Object3D, PlaneGeometry, SphereGeometry, TorusGeometry, TubeGeometry, Vector3 } from 'three';
+import { AdditiveBlending, BufferAttribute, BufferGeometry, Color, CubicBezierCurve3, CurvePath, CylinderGeometry, DoubleSide, DynamicDrawUsage, Euler, type Group, type InstancedMesh, LineCurve3, type Mesh, MeshBasicMaterial, type PerspectiveCamera, MeshStandardMaterial, Object3D, PlaneGeometry, SphereGeometry, type Sprite, SpriteMaterial, TorusGeometry, TubeGeometry, Vector3 } from 'three';
 import { PRODIGY_PROGRAMME } from '@/content/prodigy';
 import { merge, metricBox, place } from '@/systems/geometry/build';
 import { useDisposable } from '@/systems/performance/useDisposable';
@@ -15,8 +15,8 @@ import { fitSize, makeCanvas, paragraph, text, toTexture } from '@/systems/textu
 import { CanvasPanel } from '../../shared/CanvasPanel';
 import { Chair, Desk, Laptop, Monitor } from '../../shared/props';
 import { useKit } from '../../underground/kit';
-import { clamp01, codeScreen, hash, openSpan, type PieceProps, pointerNear, puzzleOrder, puzzleSpan, ramp, sstep, swell } from './common';
-import { BALLOON_COLORS, contestT, LOOM_U, LOOM_WOVEN, PX_U, SORT, solveAt, sortStep, STAIRS } from './walls';
+import { clamp01, codeScreen, hash, openSpan, type PieceProps, pointerNear, puzzleOrder, puzzleSpan, ramp, reviewScreen, sstep, swell } from './common';
+import { BALLOON_COLORS, cellLanded, CODHER_SPAN, contestT, CONTRIBUTIONS, forkAt, mergeAt, OSS_U, OSS_WALL, PX_U, SORT, solveAt, sortStep, SPAN, SPAN_U, spanPlacement, STAIRS } from './walls';
 
 const dummy = new Object3D();
 const easeIO = (x: number) => x * x * (3 - 2 * x);
@@ -286,9 +286,242 @@ export function PuzzlePieces({ event, width, depth, clock }: PieceProps) {
   );
 }
 
-// ─── CodHer: hack tables, and the trophy ───────────────────────────────────
+// ─── CodHer: hack tables, the span, and the trophy ────────────────────────
 
-export function HackNight({ event, width, clock }: PieceProps) {
+/** A soft round glow in a given light (for a lit point: the span's head, main's). */
+function glowTexture(rgb: [number, number, number]) {
+  const { canvas, ctx } = makeCanvas(128, 128);
+  const g = ctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+  const [r, gr, b] = rgb;
+  g.addColorStop(0, `rgba(${r},${gr},${b},1)`);
+  g.addColorStop(0.25, `rgba(${r},${gr},${b},0.5)`);
+  g.addColorStop(1, `rgba(${r},${gr},${b},0)`);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 128, 128);
+  return toTexture(canvas);
+}
+
+/** A soft wash of light for a wall (additive, behind an installation). */
+function washTexture(rgb: [number, number, number]) {
+  const { canvas, ctx } = makeCanvas(256, 128);
+  const [r, g, b] = rgb;
+  const gr = ctx.createRadialGradient(128, 64, 4, 128, 64, 128);
+  gr.addColorStop(0, `rgba(${r},${g},${b},1)`);
+  gr.addColorStop(0.45, `rgba(${r},${g},${b},0.4)`);
+  gr.addColorStop(1, `rgba(${r},${g},${b},0)`);
+  ctx.fillStyle = gr;
+  ctx.fillRect(0, 0, 256, 128);
+  return toTexture(canvas);
+}
+
+/** A box tapering from `w0` wide at its foot to `w1` at its head, `h` tall, standing on y = 0. */
+function taper(w0: number, w1: number, h: number, d: number) {
+  const g = metricBox(1, h, d);
+  const p = g.getAttribute('position');
+  for (let i = 0; i < p.count; i++) {
+    const head = p.getY(i) > 0;
+    p.setX(i, p.getX(i) * (head ? w1 : w0));
+    p.setY(i, p.getY(i) + h / 2);
+  }
+  g.computeVertexNormals();
+  return g;
+}
+
+const _up = new Vector3(0, 1, 0);
+const _dir = new Vector3();
+const _a = new Vector3();
+const _b = new Vector3();
+
+/**
+ * The span. A cable-stayed bridge, built across CodHer's back wall as the night runs. Its pylon
+ * rises on the room's axis, behind the trophy, and its deck grows out from the pylon both ways, a
+ * segment each side in turn. Each segment is lifted up into place and hung on its own stay, which
+ * draws down from the pylon and flares as it takes the load. When submissions close, the last joint
+ * at each bank is closed, and light runs out along the finished deck from the pylon to both banks and
+ * up to the pylon's head. The structure stands off the wall in front of the drawing it was built from
+ * (walls.ts: CODHER_SPAN), in dark bronze with the stays and the deck's soffit lit gold. Everything is
+ * a function of the visit (the scroll): it plays back as it came.
+ */
+function CodherSpan({ event, width: W, depth: D, height: H, clock }: Pick<PieceProps, 'event' | 'width' | 'depth' | 'height' | 'clock'>) {
+  const kit = useKit();
+  const girders = useRef<InstancedMesh>(null);
+  const soffits = useRef<InstancedMesh>(null);
+  const stays = useRef<InstancedMesh>(null);
+  const joints = useRef<InstancedMesh>(null);
+  const head = useRef<Sprite>(null);
+  const res = useDisposable(() => {
+    const g = CODHER_SPAN;
+    const N = g.segments;
+    const pw = W - 0.3;
+    const ph = H - 0.2;
+    const Y = (fy: number) => H / 2 + (0.5 - fy) * ph;
+    // The drawing's plane, and the structure's, standing off it.
+    const z0 = -D / 2 + 0.03;
+    const zc = z0 + 0.55;
+    const deckTop = Y(g.deckY);
+    const deckH = g.deckDepth * ph;
+    const headY = Y(g.headY);
+    const gold = new Color(event.accent);
+    const seg = SPAN.seg * pw;
+    const root = SPAN.root * pw;
+    // The pylon: from the floor to its head, with a gold cap and the stays' anchorages up its face.
+    const pylon = taper(SPAN.halfAt(1) * 2 * pw, SPAN.halfAt(g.headY) * 2 * pw, headY, 0.42);
+    pylon.translate(0, 0, zc);
+    const crossbeam = place(metricBox(root * 2 + 0.16, deckH + 0.08, 0.62), { position: [0, deckTop - deckH / 2, zc] });
+    const cap = place(metricBox(SPAN.halfAt(g.headY) * 2 * pw + 0.06, 0.12, 0.46), { position: [0, headY + 0.06, zc] });
+    const anchors = merge(
+      [-1, 1].flatMap((s) => SPAN.stays.map((st) => place(metricBox(0.07, 0.035, 0.46), { position: [s * st.ax * pw, Y(st.ay), zc] }))),
+    );
+    // The banks: stone piers, each with the deck's seat on top.
+    const pierW = g.pier * pw;
+    const pierX = (0.5 - g.bankL - g.pier / 2) * pw;
+    const piers = merge([-1, 1].map((s) => place(metricBox(pierW, deckTop - deckH, 0.7), { position: [s * pierX, (deckTop - deckH) / 2, zc] })));
+    const seats = merge([-1, 1].map((s) => place(metricBox(pierW + 0.1, deckH, 0.58), { position: [s * pierX, deckTop - deckH / 2, zc] })));
+    // A segment of deck (a hair short of its length: the joints read), its soffit's lit strip, a stay (a unit rod up +y), a closing joint.
+    const girder = metricBox(seg - 0.014, deckH, 0.52);
+    const soffit = metricBox(seg - 0.05, 0.022, 0.02);
+    const stay = new CylinderGeometry(0.011, 0.011, 1, 6);
+    stay.translate(0, 0.5, 0);
+    const gapW = g.gap * pw;
+    const joint = metricBox(gapW + 0.02, deckH * 0.8, 0.5);
+    // Where each segment ends up, and its stay's two ends (side −1 first, then side 1: instance i = side's half × N + j).
+    const slots = [-1, 1].flatMap((s) =>
+      SPAN.stays.map((st, j) => ({
+        s,
+        j,
+        x: s * (root + (j + 0.5) * seg),
+        anchor: new Vector3(s * st.ax * pw, Y(st.ay), zc),
+        tipX: s * st.tx * pw,
+        span: spanPlacement(j, s),
+      })),
+    );
+    const wash = new PlaneGeometry(pw * 0.8, (g.deckY - g.headY) * ph * 1.6);
+    wash.translate(0, (headY + deckTop) / 2, z0 + 0.004);
+    return {
+      N,
+      zc,
+      deckTop,
+      deckH,
+      headY,
+      seatX: (0.5 - g.bankL - g.pier) * pw,
+      gapW,
+      slots,
+      pylon,
+      crossbeam,
+      cap,
+      anchors,
+      piers,
+      seats,
+      girder,
+      soffit,
+      stay,
+      joint,
+      wash,
+      bronze: new MeshStandardMaterial({ color: '#3b2c1b', metalness: 0.72, roughness: 0.36 }),
+      girderMat: new MeshStandardMaterial({ color: '#57412a', metalness: 0.7, roughness: 0.34 }),
+      goldMat: new MeshStandardMaterial({ color: gold.clone(), emissive: gold.clone(), emissiveIntensity: 0.35, metalness: 0.7, roughness: 0.3 }),
+      litMat: new MeshBasicMaterial({ toneMapped: false }),
+      washMat: new MeshBasicMaterial({ map: washTexture([255, 206, 140]), color: gold.clone(), transparent: true, opacity: 0, blending: AdditiveBlending, depthWrite: false, toneMapped: false }),
+      headMat: new SpriteMaterial({ map: glowTexture([255, 226, 180]), color: gold.clone().lerp(new Color('#ffffff'), 0.35), blending: AdditiveBlending, depthWrite: false, transparent: true, toneMapped: false }),
+      colors: { gold, white: new Color('#fff3da'), tmp: new Color() },
+    };
+  }, [W, D, H, event.accent]);
+  const last = useRef(NaN);
+
+  useFrame(() => {
+    const u = clock.current.u;
+    const gm = girders.current;
+    const sm = soffits.current;
+    const st = stays.current;
+    const jm = joints.current;
+    if (!gm || !sm || !st || !jm || u === last.current) return;
+    last.current = u;
+    const { slots, zc, deckTop, deckH, N, colors: C } = res;
+    // The light running out along the finished deck, from the pylon to the banks.
+    const run = sstep(u, SPAN_U.close, SPAN_U.lit) * (N + 1.5);
+    let hung = 0;
+    slots.forEach((sl, i) => {
+      const k = ramp(u, sl.span[0], sl.span[1]);
+      const present = k > 0;
+      // Lifted up from below (from the tables), and set.
+      const lift = sstep(k, 0, 0.55);
+      const drop = (1 - lift) * 0.9;
+      dummy.rotation.set(0, 0, 0);
+      dummy.position.set(sl.x, deckTop - deckH / 2 - drop, zc);
+      dummy.scale.setScalar(present ? 1 : 0.0001);
+      dummy.updateMatrix();
+      gm.setMatrixAt(i, dummy.matrix);
+      gm.setColorAt(i, C.tmp.setScalar(0.3 + 0.7 * lift));
+      dummy.position.set(sl.x, deckTop - deckH - 0.012 - drop, zc + 0.25);
+      dummy.updateMatrix();
+      sm.setMatrixAt(i, dummy.matrix);
+      const lit = clamp01(run - sl.j);
+      C.tmp.copy(C.gold).multiplyScalar(present ? 0.2 + 0.3 * lift + 1.1 * lit : 0);
+      sm.setColorAt(i, C.tmp);
+      // Its stay draws down from the pylon to the segment's tip, then flares as it takes the load.
+      const draw = sstep(k, 0.45, 0.8);
+      const flare = k > 0.8 && k < 1 ? Math.sin((Math.PI * (k - 0.8)) / 0.2) : 0;
+      if (draw > 0) hung += k >= 1 ? 1 : 0;
+      _a.copy(sl.anchor);
+      _b.set(sl.tipX, deckTop - drop, zc);
+      _dir.subVectors(_b, _a);
+      const len = _dir.length();
+      dummy.position.copy(_a);
+      dummy.quaternion.setFromUnitVectors(_up, _dir.normalize());
+      dummy.scale.set(1, draw > 0 ? len * draw : 0.0001, 1);
+      dummy.updateMatrix();
+      st.setMatrixAt(i, dummy.matrix);
+      C.tmp.copy(C.gold).multiplyScalar(0.62 + 0.3 * lit).lerp(C.white, 0.7 * flare + 0.25 * swell(run - sl.j, 0, 0.5, 0.6, 1.4));
+      st.setColorAt(i, C.tmp);
+    });
+    // Reset the rotation left by the stays (the next frame's girders are placed square).
+    dummy.quaternion.identity();
+    // The closing joint at each bank.
+    const close = sstep(u, SPAN_U.to, SPAN_U.close);
+    [-1, 1].forEach((s, i) => {
+      dummy.position.set(s * (res.seatX - res.gapW / 2), deckTop - deckH / 2, res.zc);
+      dummy.scale.set(close > 0 ? close : 0.0001, 1, 1);
+      dummy.updateMatrix();
+      jm.setMatrixAt(i, dummy.matrix);
+      const flash = Math.sin(Math.PI * close);
+      C.tmp.copy(C.gold).multiplyScalar(0.55 + 0.6 * clamp01(run - N)).lerp(C.white, 0.6 * flash);
+      jm.setColorAt(i, C.tmp);
+    });
+    for (const m of [gm, sm, st, jm]) {
+      m.instanceMatrix.needsUpdate = true;
+      if (m.instanceColor) m.instanceColor.needsUpdate = true;
+    }
+    // The pylon's head: it gathers light as the stays are hung, and brightest when the light reaches it.
+    const done = sstep(run, N + 0.5, N + 1.5);
+    const hd = head.current;
+    if (hd) {
+      hd.visible = u > SPAN_U.from;
+      const sz = 0.5 + (0.5 * hung) / slots.length + 0.9 * done;
+      hd.scale.set(sz, sz, 1);
+      res.headMat.opacity = 0.55 + 0.45 * done;
+    }
+    res.washMat.opacity = 0.05 + (0.14 * hung) / slots.length + 0.16 * done;
+  });
+
+  return (
+    <group>
+      <mesh geometry={res.wash} material={res.washMat} renderOrder={3} />
+      <mesh geometry={res.pylon} material={res.bronze} />
+      <mesh geometry={res.crossbeam} material={res.bronze} />
+      <mesh geometry={res.cap} material={res.goldMat} />
+      <mesh geometry={res.anchors} material={res.goldMat} />
+      <mesh geometry={res.piers} material={kit.concreteDark} />
+      <mesh geometry={res.seats} material={res.bronze} />
+      <instancedMesh ref={girders} args={[res.girder, res.girderMat, res.slots.length]} frustumCulled={false} />
+      <instancedMesh ref={soffits} args={[res.soffit, res.litMat, res.slots.length]} frustumCulled={false} />
+      <instancedMesh ref={stays} args={[res.stay, res.litMat, res.slots.length]} frustumCulled={false} />
+      <instancedMesh ref={joints} args={[res.joint, res.litMat, 2]} frustumCulled={false} />
+      <sprite ref={head} material={res.headMat} position={[0, res.headY + 0.14, res.zc + 0.25]} />
+    </group>
+  );
+}
+
+export function HackNight({ event, width, depth, height, clock }: PieceProps) {
   const kit = useKit();
   const trophy = useRef<Group>(null);
   const gold = useDisposable(() => new MeshStandardMaterial({ color: event.accent, emissive: new Color(event.accent), emissiveIntensity: 0.5, metalness: 0.6, roughness: 0.3 }), [event.accent]);
@@ -304,12 +537,13 @@ export function HackNight({ event, width, clock }: PieceProps) {
   });
   return (
     <group>
+      <CodherSpan event={event} width={width} depth={depth} height={height} clock={clock} />
       {[-1, 1].map((side) => (
         <group key={side} position={[side * (tableLen / 2 + 0.9), 0, -1.4]}>
           {[0, 1].map((row) => (
             <group key={row} position={[0, 0, row * -1.8]}>
               <Desk width={tableLen} depth={0.8} />
-              {/* Seats on the doorway side of each desk, facing the commit wall: the
+              {/* Seats on the doorway side of each desk, facing the span: the
                   visitor looks over the hackers' shoulders at their screens. */}
               {[-1, 0, 1].map((k) => (
                 <group key={k}>
@@ -927,191 +1161,346 @@ function cubeAt(p: number, width: number, c: number, r: number, out: Vector3) {
   return out.set(PLINTH.x0 + p * PLINTH.gap + (c - (width - 1) / 2) * CUBE, PLINTH.h + CUBE / 2 + r * CUBE, PLINTH.z);
 }
 
-// ─── Open Source Mentorship Program: the loom ──────────────────────────────
-//
-// A loom stands in the room, held up between two posts — ACM-CEG and GDG-AU.
-// From its top beam (the mentors) hangs the warp: the guidance every thread
-// is woven through. On it, the project: a cloth already begun, its history in
-// bone. As you scroll through the visit the cohort's contributions are woven
-// in, one row at a time — a shuttle carries each thread across the warp, over
-// and under, and the reed beats it into the cloth. Different hands, different
-// greens; one cloth. When the last row is in, the reed lifts away and a light
-// passes up through the finished piece. It all rewinds with the scroll
-// (walls.ts: LOOM_U).
+// ─── Open Source Mentorship Program: pair stations and the contribution wall ─
 
-const LOOM = {
-  x0: -1.35,
-  x1: 2.35,
-  z: -1.5,
-  /** The breast beam (where the cloth starts) and the top beam (the mentors'). */
-  y0: 0.62,
-  top: 3.08,
-  warps: 19,
-  /** Rows of cloth already woven (the project's history), and the pitch between rows. */
-  history: 8,
-  pitch: 0.085,
-  yarn: 0.032,
-  /** Over and under: how far the weft swings either side of the warp. */
-  swing: 0.03,
-};
-const LOOM_ROWS = LOOM.history + LOOM_U.rows;
-const rowY = (r: number) => LOOM.y0 + (r + 0.5) * LOOM.pitch;
-/** Where the shuttle passes (the shed), above the row it lays; and where the reed rests between beats. */
-const SHED = 0.3;
-const REED_REST = rowY(LOOM_ROWS - 1) + 0.55;
-
-/** A row of weft: over and under the warp, in the direction the shuttle carries it. */
-function weftRow(r: number) {
-  const pts: Vector3[] = [];
-  const inset = 0.09;
-  pts.push(new Vector3(LOOM.x0 + inset, rowY(r), LOOM.z));
-  for (let i = 0; i < LOOM.warps; i++) {
-    const x = LOOM.x0 + inset + ((LOOM.x1 - LOOM.x0 - 2 * inset) * (i + 0.5)) / LOOM.warps;
-    pts.push(new Vector3(x, rowY(r), LOOM.z + ((i + r) % 2 ? 1 : -1) * LOOM.swing));
-  }
-  pts.push(new Vector3(LOOM.x1 - inset, rowY(r), LOOM.z));
-  if (r % 2) pts.reverse();
-  return new TubeGeometry(new CatmullRomCurve3(pts, false, 'centripetal'), LOOM.warps * 6, LOOM.yarn, 6, false);
-}
-
-export function ContributionLoom({ event, clock, response }: PieceProps) {
-  const kit = useKit();
+/**
+ * The contribution wall. The cohort's work, built into the back wall as a history (walls.ts:
+ * OSS_WALL). Main runs across the wall as a patinated rod set off it, with the project's earlier
+ * commits studded along its start. Six branches fork from it, and each rail runs down into its own
+ * row of the contribution field. The field is a bay framed in bronze, set with cells that light from
+ * within as the programme's weeks pass (left to right) and stand out from the wall by how much was
+ * committed. Fine inlays carry the pair stations' work up into it. Then each branch leaves the field as
+ * a pull request and rises through its mentor's review ring, which lights as it is reviewed, into
+ * main. Main lights on to each merge, warm where the branches were jade, and at last to its head.
+ * Everything is a function of the visit (the scroll): it plays back as it came.
+ */
+function ContributionWall({ event, width: W, depth: D, height: H, clock, response, stations }: Pick<PieceProps, 'event' | 'width' | 'depth' | 'height' | 'clock' | 'response'> & { stations: number[] }) {
+  const cells = useRef<InstancedMesh>(null);
+  const faces = useRef<InstancedMesh>(null);
+  const pulses = useRef<InstancedMesh>(null);
+  const rings = useRef<InstancedMesh>(null);
+  const nodes = useRef<InstancedMesh>(null);
+  const branchRefs = useRef<(Mesh | null)[]>([]);
+  const mainLit = useRef<Mesh>(null);
+  const head = useRef<Sprite>(null);
   const res = useDisposable(() => {
-    const green = new Color(event.accent);
-    const bone = new Color('#efe9df');
-    // The cohort's hands: greens and a pale sage, never the same twice in a row.
-    const hands = [green.clone(), green.clone().lerp(bone, 0.42), green.clone().multiplyScalar(0.72), green.clone().lerp(new Color('#d9e8c4'), 0.55)];
-    const colors = Array.from({ length: LOOM_ROWS }, (_, r) =>
-      r < LOOM.history ? bone.clone().multiplyScalar(r % 3 === 1 ? 0.42 : 0.5) : hands[(r * 3 + Math.floor(hash(r) * 2)) % hands.length].clone(),
+    const g = OSS_WALL;
+    const C = CONTRIBUTIONS;
+    const pw = W - 0.3;
+    const ph = H - 0.2;
+    const X = (fx: number) => (fx - 0.5) * pw;
+    const Y = (fy: number) => H / 2 + (0.5 - fy) * ph;
+    // The projection's plane; everything here stands in front of it.
+    const z0 = -D / 2 + 0.03;
+    const x0 = X(g.fieldLeft);
+    const x1 = X(g.fieldRight);
+    const yTop = Y(g.fieldTop);
+    const yBot = Y(g.fieldBottom);
+    const px = (x1 - x0) / C.cols;
+    const py = (yTop - yBot) / C.rows;
+    const rowY = (r: number) => yTop - (r + 0.5) * py;
+    const yMain = Y(g.mainY);
+    const zMain = z0 + 0.13;
+    const zRow = z0 + 0.035;
+    const RAIL = 0.013;
+    // The branches: fork (from main down into the row), the row itself (behind its cells), and the
+    // pull request (up out of the field, through the review ring, into main) — one rail each.
+    const SEG = 160;
+    const RAD = 5;
+    const branches = Array.from({ length: C.rows }, (_, k) => {
+      const xf = X(forkAt(k));
+      const xm = X(mergeAt(k));
+      const y = rowY(k);
+      const fork = new CubicBezierCurve3(new Vector3(xf, yMain, zMain), new Vector3(xf + (x0 - xf) * 0.6, yMain, zMain), new Vector3(x0 - (x0 - xf) * 0.6, y, zRow), new Vector3(x0, y, zRow));
+      const row = new LineCurve3(new Vector3(x0, y, zRow), new Vector3(x1, y, zRow));
+      const pr = new CubicBezierCurve3(new Vector3(x1, y, zRow), new Vector3(x1 + (xm - x1) * 0.6, y, zRow), new Vector3(xm - (xm - x1) * 0.6, yMain, zMain), new Vector3(xm, yMain, zMain));
+      const path = new CurvePath<Vector3>();
+      path.add(fork);
+      path.add(row);
+      path.add(pr);
+      const lengths = path.getCurveLengths();
+      const total = lengths[2];
+      // Where on the pull request it passes its review ring (at the ring's height).
+      let t = 0;
+      for (let i = 0; i <= 200; i++) if (pr.getPoint(i / 200).y <= Y(g.reviewY)) t = i / 200;
+      const ring = pr.getPoint(t);
+      const toRing = (lengths[1] + pr.getLengths(200)[Math.round(t * 200)]) / total;
+      return { path, forkEnd: lengths[0] / total, rowEnd: lengths[1] / total, toRing, ring, xf, xm };
+    });
+    const cold = merge(branches.map((b) => new TubeGeometry(b.path, SEG, RAIL, RAD, false)));
+    const hot = branches.map((b) => new TubeGeometry(b.path, SEG, RAIL + 0.004, RAD, false));
+    // Main: a rod the width of the wall, and its lit length (a unit rod along +x, scaled to what is lit).
+    const xFrom = X(g.mainFrom);
+    const xTo = X(g.mainTo);
+    const mainCold = place(new CylinderGeometry(0.026, 0.026, xTo - xFrom, 8), { position: [(xFrom + xTo) / 2, yMain, zMain], rotation: [0, 0, Math.PI / 2] });
+    const mainHot = new CylinderGeometry(0.031, 0.031, 1, 8);
+    mainHot.translate(0, 0.5, 0);
+    mainHot.rotateZ(-Math.PI / 2);
+    // The pins that hold main off the wall.
+    const pins = merge(
+      Array.from({ length: 13 }, (_, i) =>
+        place(new CylinderGeometry(0.008, 0.008, zMain - z0, 6), { position: [xFrom + ((xTo - xFrom) * (i + 0.5)) / 13, yMain, (zMain + z0) / 2], rotation: [Math.PI / 2, 0, 0] }),
+      ),
     );
-    const width = LOOM.x1 - LOOM.x0;
-    const warp: BufferGeometry[] = [];
-    for (let i = 0; i < LOOM.warps; i++) {
-      const x = LOOM.x0 + 0.09 + ((width - 0.18) * (i + 0.5)) / LOOM.warps;
-      warp.push(place(new CylinderGeometry(0.0055, 0.0055, LOOM.top - LOOM.y0, 5), { position: [x, (LOOM.top + LOOM.y0) / 2, LOOM.z] }));
-    }
+    // The nodes on main (discs facing out): the project's earlier commits, where each branch forked, where each merged, and its head.
+    const history = [0.07, 0.085, 0.115, 0.175, 0.235].map(X);
+    const nodeList = [
+      ...history.map((x) => ({ x, r: 0.034, kind: 'history' as const, k: -1 })),
+      ...branches.map((b, k) => ({ x: b.xf, r: 0.045, kind: 'fork' as const, k })),
+      ...branches.map((b, k) => ({ x: b.xm, r: 0.058, kind: 'merge' as const, k })),
+      { x: X(g.headAt), r: 0.09, kind: 'head' as const, k: -1 },
+    ];
+    const node = new CylinderGeometry(1, 1, 0.03, 20);
+    node.rotateX(Math.PI / 2);
+    const ring = new TorusGeometry(0.075, 0.012, 8, 28);
+    const headRing = place(new TorusGeometry(0.15, 0.016, 8, 40), { position: [X(g.headAt), yMain, zMain] });
+    // The field: a dark back, bronze jambs, lintel and a deeper sill standing proud of the cells.
+    const lip = 0.05;
+    const lipD = 0.18;
+    const bw = x1 - x0;
+    const bh = yTop - yBot;
     const frame = merge([
-      // Posts, the top (mentors') beam, and the breast beam the cloth starts from.
-      place(metricBox(0.09, LOOM.top + 0.12, 0.09), { position: [LOOM.x0 - 0.045, (LOOM.top + 0.12) / 2, LOOM.z] }),
-      place(metricBox(0.09, LOOM.top + 0.12, 0.09), { position: [LOOM.x1 + 0.045, (LOOM.top + 0.12) / 2, LOOM.z] }),
-      place(metricBox(width + 0.3, 0.1, 0.1), { position: [(LOOM.x0 + LOOM.x1) / 2, LOOM.top + 0.03, LOOM.z] }),
-      place(metricBox(width + 0.3, 0.12, 0.12), { position: [(LOOM.x0 + LOOM.x1) / 2, LOOM.y0 - 0.06, LOOM.z] }),
-      // Feet, so it stands.
-      place(metricBox(0.14, 0.05, 0.7), { position: [LOOM.x0 - 0.045, 0.025, LOOM.z] }),
-      place(metricBox(0.14, 0.05, 0.7), { position: [LOOM.x1 + 0.045, 0.025, LOOM.z] }),
+      place(metricBox(bw + 2 * lip + 0.1, lip, lipD), { position: [(x0 + x1) / 2, yTop + 0.05 + lip / 2, z0 + lipD / 2] }),
+      place(metricBox(bw + 2 * lip + 0.3, 0.07, 0.32), { position: [(x0 + x1) / 2, yBot - 0.05 - 0.035, z0 + 0.16] }),
+      place(metricBox(lip, bh + 0.1, lipD), { position: [x0 - 0.05 - lip / 2, (yTop + yBot) / 2, z0 + lipD / 2] }),
+      place(metricBox(lip, bh + 0.1, lipD), { position: [x1 + 0.05 + lip / 2, (yTop + yBot) / 2, z0 + lipD / 2] }),
     ]);
-    const plaque = (name: string) =>
-      typePanel(0.9, 0.26, (ctx, w, h) => {
-        ctx.fillStyle = 'rgba(12,16,14,0.92)';
-        ctx.fillRect(0, 0, w, h);
-        ctx.fillStyle = '#' + green.getHexString();
-        ctx.fillRect(0, 0, w * 0.018, h);
-        text(ctx, name, w * 0.08, h * 0.68, { family: 'serif', size: h * 0.5, color: '#efe9df' });
-      });
-    const caption = (value: string, width: number) =>
-      typePanel(width, 0.1, (ctx, w, h) => {
-        text(ctx, value, w / 2, h * 0.7, { family: 'mono', size: h * 0.46, color: 'rgba(239,233,223,0.8)', tracking: 0.22, align: 'center' });
-      });
+    const back = place(metricBox(bw + 0.1, bh + 0.1, 0.02), { position: [(x0 + x1) / 2, (yTop + yBot) / 2, z0 + 0.01] });
+    const cell = metricBox(px * 0.84, py * 0.84, 1);
+    cell.translate(0, 0, 0.5);
+    const face = new PlaneGeometry(px * 0.74, py * 0.74);
+    // The feeds: from the floor behind each station up into the sill.
+    const feedTop = yBot - 0.12;
+    const feeds = merge(stations.map((x) => place(metricBox(0.016, feedTop, 0.014), { position: [x, feedTop / 2, z0 + 0.007] })));
+    const pulse = metricBox(0.022, 0.22, 0.02);
+    // The light the lit field throws on the wall about it.
+    const wash = new PlaneGeometry(bw * 1.3, bh * 2.4);
+    wash.translate((x0 + x1) / 2, (yTop + yBot) / 2 + 0.2, z0 + 0.004);
+    const jade = new Color(event.accent);
     return {
-      green,
-      rows: Array.from({ length: LOOM_ROWS }, (_, r) => weftRow(r)),
-      rowMats: colors.map((c) => new MeshStandardMaterial({ color: c, roughness: 0.85, metalness: 0, emissive: c.clone(), emissiveIntensity: 0.12 })),
-      colors,
-      warp: merge(warp),
-      warpMat: new MeshBasicMaterial({ color: bone.clone().multiplyScalar(0.5), toneMapped: false }),
+      x0,
+      yBot,
+      px,
+      py,
+      z0,
+      yMain,
+      zMain,
+      xFrom,
+      feedTop,
+      stations,
+      branches,
+      nodeList,
+      SEG,
+      RAD,
+      cold,
+      hot,
+      mainCold,
+      mainHot,
+      pins,
+      node,
+      ring,
+      headRing,
       frame,
-      reed: metricBox(width + 0.04, 0.05, 0.08),
-      shuttle: metricBox(0.24, 0.035, 0.055),
-      shuttleMat: new MeshBasicMaterial({ color: green.clone().lerp(new Color('#ffffff'), 0.55).multiplyScalar(1.25), toneMapped: false }),
-      acm: plaque('ACM-CEG'),
-      gdg: plaque(event.facts.find((f) => f.label === 'With')?.value ?? 'GDG-AU'),
-      mentors: caption(`MENTORS · ${(event.facts.find((f) => f.label === 'Mentors')?.value ?? '').toUpperCase()}`, 2.2),
-      project: caption('THE PROJECT', 0.9),
+      back,
+      cell,
+      face,
+      feeds,
+      pulse,
+      wash,
+      patina: new MeshStandardMaterial({ color: '#34463c', metalness: 0.62, roughness: 0.42 }),
+      backMat: new MeshStandardMaterial({ color: '#0a100d', metalness: 0.2, roughness: 0.85 }),
+      cellMat: new MeshStandardMaterial({ color: '#1b2822', metalness: 0.5, roughness: 0.45 }),
+      litMat: new MeshBasicMaterial({ toneMapped: false }),
+      branchMat: new MeshBasicMaterial({ color: jade.clone().lerp(new Color('#dff3e6'), 0.35).multiplyScalar(1.15), toneMapped: false }),
+      mainMat: new MeshBasicMaterial({ color: new Color('#f1e3c6').multiplyScalar(1.15), toneMapped: false }),
+      washMat: new MeshBasicMaterial({ map: washTexture([200, 240, 214]), color: jade.clone(), transparent: true, opacity: 0, blending: AdditiveBlending, depthWrite: false, toneMapped: false }),
+      headMat: new SpriteMaterial({ map: glowTexture([255, 240, 214]), color: new Color('#f6ead2'), blending: AdditiveBlending, depthWrite: false, transparent: true, toneMapped: false }),
+      colors: {
+        // The field's own scale: dark, then from deep jade to a pale celadon (not a copy of any product's greens).
+        dark: new Color('#0f1814'),
+        levels: ['#23483b', '#357a5d', event.accent, '#c3e6d1'].map((c) => new Color(c)),
+        flare: new Color('#fff5e2'),
+        jade,
+        warm: new Color('#f1e3c6'),
+        dim: new Color('#34443b'),
+        tmp: new Color(),
+      },
     };
-  }, [event.accent]);
-
-  const rowRefs = useRef<(Mesh | null)[]>([]);
-  const reed = useRef<Mesh>(null);
-  const shuttle = useRef<Mesh>(null);
+  }, [W, D, H, event.accent, stations]);
+  const last = useRef(NaN);
 
   useFrame(() => {
-    const c = clock.current;
-    if (!c.near && c.presence === 0 && rowRefs.current[0]?.userData.placed) return;
-    if (rowRefs.current[0]) rowRefs.current[0].userData.placed = true;
-    const u = c.u;
-    const act = c.presence;
-    const U = LOOM_U;
-    const segs = LOOM.warps * 6;
-    const whole = sstep(u, U.sweep, U.whole);
-    let reedY = REED_REST;
-    let shuttleOn = false;
-    for (let r = 0; r < LOOM_ROWS; r++) {
-      const m = rowRefs.current[r];
-      if (!m) continue;
-      let lift = 0;
-      let drawn = 1;
-      if (r >= LOOM.history) {
-        const k = r - LOOM.history;
-        const p = (u - (U.start + k * U.row)) / U.row;
-        // Across (the shuttle carries the thread), then the reed comes down and beats it in, then lifts back.
-        const across = sstep(p, 0, 0.6);
-        const toShed = sstep(p, 0.6, 0.7);
-        const beat = sstep(p, 0.7, 0.8);
-        const back = sstep(p, 0.82, 1);
-        drawn = across;
-        lift = SHED * (1 - beat);
-        if (p > 0 && p < 1) {
-          const shedY = rowY(r) + SHED;
-          reedY = p < 0.7 ? REED_REST + (shedY - REED_REST) * toShed : p < 0.82 ? rowY(r) + SHED * (1 - beat) : rowY(r) + (REED_REST - rowY(r)) * back;
-          if (p < 0.62) {
-            shuttleOn = true;
-            const from = r % 2 ? LOOM.x1 - 0.09 : LOOM.x0 + 0.09;
-            const to = r % 2 ? LOOM.x0 + 0.09 : LOOM.x1 - 0.09;
-            shuttle.current?.position.set(from + (to - from) * across, shedY, LOOM.z + 0.05);
-          }
-        }
+    const u = clock.current.u;
+    const cm = cells.current;
+    const fm = faces.current;
+    const pm = pulses.current;
+    const rm = rings.current;
+    const nm = nodes.current;
+    if (!cm || !fm || !pm || !rm || !nm || u === last.current) return;
+    last.current = u;
+    const { x0, yBot, px, py, z0, colors: K } = res;
+    const C = CONTRIBUTIONS;
+    // The field: each cell dark until its week lands; then lit (a brief flare as it lands) and standing out by how much was committed.
+    let lit = 0;
+    let total = 0;
+    dummy.rotation.set(0, 0, 0);
+    C.cells.forEach((x, i) => {
+      const k = x.level ? cellLanded(u, x.at) : 0;
+      total += x.level;
+      lit += k * x.level;
+      const e = k * k * (3 - 2 * k);
+      const depth = 0.03 + x.level * 0.03 * e;
+      dummy.position.set(x0 + (x.c + 0.5) * px, yBot + (C.rows - 1 - x.r + 0.5) * py, z0 + 0.02);
+      dummy.scale.set(1, 1, depth);
+      dummy.updateMatrix();
+      cm.setMatrixAt(i, dummy.matrix);
+      dummy.position.z = z0 + 0.02 + depth + 0.002;
+      dummy.scale.set(1, 1, 1);
+      dummy.updateMatrix();
+      fm.setMatrixAt(i, dummy.matrix);
+      const flare = k > 0 && k < 1 ? Math.sin(Math.PI * k) : 0;
+      if (k <= 0) K.tmp.copy(K.dark);
+      else K.tmp.copy(K.dark).lerp(K.levels[x.level - 1], e).lerp(K.flare, 0.5 * flare);
+      fm.setColorAt(i, K.tmp);
+    });
+    // The feeds carry the stations' work up into the field while the programme runs.
+    const on = sstep(u, C.t0 - 0.02, C.t0 + 0.02) * (1 - sstep(u, C.t1, C.t1 + 0.04));
+    res.stations.forEach((x, i) => {
+      const f = (u * 19 + i * 0.37) % 1;
+      dummy.position.set(x, 0.15 + f * (res.feedTop - 0.3), z0 + 0.016);
+      dummy.scale.setScalar(on > 0.01 ? 1 : 0.0001);
+      dummy.updateMatrix();
+      pm.setMatrixAt(i, dummy.matrix);
+      K.tmp.copy(K.jade).multiplyScalar(on * (0.5 + 0.8 * Math.sin(Math.PI * f)));
+      pm.setColorAt(i, K.tmp);
+    });
+    // Each branch: forked in the walk up, run along its row with the weeks, then its pull request, review and merge.
+    const rowK = ramp(u, C.t0, C.t1);
+    // Main is lit through the project's history to where the last branch forked, then on to each merge as it lands.
+    const history = sstep(u, -0.3, OSS_U.fork(0) + 0.05);
+    let mainTo = res.xFrom + (res.branches[0].xf - res.xFrom) * history;
+    res.branches.forEach((b, k) => {
+      const f0 = OSS_U.fork(k);
+      const p = OSS_U.pr(k);
+      let s = sstep(u, f0, f0 + 0.05) * b.forkEnd;
+      if (u > C.t0) s = b.forkEnd + (b.rowEnd - b.forkEnd) * rowK;
+      if (u > p) s = b.rowEnd + (b.toRing - b.rowEnd) * sstep(u, p, p + 0.02);
+      const merged = sstep(u, p + 0.03, p + 0.05);
+      if (u > p + 0.03) s = b.toRing + (1 - b.toRing) * merged;
+      const m = branchRefs.current[k];
+      if (m) {
+        m.visible = s > 0.002;
+        m.geometry.setDrawRange(0, Math.floor(s * res.SEG) * res.RAD * 6);
       }
-      m.visible = drawn > 0.002;
-      m.position.y = lift;
-      res.rows[r].setDrawRange(0, Math.ceil(drawn * segs) * 6 * 6);
-      // The light through the whole: up the cloth, row by row, then a settled glow on the cohort's rows.
-      const passing = swell(whole * (LOOM_ROWS + 4) - r, 0, 1.2, 1.6, 3.6);
-      const settled = r >= LOOM.history ? 0.12 * whole : 0;
-      res.rowMats[r].emissiveIntensity = (0.1 + 0.08 * act + 0.9 * passing + settled) * (0.45 + 0.55 * act);
+      // Its review ring: lit as the mentor reviews it.
+      const reviewed = sstep(u, p + 0.02, p + 0.03);
+      dummy.position.set(b.ring.x, b.ring.y, b.ring.z);
+      dummy.scale.setScalar(1);
+      dummy.updateMatrix();
+      rm.setMatrixAt(k, dummy.matrix);
+      K.tmp.copy(K.dim).lerp(K.warm, reviewed).multiplyScalar(0.8 + 0.8 * swell(u, p + 0.02, p + 0.028, p + 0.034, p + 0.05));
+      rm.setColorAt(k, K.tmp);
+      const from = k ? res.branches[k - 1].xm : res.branches[0].xf;
+      if (merged > 0) mainTo = from + (b.xm - from) * merged;
+    });
+    const headK = sstep(u, OSS_U.head[0], OSS_U.head[1]);
+    const xHead = res.nodeList[res.nodeList.length - 1].x;
+    if (headK > 0) mainTo = res.branches[C.rows - 1].xm + (xHead - res.branches[C.rows - 1].xm) * headK;
+    // The nodes on main: earlier commits (always there), forks (lit as each branch leaves), merges (a flare as each arrives), the head.
+    res.nodeList.forEach((n, i) => {
+      dummy.position.set(n.x, res.yMain, res.zMain + 0.02);
+      dummy.scale.set(n.r, n.r, 1);
+      dummy.updateMatrix();
+      nm.setMatrixAt(i, dummy.matrix);
+      if (n.kind === 'history') K.tmp.copy(K.warm).multiplyScalar(0.25 + 0.4 * history);
+      else if (n.kind === 'fork') K.tmp.copy(K.dim).lerp(K.jade, sstep(u, OSS_U.fork(n.k), OSS_U.fork(n.k) + 0.02));
+      else if (n.kind === 'merge') {
+        const p = OSS_U.pr(n.k);
+        const a = sstep(u, p + 0.045, p + 0.05);
+        K.tmp.copy(K.dim).lerp(K.warm, a).lerp(K.flare, 0.8 * swell(u, p + 0.045, p + 0.05, p + 0.055, p + 0.075));
+      } else K.tmp.copy(K.dim).lerp(K.warm, headK).multiplyScalar(1 + 0.6 * headK);
+      nm.setColorAt(i, K.tmp);
+    });
+    for (const im of [cm, fm, pm, rm, nm]) {
+      im.instanceMatrix.needsUpdate = true;
+      if (im.instanceColor) im.instanceColor.needsUpdate = true;
     }
-    // Woven: the reed lifts clear, up under the mentors' beam.
-    reedY += (LOOM.top - 0.16 - reedY) * sstep(u, LOOM_WOVEN, LOOM_WOVEN + 0.04);
-    reed.current?.position.set((LOOM.x0 + LOOM.x1) / 2, reedY, LOOM.z + 0.07);
-    if (shuttle.current) shuttle.current.visible = shuttleOn;
-    res.warpMat.color.setScalar(0.3 + 0.25 * act);
-    const plaques = 0.55 + 0.45 * act;
-    res.acm.mat.opacity = res.gdg.mat.opacity = plaques;
-    res.mentors.mat.opacity = res.project.mat.opacity = 0.35 + 0.55 * act;
-    response.current = 1 + 0.1 * whole;
+    // Main: lit from its start to the latest merge, and at last to its head.
+    const ml = mainLit.current;
+    if (ml) {
+      ml.position.set(res.xFrom, res.yMain, res.zMain);
+      ml.scale.set(Math.max(0.0001, mainTo - res.xFrom), 1, 1);
+    }
+    const hd = head.current;
+    if (hd) {
+      hd.visible = u > OSS_U.pr(0) + 0.03;
+      hd.position.set(mainTo, res.yMain, res.zMain + 0.05);
+      const sz = 0.3 + 0.55 * headK;
+      hd.scale.set(sz, sz, 1);
+    }
+    res.washMat.opacity = 0.3 * (lit / total);
+    response.current = 1 + 0.1 * headK;
   });
 
-  const mid = (LOOM.x0 + LOOM.x1) / 2;
   return (
     <group>
-      <mesh geometry={res.frame} material={kit.steel} />
-      <mesh geometry={res.warp} material={res.warpMat} />
-      {res.rows.map((g, r) => (
+      <mesh geometry={res.wash} material={res.washMat} renderOrder={3} />
+      <mesh geometry={res.back} material={res.backMat} />
+      <mesh geometry={res.frame} material={res.patina} />
+      <instancedMesh ref={cells} args={[res.cell, res.cellMat, CONTRIBUTIONS.cells.length]} frustumCulled={false} />
+      <instancedMesh ref={faces} args={[res.face, res.litMat, CONTRIBUTIONS.cells.length]} frustumCulled={false} />
+      <mesh geometry={res.feeds} material={res.patina} />
+      <instancedMesh ref={pulses} args={[res.pulse, res.litMat, res.stations.length]} frustumCulled={false} />
+      <mesh geometry={res.cold} material={res.patina} />
+      {res.hot.map((geo, k) => (
         <mesh
-          key={r}
+          key={k}
           ref={(el) => {
-            rowRefs.current[r] = el;
+            branchRefs.current[k] = el;
           }}
-          geometry={g}
-          material={res.rowMats[r]}
+          geometry={geo}
+          material={res.branchMat}
+          visible={false}
         />
       ))}
-      <mesh ref={reed} geometry={res.reed} material={kit.steelLight} position={[mid, REED_REST, LOOM.z + 0.07]} />
-      <mesh ref={shuttle} geometry={res.shuttle} material={res.shuttleMat} visible={false} />
-      {/* The two organisations hold the frame; the mentors' beam carries the warp; the cloth is the project. */}
-      <mesh geometry={res.acm.geo} material={res.acm.mat} position={[LOOM.x0 - 0.54, 1.9, LOOM.z + 0.05]} renderOrder={2} />
-      <mesh geometry={res.gdg.geo} material={res.gdg.mat} position={[LOOM.x1 + 0.54, 1.9, LOOM.z + 0.05]} renderOrder={2} />
-      <mesh geometry={res.mentors.geo} material={res.mentors.mat} position={[mid, LOOM.top + 0.18, LOOM.z + 0.06]} renderOrder={2} />
-      <mesh geometry={res.project.geo} material={res.project.mat} position={[mid, LOOM.y0 - 0.06, LOOM.z + 0.065]} renderOrder={2} />
+      <mesh geometry={res.mainCold} material={res.patina} />
+      <mesh geometry={res.pins} material={res.patina} />
+      <mesh ref={mainLit} geometry={res.mainHot} material={res.mainMat} />
+      <instancedMesh ref={nodes} args={[res.node, res.litMat, res.nodeList.length]} frustumCulled={false} />
+      <instancedMesh ref={rings} args={[res.ring, res.litMat, CONTRIBUTIONS.rows]} frustumCulled={false} />
+      <mesh geometry={res.headRing} material={res.patina} />
+      <sprite ref={head} material={res.headMat} />
+    </group>
+  );
+}
+
+/** The pair stations' places (room-local x): three desks under the field, facing the wall. */
+function pairStations(W: number) {
+  const mid = ((OSS_WALL.fieldLeft + OSS_WALL.fieldRight) / 2 - 0.5) * (W - 0.3);
+  return [mid - 1.6, mid, mid + 1.6];
+}
+
+/**
+ * The Open Source Mentorship Program's room: three pair stations — at each desk a mentor's screen
+ * with a review open, and beside it a contributor's laptop — and in front of them the contribution
+ * wall their work feeds.
+ */
+export function OpenSourceStudio({ event, width, depth, height, clock, response }: PieceProps) {
+  const stations = useMemo(() => pairStations(width), [width]);
+  return (
+    <group>
+      <ContributionWall event={event} width={width} depth={depth} height={height} clock={clock} response={response} stations={stations} />
+      {stations.map((x, i) => (
+        <group key={i} position={[x, 0, -2.45]}>
+          <Desk width={1.3} depth={0.72} />
+          {/* The mentor's screen and the contributor's laptop side by side; their seats on the
+              doorway side, so the visitor looks over the pair's shoulders at the wall. */}
+          <Monitor position={[-0.3, 0.74, -0.12]} width={0.56} height={0.32} draw={(ctx, w, h) => reviewScreen(ctx, w, h, i * 3 + 1)} drawKey={`oss-review-${i}`} />
+          <Laptop position={[0.33, 0.74, -0.02]} draw={(ctx, w, h) => codeScreen(ctx, w, h, i * 2 + 7)} drawKey={`oss-code-${i}`} />
+          <Chair position={[-0.3, 0, 0.66]} rotation={[0, Math.PI, 0]} />
+          <Chair position={[0.33, 0, 0.66]} rotation={[0, Math.PI, 0]} />
+        </group>
+      ))}
     </group>
   );
 }
