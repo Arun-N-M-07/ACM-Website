@@ -18,4 +18,11 @@ export const fx = {
    * every world, so the loop has no seam.
    */
   mist: 0,
+  /**
+   * Where the journey comes round, the world taken apart into tiles and put back together 0..1
+   * (JourneyLoop; drawn over the finished frame by experience/mosaic), and on which side of the
+   * seam (0 the Crew's end, 1 the opening's start: the tiles fall differently on each).
+   */
+  mosaic: 0,
+  mosaicSide: 0,
 };

@@ -30,12 +30,13 @@ const PORTAL_VH = 150;
  */
 const TEAMS_VH = 720;
 /**
- * The return: a short continuation past the last domain, in which the world is swallowed by the
- * mist the opening begins in — and, inside it, the journey begins again
- * (components/experience/JourneyLoop). One finite track, read cyclically: nothing is appended,
- * nothing grows.
+ * The return: a continuation past the last domain, in which the world comes apart into tiles and is
+ * swallowed by the mist the opening begins in — and, inside it, the journey begins again
+ * (components/experience/JourneyLoop). Long enough that the passage is the visitor's to scrub (on a
+ * phone, more than a single fling). One finite track, read cyclically: nothing is appended, nothing
+ * grows.
  */
-const RETURN_VH = 180;
+const RETURN_VH = 300;
 
 const SEGMENT_WEIGHTS: { id: SegmentId; vh: number }[] = [
   // The opening: each chapter's beats, at a fixed scroll length per beat.

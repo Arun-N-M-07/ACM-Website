@@ -38,6 +38,8 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js';
 import { PORTAL_DWELL, segmentProgress } from '@/config/timeline';
 import { LENS_IDLE_RELEASE, type Lens, lenses } from '@/experience/lens';
+import { MosaicStage } from '@/experience/mosaic';
+import { fx } from '@/systems/camera/effects';
 import { experience, useExperience } from '@/store/experience';
 import { smoothstep } from '@/systems/camera/pose';
 import { progress } from '@/systems/scroll/progress';
@@ -275,11 +277,15 @@ const LOOP_SEAM_ZONE = progressAtIntroTime(T.mist + 5);
 
 /**
  * The frame's owner: decides (with a little hysteresis) whether this chain is wanted, then draws
- * the frame through it, through the opening's chain, or directly — exactly one of them.
+ * the frame through it, through the opening's chain, or directly — exactly one of them — and,
+ * where the journey comes round, the mosaic over the finished frame (experience/mosaic).
  */
 export function PostProcessing() {
   const want = useRef(false);
   const wait = useRef(0);
+  const mosaic = useMemo(() => new MosaicStage(), []);
+  const warmed = useRef(false);
+  useEffect(() => () => mosaic.dispose(), [mosaic]);
   useFrame(({ gl, scene, camera, size }, dt) => {
     const st = teams().state;
     const nearPortal = progress.value > 0 && segmentProgress(progress.value, 'portal') > PORTAL_DWELL * 0.5 && progress.value <= 1;
@@ -308,6 +314,15 @@ export function PostProcessing() {
       i?.idle(dt);
       gl.render(scene, camera);
     }
+    // The mosaic, over whatever drew the frame (not where the mist over it is whole: nothing of the
+    // canvas shows there); its program linked once behind the loader (a first draw there, under the
+    // loader's cover), not on the loop's first frame.
+    const m = fx.mosaic;
+    if (m > 0.0005 && fx.mist < 0.999) mosaic.draw(gl, m, fx.mosaicSide, size.width, size.height);
+    else if (!warmed.current && experience().phase === 'loading') {
+      warmed.current = true;
+      mosaic.draw(gl, 0.5, 0, size.width, size.height);
+    } else mosaic.idle(dt, LENS_IDLE_RELEASE);
   }, 1);
   return <Composer want={want} />;
 }

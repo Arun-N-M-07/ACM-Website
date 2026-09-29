@@ -77,6 +77,20 @@ const CUES: { at: number; name: Cue; level?: number; pan?: number; variant?: num
 const PRODIGY_ROOM = CORRIDOR.rooms.findIndex((r) => r.event.artifact === 'puzzle-wall');
 const prodigyClock: RoomClock = { u: -0.3, here: false, near: false, presence: 0 };
 /** Every layer the film plays (all silenced once it is left behind). */
+/**
+ * The loop's mosaic, heard: silent at both ends (the world whole, the mist whole — the mist's own
+ * air carries the seam), fullest halfway; a pure function of the transition, so it plays back as it
+ * came and nothing is left sounding once it's over.
+ */
+function mosaicSound(a: number, side: number) {
+  const k = a <= 0 || a >= 1 ? 0 : Math.pow(Math.sin(Math.PI * a), 1.3);
+  const wander = (side ? -1 : 1) * Math.sin(a * Math.PI * 1.5);
+  setLayer('mosaicShimmer', 0.009 * k, { freq: 2400 + 2600 * a, pan: 0.5 * wander });
+  // Six steps across the passage, each held while its tiles go.
+  const step = Math.min(5, Math.floor(a * 6));
+  setLayer('mosaicTone', 0.0035 * k, { freq: 520 * Math.pow(1.335, step), pan: -0.35 * wander });
+}
+
 const FILM_LAYERS = ['roll', 'hiss', 'air', 'flight', 'burn', 'cloudLow', 'cloudHigh', 'tunnelAir', 'tunnelRes', 'tunnelRes2', 'eventsAir'];
 
 /** Contacts per turn of the canister (its bands and seam meeting the road). */
@@ -134,6 +148,7 @@ export function SoundDirector() {
       // at the end of the journey, the air of the mist that takes the world.
       for (const l of FILM_LAYERS) setLayer(l, 0);
       setLayer('mistAir', 0.018 * fx.mist);
+      mosaicSound(fx.mosaic, fx.mosaicSide);
       contact.current = null;
       // The Prodigy wall: each piece's move and its lock, going forward through the visit.
       if (PRODIGY_ROOM >= 0 && st.phase === 'cinematic') {
@@ -294,6 +309,7 @@ export function SoundDirector() {
     setLayer('cloudLow', inCloud * (0.01 + 0.032 * Math.pow(drift, 0.8)) + above * 0.006 * (0.4 + 0.6 * drift), { freq: 240 + 200 * drift, pan: 0.55 * Math.sin(wander) });
     // (The mist the journey comes round through: its air, exactly as on the other side of the seam.)
     setLayer('mistAir', 0.018 * fx.mist);
+    mosaicSound(fx.mosaic, fx.mosaicSide);
     setLayer('cloudHigh', inCloud * (0.003 + 0.012 * drift), { freq: 1100 + 1000 * drift, pan: -0.55 * Math.sin(wander + 0.8) });
 
     // ── the tunnel: the light-well's shaft, a tube of air — its resonances rise as the camera goes

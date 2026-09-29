@@ -25,9 +25,14 @@
  * lie inside the margins, short of the track's hard ends, so the scroll never
  * has to run into a wall to come round.
  *
- * The mist (fx.mist, drawn by ScreenFx over every world alike) is a pure
- * function of the one progress value, so it plays the same forwards and
- * backwards, stops when the scroll stops, and nothing about it runs on time.
+ * Into the mist, the world first comes apart: a mosaic (fx.mosaic, drawn over
+ * the finished frame by experience/mosaic) takes the last of the Crew's world
+ * apart into tiles that gather to points of light and dissolve, the mist
+ * following them in; past the seam the opening is put back together, tile by
+ * tile, out of the same mist. The mist (fx.mist, drawn by ScreenFx over every
+ * world alike) and the mosaic are pure functions of the one progress value,
+ * so they play the same forwards and backwards, stop when the scroll stops,
+ * and nothing about them runs on time.
  * Nothing is appended and nothing accumulates: the scroll position is always a
  * place on the one track, and both worlds stay resident (SceneDirector), so
  * crossing the seam builds nothing. It reads no input of its own — scrolling is
@@ -44,17 +49,30 @@ import { teams, teamsFrame } from '@/teams/state';
 import { wrapToEnd, wrapToStart } from './navigation';
 import { useProgressFrame } from './useProgressFrame';
 
+/** Eased gently (the mosaic's pace is the scroll's, nearly even across the passage). */
+const smooth = (x: number) => {
+  const k = x < 0 ? 0 : x > 1 ? 1 : x;
+  return k * k * (3 - 2 * k);
+};
 const smoother = (x: number) => {
   const k = x < 0 ? 0 : x > 1 ? 1 : x;
   return k * k * k * (k * (k * 6 - 15) + 10);
 };
 
 /** Where the start's mist begins to thin: before it, the track is wholly mist (around the seam). */
-const START_CLEAR_FROM = T.mist + 6;
-/** At the end: how much of the world the mist has taken, from how far past the last card the scroll is. */
-const mistAtEnd = (p: number) => smoother((carouselAt(p) - C_MIST) / (C_MIST_FULL - C_MIST));
+const START_CLEAR_FROM = T.mist + 4.5;
+/** How far through the end's passage into the mist the scroll is: 0 just past the last card, 1 whole mist. */
+const endPassage = (p: number) => (carouselAt(p) - C_MIST) / (C_MIST_FULL - C_MIST);
+/**
+ * At the end, the world first comes apart into tiles (the mosaic, experience/mosaic) and the mist
+ * follows it in, a little behind, taking the fragments — whole at the end of the passage, as before.
+ */
+const mosaicAtEnd = (p: number) => smooth(endPassage(p) / 0.85);
+const mistAtEnd = (p: number) => smoother((endPassage(p) - 0.3) / 0.7);
 /** At the start: how thick the mist before the film still is (whole at first, gone at its first frame). */
 const mistAtStart = (p: number) => 1 - smoother((introTimeAt(p) - START_CLEAR_FROM) / (T.prologue - START_CLEAR_FROM));
+/** …and the opening put back together out of it, tile by tile, done just before the film's first frame. */
+const mosaicAtStart = (p: number) => 1 - smooth((introTimeAt(p) - (T.mist + 4)) / (T.prologue - 0.5 - (T.mist + 4)));
 
 /**
  * The seam: two places, one at each end, wholly in the mist and looking the same — each the
@@ -63,7 +81,7 @@ const mistAtStart = (p: number) => 1 - smoother((introTimeAt(p) - START_CLEAR_FR
  * both must be in the mist when the journey comes round; and past each seam there is room still
  * before the track's hard end, so the scroll (and its smoothing) never runs into a wall there.
  */
-const END_SEAM = SEGMENTS.return.start + 0.55 * (SEGMENTS.return.end - SEGMENTS.return.start);
+const END_SEAM = SEGMENTS.return.start + 0.8 * (SEGMENTS.return.end - SEGMENTS.return.start);
 const START_SEAM = progressAtIntroTime(T.mist + 3);
 
 export function JourneyLoop() {
@@ -71,7 +89,11 @@ export function JourneyLoop() {
     const st = useExperience.getState();
     const inside = teamsFrame.inside;
     // The mist: at the end, inside the Crew's world, past the last card; at the start, before the film.
-    fx.mist = inside ? mistAtEnd(p) : introTimeAt(p) < T.prologue ? mistAtStart(p) : 0;
+    const beforeFilm = !inside && introTimeAt(p) < T.prologue;
+    fx.mist = inside ? mistAtEnd(p) : beforeFilm ? mistAtStart(p) : 0;
+    // The mosaic, likewise (none with reduced motion: the loop is still to still there, and the mist is enough).
+    fx.mosaic = st.reducedMotion ? 0 : inside ? mosaicAtEnd(p) : beforeFilm ? mosaicAtStart(p) : 0;
+    fx.mosaicSide = inside ? 0 : 1;
 
     const open = st.phase === 'cinematic' && !st.menuOpen && !st.dossier && !st.textVersionOpen;
     if (!open || st.reducedMotion) return;

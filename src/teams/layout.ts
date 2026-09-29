@@ -175,12 +175,12 @@ export const C_FINAL = shape(C_END);
 export const C_RETURN = C_FINAL + END_SLOPE * RETURN_SPAN;
 /**
  * The end of the journey, on the orbit coordinate: the camera rests on the last card; a little
- * further (past its dwell) the mist begins to take the world, and by 40% of the way through the
- * return it has taken all of it. The rest of the return is wholly mist: the journey comes round
+ * further (past its dwell) the world comes apart into tiles and the mist begins to take it, and by
+ * 65% of the way through the return it has taken all of it. The rest of the return is wholly mist: the journey comes round
  * inside it (JourneyLoop's seam), well short of the track's end.
  */
 export const C_MIST = LAST + 0.3;
-export const C_MIST_FULL = C_FINAL + 0.4 * (C_RETURN - C_FINAL);
+export const C_MIST_FULL = C_FINAL + 0.65 * (C_RETURN - C_FINAL);
 
 /** Nearest card to the centre for an orbit coordinate. */
 export const nearestCard = (c: number) => Math.max(0, Math.min(LAST, Math.round(c)));

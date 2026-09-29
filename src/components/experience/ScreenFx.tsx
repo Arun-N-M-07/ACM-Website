@@ -100,7 +100,8 @@ export function ScreenFx() {
     // The mist: the clouds come first, unevenly; the even body of the mist closes behind them.
     const m = Math.round(fx.mist * 1000) / 1000;
     // Deep in it, the interface recedes too (the journey's chrome changes where its two ends meet).
-    const deep = m > 0.8;
+    // (…and as the world comes apart into tiles, ahead of it: experience/mosaic.)
+    const deep = m > 0.8 || fx.mosaic > 0.45;
     if (deep !== (document.documentElement.dataset.mist === 'deep')) {
       if (deep) document.documentElement.dataset.mist = 'deep';
       else delete document.documentElement.dataset.mist;

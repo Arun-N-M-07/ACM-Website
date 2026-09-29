@@ -210,6 +210,14 @@ function layer(name: string): Layer | null {
     // The Events beyond their door: the air of a large room, opening as the door does.
     case 'eventsAir':
       return bed(ctx, name, 'lowpass', 300, 0.6, true);
+    // The loop's mosaic (experience/mosaic): the world coming apart into tiles and points of light —
+    // a fine, airy shimmer that brightens as they scatter and wanders across the space…
+    case 'mosaicShimmer':
+      return bed(ctx, name, 'bandpass', 2800, 7, false, true);
+    // …and, under it, a faint narrow tone that steps from pitch to pitch as the tiles go, like data
+    // resolving (noise through a very narrow band: a voice, not an oscillator).
+    case 'mosaicTone':
+      return bed(ctx, name, 'bandpass', 660, 26, false, true);
     default:
       return null;
   }
