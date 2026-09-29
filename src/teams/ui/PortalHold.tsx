@@ -5,8 +5,9 @@
  * The target is a real <button> laid exactly over the ring's projected disc
  * (so the whole portal is the thing you press), with the prompt beneath it:
  * TOUCH & HOLD. It accepts mouse, touch and pen through pointer events (with
- * pointer capture, so a finger that drifts doesn't cancel), and the keyboard:
- * hold Space or Enter.
+ * pointer capture, so a pointer that drifts off the ring doesn't cancel; a
+ * finger that sets off on a swipe scrolls instead, and lets go), and the
+ * keyboard: hold Space or Enter.
  *
  * Nothing here animates through React: the prompt's stages are written to
  * the DOM from the per-frame channel.

@@ -45,15 +45,18 @@ export function TeamsWorld() {
   const env = useMemo(() => teamsEnvironment(gl), [gl]);
 
   // The frosted cards' transmission pass redraws only the spine behind them;
-  // on smaller tiers it runs at reduced resolution (it's blurred anyway).
+  // on smaller tiers it runs at reduced resolution (it's blurred anyway), and
+  // a device that can't keep up (experience.degrade) steps it down the same way.
   const quality = useExperience((s) => s.quality);
+  const degrade = useExperience((s) => s.degrade);
   useEffect(() => {
     const r = gl as typeof gl & { transmissionResolutionScale?: number };
-    r.transmissionResolutionScale = quality === 'high' ? 1 : quality === 'medium' ? 0.75 : 0.5;
+    const level = Math.max(0, (quality === 'high' ? 2 : quality === 'medium' ? 1 : 0) - degrade);
+    r.transmissionResolutionScale = [0.5, 0.75, 1][level];
     return () => {
       r.transmissionResolutionScale = 1;
     };
-  }, [gl, quality]);
+  }, [gl, quality, degrade]);
 
   // Compile everything ahead of the crossing (visible for the compile, hidden
   // after), once per mount. The programs link in parallel where the driver

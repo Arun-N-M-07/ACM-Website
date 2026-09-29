@@ -14,11 +14,15 @@ import { useProgressFrame } from './useProgressFrame';
 export function MusicDirector() {
   const musicOn = useExperience((s) => s.musicOn);
   const phase = useExperience((s) => s.phase);
+  const guided = useExperience((s) => s.guided);
 
   useEffect(() => {
     if (musicOn) void music.enable();
     else music.disable();
   }, [musicOn]);
+
+  // Leaving the page and coming back (on a phone, the sound pauses while it's hidden).
+  useEffect(() => music.watchPage(guided), [guided]);
 
   // Travelling through the portal ducks the track.
   useEffect(() => {

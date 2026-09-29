@@ -1,0 +1,899 @@
+============================================================
+ACM CEG — FINAL MOBILE STRESS, POLISH & VALIDATION PASS
+============================================================
+
+OBJECTIVE
+
+The main mobile implementation and mobile optimization work has
+already been completed.
+
+This pass is NOT a new mobile optimization rewrite.
+
+This pass is NOT cross-browser testing.
+
+Safari, Firefox, real iPhone testing, and real Android testing
+will be handled separately later.
+
+The purpose of this pass is to perform a FINAL DEEP MOBILE
+STRESS / UX / COMPOSITION / RESPONSIVENESS / STABILITY PASS
+using the available browser/emulation environment.
+
+The workflow is:
+
+INSPECT
+→ TEST
+→ FIND
+→ FIX
+→ RETEST
+→ REGRESSION TEST
+→ VERIFY
+
+Do not merely report issues.
+
+If a genuine fixable mobile issue is found, FIX IT.
+
+============================================================
+IMPORTANT SCOPE
+============================================================
+
+DO NOT use this pass to redo work that has already been completed.
+
+The previous mobile pass already addressed:
+
+- mobile viewport/address-bar behavior
+- canvas sizing
+- Lenis/scroll behavior
+- orientation-related measurement
+- end → start loop stability
+- mobile audio lifecycle
+- adaptive quality
+- mobile gas optimization
+- safe areas
+- mobile touch behavior
+- Events mobile layout
+- Crew/member-card layout
+- mobile memory/resource stability
+- repeated-loop stability
+- desktop regression
+- mobile performance optimization
+
+Do not unnecessarily rewrite these systems.
+
+Only modify them if new testing demonstrates an actual remaining
+bug or regression.
+
+============================================================
+BROWSER SCOPE
+============================================================
+
+DO NOT perform the dedicated Safari/Firefox cross-browser pass
+during this task.
+
+Do NOT spend the session on:
+
+- Safari compatibility
+- Firefox compatibility
+- cross-browser comparison
+- real iPhone validation
+- real Android validation
+
+Those are separate tasks.
+
+Use the currently available browser/emulation environment to
+stress-test the mobile experience.
+
+============================================================
+1. INSPECT THE CURRENT STATE
+============================================================
+
+Before changing anything:
+
+- inspect Git state
+- inspect current mobile implementation
+- inspect current responsive logic
+- inspect camera adaptation
+- inspect viewport handling
+- inspect touch handling
+- inspect quality-tier logic
+- inspect audio lifecycle
+- inspect loop logic
+- inspect mobile UI
+- inspect existing QA
+
+Do not assume a previously reported fix is still correct.
+
+Test the current implementation.
+
+============================================================
+2. PHONE FORMAT / ASPECT-RATIO MATRIX
+============================================================
+
+Systematically test multiple mobile formats.
+
+At minimum simulate:
+
+SMALL PORTRAIT
+approximately 360px wide
+
+STANDARD PORTRAIT
+approximately 375–390px wide
+
+LARGE PORTRAIT
+approximately 400–430px wide
+
+TALL PORTRAIT
+approximately 19.5:9 / 20:9
+
+SHORT PORTRAIT
+unusually short viewport
+
+STANDARD LANDSCAPE
+
+SHORT LANDSCAPE
+
+Do not hardcode these exact numbers into the application.
+
+These are TESTING targets.
+
+============================================================
+3. TEST EVERY IMPORTANT SCENE AT DIFFERENT FORMATS
+============================================================
+
+For each meaningful format, inspect:
+
+- Intro opening
+- gas/fog
+- rolling object
+- papers
+- ACM stone
+- lightning
+- drone
+- red building
+- cloud/aerial section
+- ACM-CEG reveal
+- descent
+- Events portal
+- Events tunnel
+- Events room
+- Prodigy
+- tile interaction
+- Crew portal
+- THE CREW entrance
+- CORE
+- all six Crew domains
+- member cards
+- final Crew state
+- end → start transition
+
+Check:
+
+- composition
+- framing
+- readability
+- clipping
+- overlap
+- FOV
+- object visibility
+- UI placement
+- visual hierarchy
+
+If a scene is genuinely broken at a specific aspect ratio,
+fix it responsively.
+
+Do not redesign the entire scene.
+
+============================================================
+4. PORTRAIT COMPOSITION
+============================================================
+
+Portrait must not feel like a cropped desktop experience.
+
+Verify:
+
+- major subjects remain visible
+- camera target remains meaningful
+- FOV remains intentional
+- important 3D objects are not clipped
+- ACM-CEG remains visually strong
+- Events content remains visible
+- Crew cards remain properly framed
+- member information remains readable
+- atmospheric effects remain visually meaningful
+
+If necessary, use responsive camera composition values.
+
+Do NOT create an entirely separate mobile camera architecture.
+
+Prefer:
+
+SHARED CAMERA PATH
++
+RESPONSIVE COMPOSITION PARAMETERS.
+
+============================================================
+5. LANDSCAPE COMPOSITION
+============================================================
+
+Landscape must not feel like a stretched portrait layout.
+
+Test especially short landscape heights.
+
+Verify:
+
+- Intro composition
+- red building
+- cloud section
+- ACM-CEG
+- Events
+- portal
+- Events room
+- event content
+- Crew entrance
+- Crew cards
+- member cards
+- chapter rail
+- top UI
+- instructions
+
+No:
+
+- vertical clipping
+- overlapping UI
+- cards extending beyond viewport
+- important text hidden
+- camera pointing into empty space
+- distorted canvas
+
+Fix real issues.
+
+============================================================
+6. DYNAMIC VIEWPORT STRESS
+============================================================
+
+Mobile browsers dynamically change their visible viewport.
+
+Simulate:
+
+initial load
+→ browser UI visible
+
+browser UI collapses
+→ viewport expands
+
+browser UI returns
+→ viewport shrinks
+
+Also test resizing during:
+
+- Intro
+- gas
+- red building
+- clouds
+- Events
+- Events rooms
+- Crew
+- final state
+- end → start
+
+Verify:
+
+- no camera jump
+- no FOV jump
+- no scroll jump
+- no progress jump
+- no canvas distortion
+- no incorrect aspect ratio
+- no stale dimensions
+- no render-target explosion
+- no memory growth
+
+Fix root causes.
+
+Do NOT use arbitrary timeout-based fixes.
+
+============================================================
+7. ORIENTATION STRESS
+============================================================
+
+Test:
+
+PORTRAIT
+→ LANDSCAPE
+→ PORTRAIT
+→ LANDSCAPE
+
+Perform this at multiple points in the journey.
+
+Test while:
+
+- Intro is active
+- Events is active
+- Crew is active
+- near the final state
+- near the loop boundary
+
+Verify:
+
+- camera updates correctly
+- canvas resizes correctly
+- progress remains stable
+- Lenis remains correct
+- UI repositions correctly
+- audio remains correct
+- no duplicated resources
+- no broken interactions
+
+============================================================
+8. TOUCH STRESS TEST
+============================================================
+
+Test all touch behaviors.
+
+Use:
+
+- very slow swipe
+- normal swipe
+- fast swipe
+- extremely fast swipe
+- short swipe
+- long swipe
+- tiny finger movement
+- repeated swipe
+- immediate direction reversal
+- swipe after stopping
+- swipe during transition
+- touch while an interaction is active
+
+Verify:
+
+- scrolling responds immediately
+- no excessive inertia
+- no stuck scrolling
+- no scroll lock
+- no section skipping
+- no progress jumps
+- no camera snapping
+- no accidental page navigation
+
+============================================================
+9. TOUCH INTERACTION STRESS
+============================================================
+
+Test:
+
+- portal hold
+- portal release
+- interrupted hold
+- repeated hold
+- domain selection
+- member interaction
+- close buttons
+- navigation
+- Explore controls
+- chapter rail
+- event interactions
+- Prodigy tile interaction
+
+Check:
+
+- no stuck active states
+- no duplicate activation
+- no accidental scroll lock
+- no touch event swallowing
+- no tiny interaction target
+- no interaction becoming unreachable
+
+If desktop uses hover-only behavior, verify that mobile has
+an intentional equivalent where necessary.
+
+============================================================
+10. BACKGROUND / FOREGROUND STRESS
+============================================================
+
+Simulate:
+
+WEBSITE
+→ BACKGROUND
+→ RETURN
+
+Test at:
+
+- Intro
+- Events
+- Crew
+
+Verify:
+
+- camera state preserved
+- scroll state preserved
+- animation resumes correctly
+- Lenis resumes correctly
+- audio resumes according to browser policy
+- no duplicate RAF
+- no duplicate audio
+- no duplicate listeners
+- no resource accumulation
+
+The site must not unexpectedly restart.
+
+============================================================
+11. MOBILE AUDIO LIFECYCLE
+============================================================
+
+This is a validation pass, not an audio rewrite.
+
+Test:
+
+audio started
+→ page hidden
+→ page visible
+
+and:
+
+audio started
+→ AudioContext suspended
+→ user interaction
+→ AudioContext resumes
+
+Check:
+
+- music
+- rolling sound
+- atmospheric sound
+- paper/ash
+- lightning/thunder
+- portal
+- Events transition
+- Prodigy tile lock
+- Crew audio
+- loop transition
+
+Verify:
+
+- no duplicate sources
+- no stuck audio
+- no unexpected volume spike
+- no audio continuing incorrectly
+- no missing resume behavior
+
+Only change the audio system if an actual issue is reproduced.
+
+============================================================
+12. MOBILE UI POLISH
+============================================================
+
+Inspect:
+
+- top navigation
+- chapter rail
+- Explore controls
+- instructions
+- event UI
+- portal UI
+- close controls
+- Crew/domain controls
+- member information
+- typography
+
+Check:
+
+- safe-area positioning
+- readability
+- touch target size
+- spacing
+- wrapping
+- clipping
+- overlap
+- visual hierarchy
+
+Do not simply shrink everything.
+
+Preserve the existing visual design language.
+
+============================================================
+13. SAFE AREAS
+============================================================
+
+Test simulated:
+
+- notch
+- Dynamic Island
+- home indicator
+- rounded corners
+
+Verify that no important UI is hidden behind:
+
+- top safe area
+- bottom safe area
+- browser UI
+
+Check both portrait and landscape.
+
+============================================================
+14. 3D READABILITY
+============================================================
+
+At phone-sized viewports inspect whether:
+
+- glass cards remain readable
+- member names remain readable
+- roles remain readable
+- ACM-CEG remains visually strong
+- important objects remain visible
+- Events content remains legible
+- CodHer/Open Source room remains visually coherent
+- Crew wall/card compositions remain intentional
+
+Do not solve problems by simply removing visual content.
+
+Use composition and responsive sizing where appropriate.
+
+============================================================
+15. PERFORMANCE STRESS
+============================================================
+
+This is NOT a new optimization project.
+
+Use the existing optimization architecture.
+
+Stress-test:
+
+- long continuous scroll
+- rapid scroll
+- rapid direction changes
+- gas-heavy Intro
+- Events transitions
+- Prodigy
+- Crew spine
+- all Crew cards
+- final Crew state
+- end → start loop
+
+Look for:
+
+- major frame spikes
+- progressive degradation
+- animation stutter
+- delayed input response
+- overheating-style performance degradation
+- resource accumulation
+
+If an actual regression is found:
+
+identify the root cause and fix it.
+
+Do not blindly lower quality.
+
+============================================================
+16. MEMORY / RESOURCE STRESS
+============================================================
+
+Run multiple complete cycles:
+
+INTRO
+→ EVENTS
+→ CREW
+→ END
+→ START
+
+Repeat at least 5 times.
+
+Check where measurable:
+
+- JS heap
+- WebGL resources
+- textures
+- geometries
+- materials
+- render targets
+- audio sources
+- listeners
+- RAF loops
+- GSAP timelines
+- subscriptions
+- DOM nodes
+
+Expected behavior:
+
+memory/resources should stabilize.
+
+If something grows continuously:
+
+find and fix the lifecycle leak.
+
+============================================================
+17. LOADING / RELOAD STRESS
+============================================================
+
+Test:
+
+- fresh load
+- reload at Intro
+- reload during Events
+- reload during Crew
+- reload near the loop
+- repeated reload
+
+Check:
+
+- no blank canvas
+- no broken camera
+- no stuck loader
+- no missing fonts
+- no missing assets
+- no duplicate audio
+- no stale state
+- no broken progress
+
+============================================================
+18. SLOW NETWORK SIMULATION
+============================================================
+
+Where available, simulate slower network conditions.
+
+Check:
+
+- initial loading
+- font loading
+- 3D assets
+- textures
+- audio
+- first visible frame
+
+Avoid:
+
+- unnecessary blocking
+- blank states
+- broken loading
+- visible pop-in where avoidable
+
+Do not introduce a fake loader just to hide loading problems.
+
+============================================================
+19. REDUCED MOTION
+============================================================
+
+Test mobile reduced-motion mode.
+
+Verify:
+
+- content remains accessible
+- camera does not become stuck
+- scroll remains usable
+- transitions do not break
+- Events remains accessible
+- Crew remains accessible
+- end → start remains valid
+- no excessive motion remains
+
+Do not remove content.
+
+============================================================
+20. ERROR / RECOVERY STRESS
+============================================================
+
+Where the environment allows, simulate:
+
+- WebGL context loss
+- resize during rendering
+- interrupted audio
+- failed/rejected asset load
+
+Verify the application fails gracefully.
+
+Do not allow one effect to crash the entire website.
+
+============================================================
+21. END → START LOOP
+============================================================
+
+Test specifically on mobile:
+
+FINAL CREW
+→ slight scroll
+→ atmospheric/mosaic transition
+→ opening state
+
+Then:
+
+START
+→ reverse
+→ transition
+→ CREW
+
+Verify:
+
+- no teleport
+- no snap
+- no camera discontinuity
+- no progress discontinuity
+- no audio discontinuity
+- no memory growth
+
+Repeat multiple times.
+
+============================================================
+22. DESKTOP REGRESSION
+============================================================
+
+Mobile changes must NOT damage desktop.
+
+After meaningful changes, test desktop.
+
+At minimum:
+
+- Chrome desktop
+
+Verify:
+
+- Intro
+- Events
+- Crew
+- camera
+- scroll
+- audio
+- loop
+- visual composition
+
+Do not use this session for the Safari/Firefox browser pass.
+
+============================================================
+23. FIX POLICY
+============================================================
+
+For every real issue:
+
+1. reproduce it
+2. identify root cause
+3. implement the smallest robust fix
+4. retest mobile
+5. retest desktop
+6. continue
+
+Do not merely report fixable issues.
+
+Do not use:
+
+- arbitrary timeouts
+- random delays
+- browser sniffing
+- hardcoded mobile progress
+- duplicate camera systems
+- duplicate scroll systems
+- fake loading
+- unnecessary effect removal
+
+============================================================
+24. DO NOT OVER-OPTIMIZE
+============================================================
+
+The previous optimization pass already established a strong
+mobile performance baseline.
+
+Do not chase tiny benchmark improvements.
+
+Do not reduce:
+
+- gas quality
+- atmospheric quality
+- glass quality
+- particles
+- lighting
+- post-processing
+
+unless actual testing demonstrates a problem.
+
+Preserve the cinematic quality.
+
+============================================================
+25. FINAL VALIDATION
+============================================================
+
+After all fixes:
+
+Test:
+
+PORTRAIT
+→ LANDSCAPE
+→ PORTRAIT
+
+Then:
+
+INTRO
+→ EVENTS
+→ CREW
+→ ALL 7 DOMAINS
+→ END
+→ START
+→ REVERSE
+
+Repeat multiple cycles.
+
+Test:
+
+- slow scroll
+- normal scroll
+- fast swipe
+- reverse
+- orientation
+- viewport changes
+- background/foreground
+- touch interactions
+- reload
+
+============================================================
+26. VALIDATION COMMANDS
+============================================================
+
+Run:
+
+npm run typecheck
+
+npm run build
+
+git diff --check
+
+and relevant existing QA scripts.
+
+Do not claim success unless actually tested.
+
+============================================================
+27. GIT SAFETY
+============================================================
+
+DO NOT:
+
+- reset
+- revert
+- stash
+- overwrite unrelated work
+- delete working systems
+- push
+- commit unless explicitly requested
+
+============================================================
+FINAL ACCEPTANCE CRITERIA
+============================================================
+
+This pass is complete when:
+
+✓ Multiple portrait formats behave correctly
+✓ Multiple landscape formats behave correctly
+✓ Camera composition remains intentional
+✓ Touch scrolling is stable
+✓ Touch interactions are reliable
+✓ Orientation changes are stable
+✓ Dynamic viewport changes are stable
+✓ Safe areas are correct
+✓ UI remains readable
+✓ 3D content remains composed correctly
+✓ Audio lifecycle is stable
+✓ Background/foreground behavior is stable
+✓ Loading/reload behavior is stable
+✓ Reduced motion works
+✓ End → start works
+✓ Reverse works
+✓ Repeated loops remain stable
+✓ No mobile memory/resource regression exists
+✓ Desktop remains unaffected
+✓ All fixable issues discovered during this pass are fixed
+
+IMPORTANT:
+
+This is NOT the Safari/Firefox pass.
+
+This is NOT another complete optimization rewrite.
+
+This is the FINAL MOBILE STRESS + POLISH + STABILITY PASS
+before dedicated cross-browser testing.
+
+The objective is to make the current mobile implementation
+as robust, polished, responsive, and stable as possible
+within the current architecture.
+
+TEST
+→ FIND
+→ FIX
+→ RETEST
+→ REGRESSION TEST
+→ VERIFY.

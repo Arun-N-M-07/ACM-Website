@@ -8,10 +8,9 @@
  * the opening can be seen or scrolled back into.
  */
 import { useFrame } from '@react-three/fiber';
-import { useRef, useState } from 'react';
+import { useRef } from 'react';
 import type { Group } from 'three';
 import { DescentShaft } from '@/scenes/underground/DescentShaft';
-import { experience } from '@/store/experience';
 import { IntroPost } from '../post/IntroPost';
 import { introFrame } from '../state';
 import { T } from '../timeline';
@@ -28,18 +27,9 @@ import { Motes } from './Motes';
 import { Story } from '../story/Story';
 import { Prologue } from '../prologue/Prologue';
 
-/** The opening is what's on screen (the threshold counts: the world is behind it). */
-const onScreen = () => {
-  const ph = experience().phase;
-  return introFrame.active || ph === 'loading' || ph === 'ready';
-};
-
 export function IntroWorld() {
-  const [lens, setLens] = useState(onScreen);
   const below = useRef<Group>(null);
   useFrame(() => {
-    const want = onScreen();
-    if (want !== lens) setLens(want);
     // Below ground only once the camera is coming down onto the well (and after the opening).
     if (below.current) below.current.visible = !introFrame.active || introFrame.t > T.cloudBase + 3;
   });
@@ -60,7 +50,8 @@ export function IntroWorld() {
         <EventsTitle />
         <Gate />
       </group>
-      {lens && <IntroPost />}
+      {/* (Kept for the visit; it draws only while the film is on screen: experience/lens.) */}
+      <IntroPost />
     </group>
   );
 }

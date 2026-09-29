@@ -226,13 +226,15 @@ totalDiffuse = mix(totalDiffuse, uInk * uInkLight, inkA);`,
       drawCardFace(tex.ctx, tex.canvas.width, tex.canvas.height, d, i, (comp.corner / comp.cardW) * tex.canvas.width, { portrait: comp.portrait, mode: 'settled', t: 1, seed: i });
       tex.texture.needsUpdate = true;
     };
-    // Draw now, and again once the web fonts are certainly usable in canvas.
+    // Draw now, and again once the web fonts are certainly usable in canvas (only if drawing set one
+    // loading — they are loaded before the world is built, so otherwise it would draw the same).
     draw();
-    void fontsReady().then(draw);
+    if (document.fonts && document.fonts.status !== 'loaded') void fontsReady().then(draw);
     return () => {
       alive = false;
     };
-  }, [tex, d, i, comp]);
+    // (Keyed on what the face reads, not the whole composition, which is new on every resize.)
+  }, [tex, d, i, comp.corner, comp.cardW, comp.portrait]);
 
   useFrame(({ clock, camera }, dt) => {
     const g = group.current;

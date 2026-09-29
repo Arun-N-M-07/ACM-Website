@@ -17,6 +17,7 @@ import { PORTAL_DWELL, segmentProgress } from '@/config/timeline';
 import { DOMAIN_COUNT } from '@/content/teams';
 import { experience } from '@/store/experience';
 import { clamp01, copyPose, emptyPose, smoothstep, type CameraPose } from '@/systems/camera/pose';
+import { stage } from '@/systems/anchors/anchors';
 import { fx } from '@/systems/camera/effects';
 import { progress } from '@/systems/scroll/progress';
 import {
@@ -130,7 +131,7 @@ export function cardScreenPoint(i: number) {
   if (!lastCamera || !c) return null;
   _sc.setFromMatrixPosition(c.matrix).project(lastCamera);
   if (_sc.z > 1) return null;
-  return { x: (_sc.x * 0.5 + 0.5) * window.innerWidth, y: (-_sc.y * 0.5 + 0.5) * window.innerHeight };
+  return { x: (_sc.x * 0.5 + 0.5) * (stage.w || window.innerWidth), y: (-_sc.y * 0.5 + 0.5) * (stage.h || window.innerHeight) };
 }
 
 /** The camera as last placed (QA traces). */

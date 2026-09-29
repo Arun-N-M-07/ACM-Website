@@ -6,9 +6,9 @@
  */
 import { PerformanceMonitor } from '@react-three/drei';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ACESFilmicToneMapping, SRGBColorSpace } from 'three';
-import { QUALITY } from '@/config/quality';
+import { QUALITY, type QualitySettings } from '@/config/quality';
 import { Atmosphere } from '@/scenes/shared/Atmosphere';
 import { WorldLights } from '@/scenes/shared/WorldLights';
 import { UndergroundKit } from '@/scenes/underground/kit';
@@ -63,15 +63,101 @@ function Boot() {
   );
 }
 
+/**
+ * The most pixels a frame is drawn with: a 16-inch retina laptop's own frame (1728×1117 at 2×).
+ * Up to it, a tier draws at its full pixel ratio, as it always has (on a 1× screen that is
+ * supersampling, which the post-processed chapters rely on for their edges); past it — large and
+ * ultra-wide monitors, where 2× meant 15–20 million pixels a frame — the ratio comes down to fit.
+ */
+const PIXEL_BUDGET = 1728 * 1117 * 4;
+const STEP = 0.25;
+
+/** The tier's pixel ratio on this screen, before any step down (in 0.05s, never below the tier's floor). */
+function ceilingDpr(q: QualitySettings) {
+  const css = Math.max(1, window.innerWidth * window.innerHeight);
+  const fit = Math.floor(Math.sqrt(PIXEL_BUDGET / css) * 20) / 20;
+  return Math.max(q.dpr[0], Math.min(q.dpr[1], fit));
+}
+
+/**
+ * Adaptive resolution. Resolution only ever steps down, and rarely: flipping it up and down
+ * mid-scroll reads as the image twitching between sharp and soft. Once it is at a pixel per CSS
+ * pixel and the device still can't keep up, the runtime `degrade` level turns the cheap knobs (smog
+ * march, bloom, glass); after those, a tier whose floor is lower (phones) goes below it. The tier
+ * itself, which everything in the world is built at, never changes
+ * mid-journey (that rebuilt and recompiled the whole resident world on the frame it happened).
+ * (Steps go through R3F's setDpr from here, so the scene tree doesn't re-render for them.)
+ */
+function Resolution({ q }: { q: QualitySettings }) {
+  const setDpr = useThree((s) => s.setDpr);
+  const steps = useRef(0);
+  const lastDecline = useRef(0);
+  const frameStart = useRef(0);
+  /** A decline being checked before it is acted on: the rate it was seen at, and frames timed since. */
+  const check = useRef<{ fps: number; costs: number[] } | null>(null);
+  const pixel = useMemo(() => new Uint8Array(4), []);
+  const target = useCallback(() => Math.max(q.dpr[0], Math.round((ceilingDpr(q) - STEP * steps.current) * 100) / 100), [q]);
+  useEffect(() => {
+    const apply = () => setDpr(target());
+    window.addEventListener('resize', apply);
+    return () => window.removeEventListener('resize', apply);
+  }, [setDpr, target]);
+
+  const stepDown = useCallback(() => {
+    // Down to a pixel per CSS pixel first; then the cheap knobs; only then — where the tier's floor
+    // is below 1 (phones) — fewer pixels than that.
+    const step = () => {
+      steps.current++;
+      setDpr(target());
+    };
+    if (target() > Math.max(q.dpr[0], 1) + 1e-3) return step();
+    const st = experience();
+    if (st.degrade < 2) return st.set({ degrade: (st.degrade + 1) as 1 | 2 });
+    if (target() > q.dpr[0] + 1e-3) step();
+  }, [q, setDpr, target]);
+
+  useFrame(() => {
+    frameStart.current = performance.now();
+  }, -1000);
+  // (After the frame is drawn.) A slow rate is not always a slow frame: a browser can hold the page to
+  // 30 frames a second however little it draws (iOS in Low Power Mode, a battery saver), and stepping
+  // down there only loses sharpness. So a decline is checked first: three frames timed whole — the
+  // read waits for the GPU — and only if they take up the interval the display gives them is it the
+  // drawing that holds the rate down.
+  useFrame(({ gl }) => {
+    const c = check.current;
+    if (!c) return;
+    const ctx = gl.getContext();
+    ctx.readPixels(0, 0, 1, 1, ctx.RGBA, ctx.UNSIGNED_BYTE, pixel);
+    c.costs.push(performance.now() - frameStart.current);
+    if (c.costs.length < 3) return;
+    check.current = null;
+    if (Math.min(...c.costs) < 0.5 * (1000 / c.fps)) return;
+    stepDown();
+  }, 1000);
+
+  return (
+    <PerformanceMonitor
+      ms={600}
+      iterations={8}
+      threshold={0.8}
+      onDecline={(api) => {
+        const now = performance.now();
+        if (now - lastDecline.current < 6000 || check.current) return;
+        lastDecline.current = now;
+        const fps = api.averages.reduce((a, b) => a + b, 0) / Math.max(1, api.averages.length);
+        check.current = { fps: Math.max(1, fps), costs: [] };
+      }}
+    />
+  );
+}
+
 export default function ExperienceCanvas() {
   const quality = useExperience((s) => s.quality);
   const q = QUALITY[quality];
-  const [dpr, setDpr] = useState(q.dpr[1]);
-  const declines = useRef(0);
-  const lastDecline = useRef(0);
+  // (Constant: R3F re-applies the prop on every render of the Canvas; steps go through setDpr.)
+  const [dpr] = useState(() => ceilingDpr(q));
   const start = INTRO_KEYS[0];
-
-  useEffect(() => setDpr((current) => Math.min(current, q.dpr[1])), [q.dpr]);
 
   return (
     <Canvas
@@ -101,29 +187,7 @@ export default function ExperienceCanvas() {
       }}
       aria-hidden="true"
     >
-      {/*
-        Resolution only ever steps down, and rarely: flipping DPR up and down
-        mid-scroll reads as the image twitching between sharp and soft.
-      */}
-      <PerformanceMonitor
-        ms={600}
-        iterations={8}
-        threshold={0.8}
-        onDecline={() => {
-          const now = performance.now();
-          if (now - lastDecline.current < 6000) return;
-          lastDecline.current = now;
-          declines.current++;
-          setDpr((d) => Math.max(q.dpr[0], Math.round((d - 0.25) * 100) / 100));
-          // Persistent struggle: drop a whole quality tier.
-          if (declines.current >= 4) {
-            const tier = experience().quality;
-            if (tier === 'high') experience().set({ quality: 'medium' });
-            else if (tier === 'medium') experience().set({ quality: 'low' });
-            declines.current = 0;
-          }
-        }}
-      />
+      <Resolution q={q} />
       <Atmosphere />
       <WorldLights />
       <CameraRig />

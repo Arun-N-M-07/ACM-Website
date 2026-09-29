@@ -24,7 +24,15 @@ export type WebGLStatus = 'unknown' | 'ok' | 'unsupported' | 'lost' | 'failed';
 interface ExperienceState {
   phase: Phase;
   webgl: WebGLStatus;
+  /** The device tier, chosen once at start-up: everything built for the world is built at it. */
   quality: QualityTier;
+  /**
+   * Runtime relief for a device that can't keep up even at its lowest pixel ratio (0 none … 2
+   * most). It only turns knobs that cost nothing to turn — how finely the smog is marched, bloom,
+   * the glass's transmission resolution — never anything that rebuilds or recompiles
+   * (see ExperienceCanvas).
+   */
+  degrade: 0 | 1 | 2;
   isTouch: boolean;
   guided: boolean;
   reducedMotion: boolean;
@@ -52,6 +60,7 @@ export const useExperience = create<ExperienceState>((set, get) => ({
   phase: 'loading',
   webgl: 'unknown',
   quality: 'medium',
+  degrade: 0,
   isTouch: false,
   guided: false,
   reducedMotion: false,

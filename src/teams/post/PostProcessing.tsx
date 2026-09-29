@@ -2,9 +2,12 @@
 /**
  * PostProcessing for the portal and the Teams world.
  *
- * Only active where it's needed — standing before the portal, travelling, and
- * inside the Teams world. Everywhere else the canvas renders directly (R3F's
- * own loop), exactly as before.
+ * Only drawn where it's needed — standing before the portal, travelling, and
+ * inside the Teams world (and in the whole mist where the loop comes round).
+ * Built once, behind the loader, and kept: it gives its render targets back
+ * while unused, but its programs are never rebuilt. This file's frame
+ * callback is also the one owner of the frame (experience/lens): it draws
+ * through this chain, the opening's, or directly.
  *
  * Built from three's own passes (no new dependency):
  *   RenderPass → UnrealBloomPass (not on low tier) → OutputPass (tone mapping
@@ -25,7 +28,7 @@
 import { progressAtIntroTime } from '@/intro/controller';
 import { T } from '@/intro/timeline';
 import { useFrame, useThree } from '@react-three/fiber';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { HalfFloatType, Vector2, Vector4, WebGLRenderTarget } from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
@@ -34,7 +37,8 @@ import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { FXAAShader } from 'three/examples/jsm/shaders/FXAAShader.js';
 import { PORTAL_DWELL, segmentProgress } from '@/config/timeline';
-import { useExperience } from '@/store/experience';
+import { LENS_IDLE_RELEASE, type Lens, lenses } from '@/experience/lens';
+import { experience, useExperience } from '@/store/experience';
 import { smoothstep } from '@/systems/camera/pose';
 import { progress } from '@/systems/scroll/progress';
 import { teams, teamsFrame } from '../state';
@@ -139,13 +143,15 @@ const FinalShader = {
   `,
 };
 
-function Composer() {
+function Composer({ want }: { want: { current: boolean } }) {
   const gl = useThree((s) => s.gl);
   const scene = useThree((s) => s.scene);
   const camera = useThree((s) => s.camera);
   const size = useThree((s) => s.size);
+  const clock = useThree((s) => s.clock);
   const quality = useExperience((s) => s.quality);
-  const dpr = gl.getPixelRatio();
+  // (It follows the canvas's pixel ratio as that steps down, without being rebuilt.)
+  const dpr = useThree((s) => s.viewport.dpr);
 
   const res = useMemo(() => {
     const target = new WebGLRenderTarget(2, 2, { type: HalfFloatType });
@@ -156,18 +162,27 @@ function Composer() {
     if (bloom) composer.addPass(bloom);
     const output = new OutputPass();
     composer.addPass(output);
-    const fxaa = dpr < 1.5 ? new ShaderPass(FXAAShader) : null;
-    if (fxaa) composer.addPass(fxaa);
+    // (Only where the pixel ratio is low; built either way, so a step down doesn't rebuild the chain.)
+    const fxaa = new ShaderPass(FXAAShader);
+    composer.addPass(fxaa);
     const final = new ShaderPass(FinalShader);
     composer.addPass(final);
     return { composer, target, bloom, fxaa, final, output };
-  }, [gl, scene, camera, quality, dpr]);
+  }, [gl, scene, camera, quality]);
 
-  useEffect(() => {
+  const live = useRef({ allocated: false, idle: 0, blend: 0 });
+  const view = useRef({ width: size.width, height: size.height, dpr });
+  view.current = { width: size.width, height: size.height, dpr };
+  const fit = useCallback(() => {
     res.composer.setPixelRatio(dpr);
     res.composer.setSize(size.width, size.height);
-    if (res.fxaa) (res.fxaa.material.uniforms.resolution.value as Vector2).set(1 / (size.width * dpr), 1 / (size.height * dpr));
+    res.fxaa.enabled = dpr < 1.5;
+    (res.fxaa.material.uniforms.resolution.value as Vector2).set(1 / (size.width * dpr), 1 / (size.height * dpr));
+    live.current.allocated = true;
   }, [res, size.width, size.height, dpr]);
+  useEffect(() => {
+    if (live.current.allocated) fit();
+  }, [fit]);
 
   useEffect(
     () => () => {
@@ -175,48 +190,82 @@ function Composer() {
       res.target.dispose();
       res.bloom?.dispose();
       res.output.dispose();
-      res.fxaa?.dispose();
+      res.fxaa.dispose();
       res.final.dispose();
     },
     [res],
   );
 
-  const blend = useRef(0);
-  useFrame(({ clock }, dt) => {
-    const f = teamsFrame;
-    const tr = f.travel;
-    const h = f.hold;
-    const st = teams().state;
-    const travelling = st === 'portalEntering' || st === 'portalExiting';
-    // Ramp in from nothing when the composer takes over (no pop).
-    blend.current = Math.min(1, blend.current + dt * 1.5);
-    const u = res.final.material.uniforms;
-    const holdWarp = 0.4 * smoothstep(0.82, 1, h);
-    const orbitWarp = 0;
-    u.uWarp.value = Math.max(travelling ? tr.warp : 0, holdWarp, orbitWarp);
-    u.uAberration.value = Math.max(travelling ? tr.aberration : 0, 0.55 * smoothstep(0.75, 1, h));
-    u.uFlash.value = travelling ? tr.flash : 0;
-    u.uDark.value = tr.dark;
-    u.uBarrel.value = f.dive * 0.5;
-    // The detail room: only once the card's rectangle is known on screen.
-    const r = f.cardRect;
-    u.uDim.value = 0;
-    const reduced = useExperience.getState().reducedMotion;
-    u.uGrain.value = f.inside ? smoothstep(0, 0.4, f.arrival) : 0;
-    u.uTime.value = reduced ? 0 : clock.elapsedTime;
-    (u.uResolution.value as Vector2).set(size.width * dpr, size.height * dpr);
-    (u.uForce.value as Vector2).set(f.pointer.fx * 0.5 + 0.5, f.pointer.fy * 0.5 + 0.5);
-    (u.uDir.value as Vector2).set(f.pointer.dirX, f.pointer.dirY);
-    u.uStir.value = reduced ? 0 : f.pointer.stir;
-    // About one CSS pixel per grain cell at every pixel ratio.
-    u.uGrainPx.value = Math.max(1, Math.round(dpr));
-    if (r.visible) (u.uRect.value as Vector4).set(r.x / size.width, 1 - (r.y + r.h) / size.height, (r.x + r.w) / size.width, 1 - r.y / size.height);
-    if (res.bloom) {
-      const target = travelling ? 0.7 : f.inside ? 0.16 : 0.12 + 0.3 * smoothstep(0.3, 1, h);
-      res.bloom.strength = target * blend.current;
-    }
-    res.composer.render(dt);
-  }, 1);
+  // Ramp in from nothing when the chain comes on (no pop); it resets whenever it isn't wanted.
+  useFrame((_, dt) => {
+    const L = live.current;
+    L.blend = want.current ? Math.min(1, L.blend + dt * 1.5) : 0;
+  });
+
+  const fitRef = useRef(fit);
+  fitRef.current = fit;
+  useEffect(() => {
+    const L = live.current;
+    // Warm: one pass through the whole chain now (bloom and FXAA included), so every program it can
+    // use is linked behind the loader, not on the portal's or the loop's first frame.
+    fitRef.current();
+    const fxaaOn = res.fxaa.enabled;
+    res.fxaa.enabled = true;
+    res.composer.render(0);
+    res.fxaa.enabled = fxaaOn;
+    const lens: Lens = {
+      wants: () => want.current,
+      render(dt) {
+        if (!L.allocated) fitRef.current();
+        L.idle = 0;
+        const { width, height, dpr: ratio } = view.current;
+        const f = teamsFrame;
+        const tr = f.travel;
+        const h = f.hold;
+        const st = teams().state;
+        const travelling = st === 'portalEntering' || st === 'portalExiting';
+        const u = res.final.material.uniforms;
+        const holdWarp = 0.4 * smoothstep(0.82, 1, h);
+        const orbitWarp = 0;
+        u.uWarp.value = Math.max(travelling ? tr.warp : 0, holdWarp, orbitWarp);
+        u.uAberration.value = Math.max(travelling ? tr.aberration : 0, 0.55 * smoothstep(0.75, 1, h));
+        u.uFlash.value = travelling ? tr.flash : 0;
+        u.uDark.value = tr.dark;
+        u.uBarrel.value = f.dive * 0.5;
+        // The detail room: only once the card's rectangle is known on screen.
+        const r = f.cardRect;
+        u.uDim.value = 0;
+        const reduced = experience().reducedMotion;
+        u.uGrain.value = f.inside ? smoothstep(0, 0.4, f.arrival) : 0;
+        u.uTime.value = reduced ? 0 : clock.elapsedTime;
+        (u.uResolution.value as Vector2).set(width * ratio, height * ratio);
+        (u.uForce.value as Vector2).set(f.pointer.fx * 0.5 + 0.5, f.pointer.fy * 0.5 + 0.5);
+        (u.uDir.value as Vector2).set(f.pointer.dirX, f.pointer.dirY);
+        u.uStir.value = reduced ? 0 : f.pointer.stir;
+        // About one CSS pixel per grain cell at every pixel ratio.
+        u.uGrainPx.value = Math.max(1, Math.round(ratio));
+        if (r.visible) (u.uRect.value as Vector4).set(r.x / width, 1 - (r.y + r.h) / height, (r.x + r.w) / width, 1 - r.y / height);
+        if (res.bloom) {
+          const target = travelling ? 0.7 : f.inside ? 0.16 : 0.12 + 0.3 * smoothstep(0.3, 1, h);
+          res.bloom.strength = target * L.blend;
+          // (Bloom is the first thing a struggling device gives up: experience.degrade.)
+          res.bloom.enabled = experience().degrade < 2;
+        }
+        res.composer.render(dt);
+      },
+      idle(dt) {
+        if (!L.allocated) return;
+        L.idle += dt;
+        if (L.idle < LENS_IDLE_RELEASE) return;
+        res.composer.setSize(1, 1);
+        L.allocated = false;
+      },
+    };
+    lenses.teams = lens;
+    return () => {
+      if (lenses.teams === lens) lenses.teams = null;
+    };
+  }, [res, want, clock]);
 
   return null;
 }
@@ -224,26 +273,41 @@ function Composer() {
 /** The whole mist before the film (intro/timeline T.mist), where the journey's loop comes round. */
 const LOOP_SEAM_ZONE = progressAtIntroTime(T.mist + 5);
 
-/** Decide whether the composer should run (with a little hysteresis). */
+/**
+ * The frame's owner: decides (with a little hysteresis) whether this chain is wanted, then draws
+ * the frame through it, through the opening's chain, or directly — exactly one of them.
+ */
 export function PostProcessing() {
-  const [on, setOn] = useState(false);
+  const want = useRef(false);
   const wait = useRef(0);
-  useFrame((_, dt) => {
+  useFrame(({ gl, scene, camera, size }, dt) => {
     const st = teams().state;
     const nearPortal = progress.value > 0 && segmentProgress(progress.value, 'portal') > PORTAL_DWELL * 0.5 && progress.value <= 1;
-    // (…and ready before the loop brings the journey round into this world from the opening's start:
-    // it is built while the scroll is in the whole mist before the film, where nothing can be seen.)
+    // (…and in the whole mist before the film, where the loop comes round into this world from the
+    // opening's start: the frame there was always this chain's.)
     const loopSeam = !teamsFrame.inside && progress.target < LOOP_SEAM_ZONE;
-    const want = teamsFrame.inside || st === 'portalEntering' || st === 'portalExiting' || (nearPortal && useExperience.getState().segment === 'portal') || loopSeam;
-    if (want === on) {
-      wait.current = 0;
-      return;
+    const w = teamsFrame.inside || st === 'portalEntering' || st === 'portalExiting' || (nearPortal && experience().segment === 'portal') || loopSeam;
+    if (w === want.current) wait.current = 0;
+    else {
+      wait.current += dt;
+      if (w || wait.current > 0.4) {
+        wait.current = 0;
+        want.current = w;
+      }
     }
-    wait.current += dt;
-    if (want || wait.current > 0.4) {
-      wait.current = 0;
-      setOn(want);
+    const t = lenses.teams;
+    const i = lenses.intro;
+    if (t && t.wants()) {
+      i?.idle(dt);
+      t.render(dt);
+    } else if (i && i.wants()) {
+      t?.idle(dt);
+      i.render(dt);
+    } else {
+      t?.idle(dt);
+      i?.idle(dt);
+      gl.render(scene, camera);
     }
-  });
-  return on ? <Composer /> : null;
+  }, 1);
+  return <Composer want={want} />;
 }

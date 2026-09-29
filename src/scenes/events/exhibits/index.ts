@@ -8,7 +8,7 @@ import { ContestFloor, ContributionLoom, HackNight, InterviewTable, LectureHall,
 import { WALLS } from './walls';
 
 export const EXHIBITS: Record<RoomArtifact, Exhibit> = {
-  blocks: { idea: 'Fourteen columns sort themselves, one swap per scroll step, while the wall runs the loop.', walls: WALLS.headStart, Piece: SortColumns },
+  blocks: { idea: 'Fourteen columns sort themselves, one swap per scroll step, while the wall runs the loop.', walls: WALLS.headStart, Piece: SortColumns, timeWalls: ['left', 'right'] },
   leaderboard: { idea: 'Contest night: the standings reshuffle and a balloon rises for every solve.', walls: WALLS.codex, Piece: ContestFloor },
   interview: { idea: 'The whiteboard round: a system design draws itself, the syllabus ticks off, the clock runs.', walls: WALLS.code, Piece: InterviewTable },
   lectern: { idea: 'A lecture hall: take a seat at the back while the talk runs through its slides.', walls: WALLS.masterclass, Piece: LectureHall },

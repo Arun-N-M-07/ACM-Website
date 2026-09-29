@@ -15,7 +15,7 @@ import { Color, type DirectionalLight, type HemisphereLight, Vector3 } from 'thr
 import { PALETTE } from '@/config/palette';
 import { QUALITY } from '@/config/quality';
 import { TEAMS_ORIGIN } from '@/config/world';
-import { useExperience } from '@/store/experience';
+import { experience, useExperience } from '@/store/experience';
 import { smoothstep } from '@/systems/camera/pose';
 import { teamsFrame } from '@/teams/state';
 import { LightPool } from '@/systems/lighting/lightPool';
@@ -30,6 +30,11 @@ const SKY_GROUND = new Color('#4a3426');
 const SUN_POS = SUN_DIRECTION.clone().multiplyScalar(260).add(new Vector3(0, 0, 10));
 const _away = new Vector3();
 
+/** How far the sun may move (m², at 260 m) before its shadows are drawn again: ~0.04°, far under a shadow texel. */
+const SUN_MOVED = 0.04;
+/** A slow backstop: the shadows are drawn again at least this often while the sun is up (s). */
+const SHADOW_REFRESH = 4;
+
 export function WorldLights() {
   const gl = useThree((s) => s.gl);
   const quality = useExperience((s) => s.quality);
@@ -38,6 +43,7 @@ export function WorldLights() {
   const sky = useRef<HemisphereLight>(null);
   const below = useRef<HemisphereLight>(null);
   const top = useRef<DirectionalLight>(null);
+  const shade = useRef({ on: false, ready: false, age: 0, at: new Vector3() });
 
   useEffect(() => {
     const s = sun.current;
@@ -56,7 +62,7 @@ export function WorldLights() {
     s.shadow.normalBias = 0.04;
   }, []);
 
-  useFrame(({ camera }) => {
+  useFrame(({ camera }, dt) => {
     const u = world.underground;
     // Holding the portal draws the light out of the corridor and into the ring.
     const pull = 1 - 0.45 * smoothstep(0.45, 1, teamsFrame.hold);
@@ -131,8 +137,25 @@ export function WorldLights() {
       if (below.current) below.current.intensity *= g;
       if (top.current) top.current.intensity *= g;
     }
-    // No need to re-render the sun's shadow map once we're underground.
-    gl.shadowMap.autoUpdate = u < 0.99;
+    // The sun's shadow map is drawn again only when it would come out different: the sun has moved
+    // (it follows the colour script, and the lightning) or come up, or what casts has changed (the
+    // campus arriving). Nothing that casts moves, so a still frame — and the whole film before dawn,
+    // where the sun is out — draws none. (Never underground, as before.)
+    gl.shadowMap.autoUpdate = false;
+    const s = sun.current;
+    const sh = shade.current;
+    if (s) {
+      const on = u < 0.99 && s.intensity > 1e-3;
+      const ready = experience().campusReady;
+      sh.age += dt;
+      if (on && (!sh.on || ready !== sh.ready || sh.age > SHADOW_REFRESH || s.position.distanceToSquared(sh.at) > SUN_MOVED)) {
+        gl.shadowMap.needsUpdate = true;
+        sh.at.copy(s.position);
+        sh.age = 0;
+      }
+      sh.on = on;
+      sh.ready = ready;
+    }
   });
 
   const d = SUN_POS;

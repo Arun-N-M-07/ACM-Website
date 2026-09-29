@@ -52,12 +52,23 @@ export function ChapterRail() {
   const fill = useRef<HTMLSpanElement>(null);
   const counter = useRef<HTMLSpanElement>(null);
   const spans = useMemo(chapterSpans, []);
+  // (Written only when they change: an unchanged style or text still costs a style pass, and new text a node, every frame.)
+  const shown = useRef({ fill: '', count: '' });
 
   useProgressFrame((p) => {
-    if (fill.current) fill.current.style.transform = `scaleY(${railPosition(p, spans)})`;
+    const was = shown.current;
+    const scale = `scaleY(${railPosition(p, spans)})`;
+    if (fill.current && scale !== was.fill) {
+      fill.current.style.transform = scale;
+      was.fill = scale;
+    }
     // (Counted from the film's first frame: the few beats of mist before it are where the loop comes round.)
     const done = Math.max(0, (p - FILM_START) / (1 - FILM_START));
-    if (counter.current) counter.current.textContent = `${String(Math.round(done * 100)).padStart(2, '0')}%`;
+    const count = `${String(Math.round(done * 100)).padStart(2, '0')}%`;
+    if (counter.current && count !== was.count) {
+      counter.current.textContent = count;
+      was.count = count;
+    }
   });
 
   if (phase === 'loading' || phase === 'ready') return null;

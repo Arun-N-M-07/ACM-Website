@@ -8,12 +8,14 @@ import { useFrame } from '@react-three/fiber';
 import { useEffect, useMemo } from 'react';
 import { Vector3 } from 'three';
 import { registerWorldAnchors } from '@/config/anchors';
-import { anchorPoints, anchorSources, emitProjected } from '@/systems/anchors/anchors';
+import { anchorPoints, anchorSources, emitProjected, stage } from '@/systems/anchors/anchors';
 
 export function AnchorProjector() {
   const v = useMemo(() => new Vector3(), []);
   useEffect(registerWorldAnchors, []);
   useFrame(({ camera, size }) => {
+    stage.w = size.width;
+    stage.h = size.height;
     const points = anchorPoints();
     for (const [id, get] of anchorSources()) {
       let p = points.get(id);

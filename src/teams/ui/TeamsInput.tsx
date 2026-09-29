@@ -18,6 +18,7 @@
  */
 import { useEffect } from 'react';
 import { useExperience } from '@/store/experience';
+import { toNdc } from '@/systems/anchors/anchors';
 import { progress } from '@/systems/scroll/progress';
 import { PULL_EXIT, lastHit, pickAt } from '../controller';
 import { closeDomain, selectDomain, stepDomain } from '../focus';
@@ -25,7 +26,7 @@ import { teams, teamsFrame } from '../state';
 
 const onUI = (t: EventTarget | null) => t instanceof Element && !!t.closest('button, a, input, textarea, select, [role="dialog"], [data-ui]');
 
-const ndc = (x: number, y: number) => ({ x: (x / window.innerWidth) * 2 - 1, y: -(y / window.innerHeight) * 2 + 1 });
+const ndc = toNdc;
 
 /** Standing on the gate (scroll at the portal wall, outside) / on the floor (at the start of the world, inside). */
 const atGate = () => !teamsFrame.inside && progress.target >= progress.lock.max - 0.0004;

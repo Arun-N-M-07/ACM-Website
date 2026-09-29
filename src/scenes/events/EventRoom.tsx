@@ -12,7 +12,7 @@
  * +z (toward the corridor), local x runs along the corridor.
  */
 import { useFrame } from '@react-three/fiber';
-import { useMemo, useRef } from 'react';
+import { memo, useMemo, useRef } from 'react';
 import { AdditiveBlending, CanvasTexture, Color, CylinderGeometry, DoubleSide, MeshBasicMaterial, PlaneGeometry } from 'three';
 import { type RoomLayout } from '@/config/world';
 import { merge, metricBox, place } from '@/systems/geometry/build';
@@ -27,7 +27,6 @@ import { EXHIBITS } from './exhibits';
 interface Props {
   layout: RoomLayout;
   total: number;
-  active: boolean;
 }
 
 /** Map a room-local point to world space. */
@@ -62,7 +61,8 @@ function ExhibitLight({ accent, height, level }: { accent: string; height: numbe
       cone,
       pool,
       poolMap,
-      coneMat: new MeshBasicMaterial({ color: tint, transparent: true, opacity: 0.04, blending: AdditiveBlending, depthWrite: false, side: DoubleSide, toneMapped: false }),
+      // (Additive and not writing depth, its two faces add up the same in either order: one pass.)
+      coneMat: new MeshBasicMaterial({ color: tint, transparent: true, opacity: 0.04, blending: AdditiveBlending, depthWrite: false, side: DoubleSide, toneMapped: false, forceSinglePass: true }),
       poolMat: new MeshBasicMaterial({ map: poolMap, color: tint, transparent: true, opacity: 0.3, blending: AdditiveBlending, depthWrite: false, toneMapped: false }),
     };
   }, [height, accent]);
@@ -78,7 +78,8 @@ function ExhibitLight({ accent, height, level }: { accent: string; height: numbe
   );
 }
 
-export function EventRoom({ layout, total }: Props) {
+/** (Its props are the corridor's fixed layout: the corridor re-rendering as rooms stream needn't re-render a room.) */
+export const EventRoom = memo(function EventRoom({ layout, total }: Props) {
   const kit = useKit();
   const { event, length: W, depth: D, height: H } = layout;
   const rotY = layout.side === -1 ? Math.PI / 2 : -Math.PI / 2;
@@ -130,7 +131,7 @@ export function EventRoom({ layout, total }: Props) {
     anchor.gain = level.current;
   });
 
-  // The three projection walls. They redraw while the room is near; otherwise they hold a frame.
+  // The three projection walls.
   const walls = useMemo(() => {
     const flag = !!event.flagship;
     return [
@@ -139,6 +140,31 @@ export function EventRoom({ layout, total }: Props) {
       { wall: 'right' as Wall, width: D - 0.3, height: H - 0.2, position: [W / 2 - 0.03, H / 2, 0] as [number, number, number], rotation: [0, -Math.PI / 2, 0] as [number, number, number], ppm: flag ? 76 : 88 },
     ];
   }, [W, D, H, event.flagship]);
+  // Each redraws when what it's drawn from moves — the visit, its canvas, the window's width (a back
+  // wall keeps clear of the reading card) — and a wall that plays on time (exhibit.timeWalls) goes on
+  // redrawing while the room is near; otherwise it holds its frame. Made once, so re-rendering the
+  // room forces no redraw.
+  const animates = useMemo(
+    () =>
+      walls.map((wl) => {
+        const live = !!exhibit.timeWalls?.includes(wl.wall);
+        let lastU = NaN;
+        let lastW = NaN;
+        let lastCtx: CanvasRenderingContext2D | null = null;
+        return (ctx: CanvasRenderingContext2D, w: number, h: number, t: number) => {
+          const c = clock.current;
+          const vw = window.innerWidth;
+          // Nothing it's drawn from has moved: hold the frame (far away, the one matching where the visit stands).
+          if (c.u === lastU && vw === lastW && ctx === lastCtx && !(live && c.near)) return false;
+          lastU = c.u;
+          lastW = vw;
+          lastCtx = ctx;
+          exhibit.walls(ctx, w, h, wl.wall, c.u, t, info);
+          return true;
+        };
+      }),
+    [walls, exhibit, info, clock],
+  );
 
   return (
     <group position={layout.center} rotation={[0, rotY, 0]} name={`room-${event.slug}`}>
@@ -148,7 +174,7 @@ export function EventRoom({ layout, total }: Props) {
       <mesh geometry={geo.portal} material={accentMat} />
       <mesh geometry={geo.fixture} material={kit.lightWarm} />
 
-      {walls.map((wl) => (
+      {walls.map((wl, i) => (
         <CanvasPanel
           key={wl.wall}
           width={wl.width}
@@ -160,17 +186,7 @@ export function EventRoom({ layout, total }: Props) {
           glowStrength={0.92}
           drawKey={`${event.slug}-${wl.wall}`}
           draw={(ctx, w, h) => exhibit.walls(ctx, w, h, wl.wall, -0.3, 0, info)}
-          animate={(() => {
-            let lastU = NaN;
-            return (ctx: CanvasRenderingContext2D, w: number, h: number, t: number) => {
-              const c = clock.current;
-              // Far away: hold whatever frame matches where the visit stands.
-              if (!c.near && c.u === lastU) return false;
-              lastU = c.u;
-              exhibit.walls(ctx, w, h, wl.wall, c.u, t, info);
-              return true;
-            };
-          })()}
+          animate={animates[i]}
           animateEvery={wl.wall === 'back' ? 1 / 14 : 1 / 9}
         />
       ))}
@@ -201,4 +217,4 @@ export function EventRoom({ layout, total }: Props) {
       <Piece event={event} index={layout.index} width={W} depth={D} height={H} clock={clock} response={response} />
     </group>
   );
-}
+});

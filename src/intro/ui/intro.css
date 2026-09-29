@@ -14,7 +14,7 @@
 .intro-skip {
   position: fixed;
   right: var(--gutter);
-  bottom: calc(var(--gutter) + env(safe-area-inset-bottom));
+  bottom: calc(var(--gutter-y) + env(safe-area-inset-bottom));
   pointer-events: auto;
   font-family: var(--mono);
   font-weight: var(--w-label);
@@ -45,7 +45,7 @@
 .intro-sound {
   position: fixed;
   left: var(--gutter);
-  bottom: calc(var(--gutter) + env(safe-area-inset-bottom));
+  bottom: calc(var(--gutter-y) + env(safe-area-inset-bottom));
   pointer-events: auto;
   font-family: var(--mono);
   font-weight: var(--w-label);
@@ -86,7 +86,7 @@
 .intro-cue {
   position: fixed;
   left: 50%;
-  bottom: calc(var(--gutter) + env(safe-area-inset-bottom));
+  bottom: calc(var(--gutter-y) + env(safe-area-inset-bottom));
   transform: translateX(-50%);
   display: flex;
   flex-direction: column;

@@ -10,7 +10,11 @@
 import puppeteer from 'puppeteer-core';
 const url = process.argv[2] ?? 'http://localhost:3100';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const b = await puppeteer.launch({ executablePath: process.env.CHROME ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: 'new', args: ['--use-angle=metal', '--enable-gpu', '--autoplay-policy=no-user-gesture-required', '--window-size=1440,900'], defaultViewport: { width: 1440, height: 900 } });
+// (Env: W, H, MOBILE=1, DPR — as the other QA scripts.)
+const W = Number(process.env.W ?? 1440);
+const H = Number(process.env.H ?? 900);
+const MOBILE = !!process.env.MOBILE;
+const b = await puppeteer.launch({ executablePath: process.env.CHROME ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: 'new', args: ['--use-angle=metal', '--enable-gpu', '--autoplay-policy=no-user-gesture-required', `--window-size=${Math.max(W, 900)},${Math.max(H, 900)}`], defaultViewport: { width: W, height: H, deviceScaleFactor: Number(process.env.DPR ?? 1), isMobile: MOBILE, hasTouch: MOBILE } });
 const page = await b.newPage();
 const logs = [];
 page.on('console', (m) => ['error', 'warn'].includes(m.type()) && logs.push(`[${m.type()}] ${m.text().slice(0, 160)}`));

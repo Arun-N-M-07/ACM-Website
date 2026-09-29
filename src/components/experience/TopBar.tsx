@@ -49,16 +49,18 @@ export function TopBar() {
             }}
           >
             <span className="dot" aria-hidden="true" />
-            {musicOn ? (
-              <>
-                <span className="note" aria-hidden="true">
-                  ♪
-                </span>{' '}
-                {MUSIC.title}
-              </>
-            ) : (
-              'Music off'
-            )}
+            <span className="ctl-label">
+              {musicOn ? (
+                <>
+                  <span className="note" aria-hidden="true">
+                    ♪
+                  </span>{' '}
+                  {MUSIC.title}
+                </>
+              ) : (
+                'Music off'
+              )}
+            </span>
           </button>
         )}
         <button className={`ctl ctl-motion ${reduced ? 'on' : ''}`} aria-pressed={reduced} onClick={() => set({ reducedMotion: !reduced })}>

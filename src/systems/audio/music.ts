@@ -22,9 +22,18 @@ class MusicPlayer {
   private wanted = false;
   private level = 1;
   private holdTimer = 0;
+  /** Suspends the audio graph a little after the sound is switched off (see disable). */
+  private sleepTimer = 0;
+  /** The muffle filter's last target (Hz), so an unchanged one isn't sent again every frame. */
+  private muffleHz = -1;
   private holding = false;
   /** No Web Audio in this browser: fade with the element's own volume instead. */
   private fallback = false;
+  /** Paused because the page was hidden (watchPage), to be resumed when it comes back. */
+  private away = false;
+  /** A resume waiting for the visitor's next touch or key (the system took the audio; see wake). */
+  private retry: (() => void) | null = null;
+  private watching = false;
   state: State = 'idle';
   /** Set when the browser refuses to play (autoplay policy, missing file…). */
   message = '';
@@ -58,6 +67,7 @@ class MusicPlayer {
       const gain = ctx.createGain();
       gain.gain.value = 0;
       src.connect(filter).connect(gain).connect(ctx.destination);
+      ctx.addEventListener('statechange', this.onContextState);
       this.ctx = ctx;
       this.filter = filter;
       this.gain = gain;
@@ -82,6 +92,16 @@ class MusicPlayer {
   /** Enough of the file is buffered to start without a stall. */
   get ready() {
     return !!this.el && this.el.readyState >= 3;
+  }
+
+  /**
+   * The browser is holding the file until a gesture — not enough of it buffered to play, and nothing
+   * more being fetched (iOS loads no media data before one; a data saver may stop at the metadata).
+   * It plays, from within the Enter, all the same.
+   */
+  get held() {
+    const el = this.el;
+    return !!el && el.readyState < HTMLMediaElement.HAVE_FUTURE_DATA && el.networkState !== HTMLMediaElement.NETWORK_LOADING;
   }
 
   /** The file can't be played (missing, or refused). */
@@ -113,6 +133,7 @@ class MusicPlayer {
   /** Called from a user gesture (the loader's buttons, the top bar). */
   async enable() {
     this.wanted = true;
+    window.clearTimeout(this.sleepTimer);
     this.build();
     this.graph();
     const el = this.el;
@@ -139,6 +160,7 @@ class MusicPlayer {
    */
   async playFrom(at: number, fade = 0.6) {
     this.wanted = true;
+    window.clearTimeout(this.sleepTimer);
     this.build();
     this.graph();
     const el = this.el;
@@ -198,6 +220,12 @@ class MusicPlayer {
     this.holdTimer = window.setTimeout(() => {
       if (!this.wanted) el.pause();
     }, 900);
+    // With the sound off, the audio graph stops too (it kept rendering silence for the rest of the
+    // visit); enable() and playFrom() resume it, and the effects only play into a running context.
+    window.clearTimeout(this.sleepTimer);
+    this.sleepTimer = window.setTimeout(() => {
+      if (!this.wanted && this.ctx?.state === 'running') void this.ctx.suspend().catch(() => undefined);
+    }, 4000);
     if (this.state === 'playing') this.state = 'idle';
   }
 
@@ -231,6 +259,9 @@ class MusicPlayer {
     if (!f || !ctx) return;
     const open = Math.min(20000, ctx.sampleRate * 0.45);
     const hz = open * Math.pow(1200 / open, Math.min(1, Math.max(0, amount)));
+    // (Sent only when it moves: re-sending the same target changes nothing.)
+    if (Math.abs(hz - this.muffleHz) < 0.1) return;
+    this.muffleHz = hz;
     f.frequency.setTargetAtTime(hz, ctx.currentTime, 0.35);
   }
 
@@ -243,9 +274,98 @@ class MusicPlayer {
     }, seconds * 400);
   }
 
+  /**
+   * The page's own comings and goings. On a phone (`quietWhenHidden`) the sound pauses while the page
+   * is hidden — another app, the screen locked — as an app's would (a desktop tab plays on behind the
+   * others); coming back, it picks up where it was. And wherever the system itself took the audio
+   * away (iOS: a call, Siri, another app's sound — the context left 'interrupted' or suspended), it
+   * is resumed as the page comes back, or else on the visitor's next touch or key: never without one
+   * where the browser asks for one. Returns the cleanup.
+   */
+  watchPage(quietWhenHidden: boolean) {
+    const onVisibility = () => {
+      if (!document.hidden) return this.wake();
+      const el = this.el;
+      if (!quietWhenHidden || !this.wanted || !el) return;
+      // The score, if it is playing (not resting: the film's own pause keeps its place)…
+      if (!el.paused && !this.holding) {
+        this.away = true;
+        this.silence();
+        el.pause();
+      }
+      // …and the effects' beds with it: the whole graph stops.
+      if (this.ctx?.state === 'running') void this.ctx.suspend().catch(() => undefined);
+    };
+    const onShow = () => this.wake();
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('pageshow', onShow);
+    this.watching = true;
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('pageshow', onShow);
+      this.watching = false;
+      this.disarm();
+    };
+  }
+
+  /** The context changed state on its own (listened to from when it is built, in the first gesture). */
+  private onContextState = () => {
+    if (this.watching && !document.hidden) this.wake();
+  };
+
+  /** Back on the page: whatever was playing plays again (if the visitor still wants sound). */
+  private wake() {
+    const el = this.el;
+    const ctx = this.ctx;
+    if (!this.wanted || !el) {
+      this.away = false;
+      return;
+    }
+    const resumeEl = this.away && el.paused;
+    const resumeCtx = !!ctx && ctx.state !== 'running' && ctx.state !== 'closed';
+    if (!resumeEl && !resumeCtx) return;
+    const go = async () => {
+      try {
+        const playing = resumeEl ? el.play() : null;
+        await ctx?.resume();
+        await playing;
+        if (ctx && ctx.state !== 'running') throw new Error('audio context not running');
+        this.away = false;
+        this.disarm();
+        // (A score resting — the film's own pause — stays at rest: playFrom brings it back.)
+        if (resumeEl || (this.state === 'playing' && !this.holding && !el.paused)) {
+          this.state = 'playing';
+          this.fadeTo(MUSIC.volume * this.level, 0.8);
+        }
+      } catch {
+        this.arm(go);
+      }
+    };
+    void go();
+  }
+
+  private arm(go: () => void) {
+    if (this.retry) return;
+    const once = () => {
+      this.disarm();
+      go();
+    };
+    this.retry = once;
+    for (const t of ['touchend', 'click', 'keydown'] as const) window.addEventListener(t, once, { capture: true, passive: true });
+  }
+
+  private disarm() {
+    const once = this.retry;
+    if (!once) return;
+    this.retry = null;
+    for (const t of ['touchend', 'click', 'keydown'] as const) window.removeEventListener(t, once, { capture: true });
+  }
+
   destroy() {
     this.wanted = false;
+    this.disarm();
     window.clearTimeout(this.holdTimer);
+    window.clearTimeout(this.sleepTimer);
     this.el?.pause();
     this.el = null;
     void this.ctx?.close();

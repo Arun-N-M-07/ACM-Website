@@ -67,6 +67,10 @@ export function MistLayers() {
       transparent: true,
       depthWrite: false,
       side: DoubleSide,
+      // (Every bank is turned to face the camera, so they all show the same face and only one of
+      // three's two transparent passes ever drew anything: one pass, the same pixels, and no
+      // program lookups twice a frame for the side switch.)
+      forceSinglePass: true,
       fog: false,
       uniforms: {
         uNoise: { value: noise },

@@ -151,7 +151,6 @@ function roomsAround(focus: number, win: number) {
 
 export function EventCorridor() {
   const quality = useExperience((s) => s.quality);
-  const activeRoom = useExperience((s) => s.activeRoom);
   const win = QUALITY[quality].roomWindow;
   const [shown, setShown] = useState<number[]>(() => roomsAround(0, win));
   const wanted = useRef({ focus: 0, win, rooms: shown });
@@ -183,7 +182,7 @@ export function EventCorridor() {
         <RoomSign key={`sign-${r.event.slug}`} index={i} />
       ))}
       {rooms.map((r, i) =>
-        shown.includes(i) ? <EventRoom key={r.event.slug} layout={r} total={rooms.length} active={activeRoom === i} /> : null,
+        shown.includes(i) ? <EventRoom key={r.event.slug} layout={r} total={rooms.length} /> : null,
       )}
       <Portal />
     </group>

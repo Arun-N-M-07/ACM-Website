@@ -19,7 +19,11 @@
   --paper-dim: rgba(21, 21, 23, 0.6);
   --paper-line: rgba(21, 21, 23, 0.16);
 
-  --gutter: clamp(16px, 3.6vw, 52px);
+  /* The screen's margin. At the sides it is never inside a notch or the Dynamic Island (a phone on
+     its side: the page runs edge to edge, viewport-fit=cover in layout.tsx); from the top or the
+     bottom edge, offsets use the plain margin (--gutter-y) and add their own inset. */
+  --gutter-y: clamp(16px, 3.6vw, 52px);
+  --gutter: max(var(--gutter-y), env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px));
   --ease: cubic-bezier(0.2, 0.7, 0.1, 1);
   /* Typography — one family, Montserrat (layout.tsx), and one hierarchy. Rules don't choose
      weights or tracking of their own: each takes its role's, below, so the site's voice is set
@@ -70,6 +74,17 @@
 html {
   background: var(--ink);
   -webkit-text-size-adjust: 100%;
+  /* (Touch: a tap answers with the element's own press, not the browser's grey flash.) */
+  -webkit-tap-highlight-color: transparent;
+}
+/* On a touch screen the page's ends don't pull to refresh or bounce: the journey comes round inside
+   its own mist (JourneyLoop), and where it can't (reduced motion) a swipe past the start mustn't
+   reload the page. (Sideways, the browser's own back gesture is left alone.) */
+@media (hover: none) and (pointer: coarse) {
+  html,
+  body {
+    overscroll-behavior-y: none;
+  }
 }
 html.scroll-locked {
   overflow: hidden;
@@ -218,9 +233,17 @@ img {
 }
 
 /* ── Stage ─────────────────────────────────────────────────────────────── */
+/* The stage is as tall as the screen can ever show (the large viewport): on a phone the browser's
+   bars slide over it as they come and go instead of resizing the canvas under the scroll — which
+   would reallocate every render target and, upright, change the lens mid-gesture. (Elsewhere the
+   large viewport is the viewport.) */
 .stage {
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100vh;
+  height: 100lvh;
   z-index: 0;
   background: var(--ink);
   outline: none;
@@ -238,9 +261,14 @@ html.scroll-locked .experience-canvas {
   display: block;
   will-change: filter;
 }
+/* The track is measured in the large viewport's heights (ScrollTimeline sets --track): its length
+   never changes as a phone's bars come and go — the scroll trigger isn't re-measured for them, and
+   the two must agree for progress to mean one place. (Elsewhere the large viewport is the viewport.) */
 .scroll-track {
   position: relative;
   width: 1px;
+  height: calc(var(--track) * 1vh);
+  height: calc(var(--track) * 1lvh);
   pointer-events: none;
 }
 
@@ -299,22 +327,28 @@ html[data-mist='deep'] .intro-layer {
   background: radial-gradient(ellipse 80% 70% at 50% 50%, transparent 55%, rgba(0, 0, 0, 0.62) 100%);
   opacity: 0.55;
 }
+/*
+ * The grain only needs a margin as wide as its jitter (at most 6% of the screen), not a layer four
+ * times the screen: 1.25x, with the tile phase and every step's offset in pixels kept exactly as they
+ * were on the 2x layer (the tile origin stays at -0.5 of the screen; the steps are scaled by 1.6).
+ */
 .fx-grain {
   position: fixed;
-  inset: -50%;
+  inset: -12.5%;
   z-index: 6;
   pointer-events: none;
   opacity: 0.07;
   mix-blend-mode: overlay;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  background-position: calc(-30% - 48px) calc(-30% - 48px);
   animation: grain 1.2s steps(6) infinite;
 }
 @keyframes grain {
   0% { transform: translate(0, 0); }
-  20% { transform: translate(-3%, 2%); }
-  40% { transform: translate(2%, -3%); }
-  60% { transform: translate(-2%, -1%); }
-  80% { transform: translate(3%, 3%); }
+  20% { transform: translate(-4.8%, 3.2%); }
+  40% { transform: translate(3.2%, -4.8%); }
+  60% { transform: translate(-3.2%, -1.6%); }
+  80% { transform: translate(4.8%, 4.8%); }
   100% { transform: translate(0, 0); }
 }
 .fx-fade {
@@ -783,6 +817,10 @@ html[data-mist='deep'] .intro-layer {
   transform-origin: center;
   animation: pin-pulse 2.4s var(--ease) infinite;
 }
+/* (A hidden plate's pin — every room's but the one on screen — doesn't pulse.) */
+.plate[aria-hidden='true'] .plate-ring {
+  animation-play-state: paused;
+}
 .plate-pin {
   font-family: var(--mono);
   font-weight: var(--w-meta);
@@ -1238,6 +1276,23 @@ html[data-mist='deep'] .intro-layer {
 .dossier-permalink {
   margin-top: 8px;
 }
+/* Where the file is the whole screen (a phone, a tablet upright: nothing beside it to tap, and no
+   Escape key), its header stays at the top as the file scrolls — the close always in reach — and
+   the close is a full-size touch target. */
+@media (max-width: 980px) {
+  .dossier-file {
+    position: sticky;
+    top: 3px;
+    z-index: 1;
+    margin: calc(-18px - env(safe-area-inset-top)) calc(-1 * clamp(20px, 4vw, 56px)) clamp(28px, 5vh, 52px);
+    padding: calc(4px + env(safe-area-inset-top)) clamp(20px, 4vw, 56px) 4px;
+    background: var(--ink-2);
+  }
+  .dossier-close {
+    min-height: 44px;
+    padding: 0 2px 0 14px;
+  }
+}
 @media (max-width: 860px) {
   .dossier-cols {
     grid-template-columns: 1fr;
@@ -1431,6 +1486,12 @@ html[data-mist='deep'] .intro-layer {
   font-weight: var(--w-meta);
   color: var(--warm);
 }
+/* (The label lays out as the button's own items did: the note, then the name, a gap apart.) */
+.ctl-music .ctl-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
 .ctl-music .note {
   display: inline-block;
   color: var(--warm);
@@ -1513,6 +1574,18 @@ html[data-mist='deep'] .intro-layer {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 24px;
+}
+/* On a phone or a tablet (no Escape key), the index's head — and its close — stays at the top as
+   the index scrolls. */
+@media (max-width: 980px), (hover: none) and (pointer: coarse) {
+  .index-head {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    margin: calc(-22px - env(safe-area-inset-top)) calc(-1 * var(--gutter)) 24px;
+    padding: calc(12px + env(safe-area-inset-top)) var(--gutter) 10px;
+    background: rgba(11, 11, 12, 0.97);
+  }
 }
 .index-intro { display: flex; align-items: flex-end; justify-content: space-between; gap: 30px; padding-bottom: 32px; margin-bottom: 34px; border-bottom: 1px solid var(--line); }
 .index-intro h2 { font: var(--w-title) clamp(40px, 5vw, 78px)/1.05 var(--serif); letter-spacing: var(--t-title); margin: 0; }
@@ -2257,6 +2330,117 @@ html[data-fallback='true'] .archive-controls {
   }
   .archive .stats {
     grid-template-columns: 1fr;
+  }
+}
+
+/* A phone on its side. The bar is compact — on a short screen it would otherwise cover the top of
+   the picture, where the rooms' titles and the portal's sign are — and, as upright, the motion
+   switch is left to the index. A plate is a compact card on its own side (not the upright bottom
+   sheet, which would cover half a short screen), clear of the bar and the rail: the room needs the
+   screen. (As upright, a room's facts are in its dossier.) */
+@media (orientation: landscape) and (max-height: 520px) {
+  .topbar {
+    padding-top: calc(8px + env(safe-area-inset-top));
+    padding-bottom: 8px;
+  }
+  .ctl-motion {
+    display: none;
+  }
+  .index-symbol {
+    line-height: 1;
+  }
+  .plate-card,
+  .plate[data-side='left'] .plate-card,
+  .plate[data-side='right'] .plate-card {
+    top: calc(62px + env(safe-area-inset-top));
+    bottom: auto;
+    width: min(290px, 36vw);
+    max-height: calc(100svh - 78px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    padding: 16px 18px 14px;
+  }
+  .plate[data-side='left'] .plate-card {
+    left: var(--gutter);
+    right: auto;
+  }
+  .plate[data-side='right'] .plate-card {
+    left: auto;
+    right: calc(var(--gutter) + 136px);
+  }
+  .plate-scrim {
+    background: linear-gradient(90deg, rgba(8, 8, 10, 0.72) 0%, rgba(8, 8, 10, 0.4) 30%, rgba(8, 8, 10, 0) 52%);
+  }
+  .plate[data-side='right'] .plate-scrim {
+    background: linear-gradient(270deg, rgba(8, 8, 10, 0.72) 0%, rgba(8, 8, 10, 0.4) 30%, rgba(8, 8, 10, 0) 52%);
+  }
+  .plate-kicker {
+    margin-bottom: 8px;
+  }
+  .plate-title {
+    font-size: 22px;
+    margin-bottom: 8px;
+  }
+  .plate-body {
+    font-size: 13.5px;
+    line-height: 1.5;
+    margin-bottom: 12px;
+  }
+  .plate[data-plate^='room-'] .plate-facts {
+    display: none;
+  }
+  .plate[data-plate^='room-'] .plate-body {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .plate-btn {
+    padding: 10px 14px;
+  }
+}
+/* (…and on a small one the rail is hidden, so the card needs no room beside it.) */
+@media (orientation: landscape) and (max-height: 520px) and (max-width: 760px) {
+  .plate[data-side='right'] .plate-card {
+    right: var(--gutter);
+  }
+}
+
+/* Narrow phones (most, upright): the bar holds on one line inside its margins — tighter spacing,
+   a compact index button, and a long track name trails off rather than pushing the bar off screen. */
+@media (max-width: 420px) {
+  .topbar {
+    gap: 10px;
+  }
+  .controls {
+    gap: 8px;
+    min-width: 0;
+  }
+  .wordmark {
+    font-size: 12px;
+    letter-spacing: 0.16em;
+    gap: 8px;
+  }
+  .ctl-music {
+    min-width: 0;
+  }
+  .ctl-music .ctl-label {
+    display: block;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .ctl-index {
+    padding: 8px 10px;
+    flex-shrink: 0;
+  }
+  .index-symbol {
+    margin-left: 6px;
+    font-size: 18px;
+    line-height: 1;
+  }
+}
+@media (max-width: 340px) {
+  .chapter-indicator {
+    display: none;
   }
 }
 

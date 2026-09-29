@@ -23,7 +23,7 @@
  * is still out of view; only when it lies open does the ink surface. The torn
  * edge and the fire's front are antialiased in the shader.
  */
-import { Color, DoubleSide, MeshStandardMaterial, type Texture, Vector2, Vector4 } from 'three';
+import { BackSide, Color, FrontSide, MeshStandardMaterial, type Side, type Texture, Vector2, Vector4 } from 'three';
 
 export interface ParchmentUniforms {
   uTex: { value: Texture };
@@ -249,22 +249,30 @@ export function createParchmentMaterial(tex: Texture, noise: Texture, size: [num
     uVeil: { value: 0 },
     uVeilColor: { value: new Color() },
   };
-  const m = new MeshStandardMaterial({ roughness: 0.9, metalness: 0, side: DoubleSide, transparent: true, depthWrite: true });
-  // The sheet's UVs (declares the uv attribute and vUv in both stages).
-  const withDefines = m as unknown as { defines?: Record<string, string> };
-  withDefines.defines = { ...(withDefines.defines ?? {}), USE_UV: '' };
-  m.onBeforeCompile = (shader) => {
-    Object.assign(shader.uniforms, uniforms);
-    shader.vertexShader = shader.vertexShader
-      .replace('#include <common>', `#include <common>\n${VERTEX_PARS}`)
-      .replace('#include <beginnormal_vertex>', VERTEX_NORMAL)
-      .replace('#include <begin_vertex>', 'vec3 transformed = sheetPos;');
-    shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', `#include <common>\n${FRAGMENT_PARS}`)
-      .replace('#include <map_fragment>', FRAGMENT_MAP)
-      .replace('#include <emissivemap_fragment>', FRAGMENT_EMISSIVE)
-      .replace('#include <dithering_fragment>', 'gl_FragColor.rgb = mix(gl_FragColor.rgb, uVeilColor, uVeil);\n#include <dithering_fragment>');
+  // A sheet is seen from both sides and is see-through, so it is drawn as three draws a double-sided
+  // transparent thing — its back faces, then its front ones — but as two materials, one for each side
+  // (Parchment draws one mesh with each, back first, in the same place in the same order), rather than
+  // one double-sided material that three turns to each side in turn, re-resolving its program twice a
+  // frame. Same programs, same two draws, same order.
+  const make = (side: Side) => {
+    const m = new MeshStandardMaterial({ roughness: 0.9, metalness: 0, side, transparent: true, depthWrite: true });
+    // The sheet's UVs (declares the uv attribute and vUv in both stages).
+    const withDefines = m as unknown as { defines?: Record<string, string> };
+    withDefines.defines = { ...(withDefines.defines ?? {}), USE_UV: '' };
+    m.onBeforeCompile = (shader) => {
+      Object.assign(shader.uniforms, uniforms);
+      shader.vertexShader = shader.vertexShader
+        .replace('#include <common>', `#include <common>\n${VERTEX_PARS}`)
+        .replace('#include <beginnormal_vertex>', VERTEX_NORMAL)
+        .replace('#include <begin_vertex>', 'vec3 transformed = sheetPos;');
+      shader.fragmentShader = shader.fragmentShader
+        .replace('#include <common>', `#include <common>\n${FRAGMENT_PARS}`)
+        .replace('#include <map_fragment>', FRAGMENT_MAP)
+        .replace('#include <emissivemap_fragment>', FRAGMENT_EMISSIVE)
+        .replace('#include <dithering_fragment>', 'gl_FragColor.rgb = mix(gl_FragColor.rgb, uVeilColor, uVeil);\n#include <dithering_fragment>');
+    };
+    m.customProgramCacheKey = () => 'intro-parchment';
+    return m;
   };
-  m.customProgramCacheKey = () => 'intro-parchment';
-  return { material: m, uniforms };
+  return { material: make(FrontSide), back: make(BackSide), uniforms };
 }

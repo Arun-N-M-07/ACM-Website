@@ -60,7 +60,11 @@ export function useGainedLightAnchors(list: Omit<LightAnchor, 'gain'>[]): LightA
   return items;
 }
 
-const _scored: { a: LightAnchor; d: number }[] = [];
+// Scratch for the frame's choice (no arrays, sets or objects made per frame).
+const _near: LightAnchor[] = [];
+const _nearD: number[] = [];
+const _kept: boolean[] = [];
+const _free: number[] = [];
 
 export function LightPool({ maxDistance = 48 }: { maxDistance?: number }) {
   const quality = useExperience((s) => s.quality);
@@ -69,26 +73,45 @@ export function LightPool({ maxDistance = 48 }: { maxDistance?: number }) {
   const current = useRef<(LightAnchor | null)[]>([]);
 
   useFrame(({ camera }, dt) => {
-    _scored.length = 0;
+    // The nearest `count` anchors in reach, nearest first (equal distances in registration order).
+    let m = 0;
     for (const a of anchors) {
       const d = a.position.distanceTo(camera.position);
-      if (d < maxDistance) _scored.push({ a, d });
+      if (!(d < maxDistance)) continue;
+      let j = m;
+      while (j > 0 && _nearD[j - 1] > d) j--;
+      if (j >= count) continue;
+      for (let k = Math.min(m, count - 1); k > j; k--) {
+        _near[k] = _near[k - 1];
+        _nearD[k] = _nearD[k - 1];
+      }
+      _near[j] = a;
+      _nearD[j] = d;
+      if (m < count) m++;
     }
-    _scored.sort((x, y) => x.d - y.d);
-    const wanted = new Set<LightAnchor>();
-    for (let i = 0; i < Math.min(count, _scored.length); i++) wanted.add(_scored[i].a);
 
     // Lights keep their anchor while it stays among the nearest; only the
     // slots whose anchor dropped out are re-targeted (fading in from zero).
-    const free: number[] = [];
+    for (let j = 0; j < m; j++) _kept[j] = false;
+    let free = 0;
     for (let i = 0; i < count; i++) {
       const a = current.current[i];
-      if (a && wanted.has(a)) wanted.delete(a);
-      else free.push(i);
+      let kept = false;
+      if (a) {
+        for (let j = 0; j < m; j++) {
+          if (!_kept[j] && _near[j] === a) {
+            _kept[j] = kept = true;
+            break;
+          }
+        }
+      }
+      if (!kept) _free[free++] = i;
     }
-    for (const a of wanted) {
-      const i = free.shift();
-      if (i === undefined) break;
+    let f = 0;
+    for (let j = 0; j < m && f < free; j++) {
+      if (_kept[j]) continue;
+      const a = _near[j];
+      const i = _free[f++];
       const l = lights.current[i];
       current.current[i] = a;
       if (!l) continue;
@@ -97,7 +120,7 @@ export function LightPool({ maxDistance = 48 }: { maxDistance?: number }) {
       l.color.copy(a.color);
       l.distance = a.distance;
     }
-    for (const i of free) current.current[i] = null;
+    for (; f < free; f++) current.current[_free[f]] = null;
 
     const k = 1 - Math.exp(-dt * 6);
     for (let i = 0; i < count; i++) {

@@ -35,6 +35,29 @@ export interface PlateProps {
 
 const clamp = (v: number, lo: number, hi: number) => (v < lo ? lo : v > hi ? hi : v);
 
+/**
+ * The last value written to each element's attribute or style: the plate is updated every projected
+ * frame, but a write that changes nothing still costs the page a style pass, so those are skipped.
+ */
+const written = new WeakMap<Element, Record<string, string>>();
+const record = (el: Element) => {
+  let w = written.get(el);
+  if (!w) written.set(el, (w = {}));
+  return w;
+};
+function setAttr(el: Element, name: string, value: string) {
+  const w = record(el);
+  if (w[name] === value) return;
+  w[name] = value;
+  el.setAttribute(name, value);
+}
+function setStyle(el: HTMLElement | SVGElement, prop: 'transform' | 'opacity' | 'strokeDasharray' | 'strokeDashoffset', value: string) {
+  const w = record(el);
+  if (w[prop] === value) return;
+  w[prop] = value;
+  el.style[prop] = value;
+}
+
 export function Plate({ id, side, anchor, accent, range, ramp, pin, children, className }: PlateProps) {
   const root = useRef<HTMLDivElement>(null);
   const card = useRef<HTMLDivElement>(null);
@@ -47,6 +70,18 @@ export function Plate({ id, side, anchor, accent, range, ramp, pin, children, cl
   useEffect(() => {
     const [a, b] = range;
     const r = ramp ?? Math.max(0.0015, (b - a) * 0.2);
+    // The card's docked box. It only moves with the layout (a resize, the card's own size, its side),
+    // never with the scroll, so it is measured then — not read back after this frame's writes, which
+    // forced a layout every frame the plate was up.
+    const box = { left: 0, top: 0, w: 0, h: 0 };
+    const measure = () => {
+      const c = card.current;
+      if (!c) return;
+      box.left = c.offsetLeft;
+      box.top = c.offsetTop;
+      box.w = c.offsetWidth;
+      box.h = c.offsetHeight;
+    };
     const update = () => {
       const el = root.current;
       const c = card.current;
@@ -54,38 +89,37 @@ export function Plate({ id, side, anchor, accent, range, ramp, pin, children, cl
       const p = progress.value;
       const v = smooth(a - r, a, p) * (1 - smooth(b, b + r, p));
       if (v !== shown.current) {
+        const was = shown.current > 0.004;
         shown.current = v;
         el.style.setProperty('--v', String(v));
         const on = v > 0.004;
         el.style.visibility = on ? 'visible' : 'hidden';
         el.setAttribute('aria-hidden', on ? 'false' : 'true');
+        if (on && !was) measure();
       }
       if (v <= 0.004) return;
 
       // Lift: the card starts at the anchor and settles into its dock.
       const e = v * v * (3 - 2 * v);
       const at = anchorAt(anchor);
-      const cx = c.offsetLeft + c.offsetWidth / 2;
-      const cy = c.offsetTop + c.offsetHeight / 2;
+      const { left, top, w, h } = box;
+      const cx = left + w / 2;
+      const cy = top + h / 2;
       const towards = at?.visible ? at : null;
       const dx = towards ? (towards.x - cx) * (1 - e) * 0.5 : 0;
       const dy = towards ? (towards.y - cy) * (1 - e) * 0.5 : (1 - e) * 22;
-      c.style.transform = `translate3d(${dx.toFixed(1)}px, ${dy.toFixed(1)}px, 0) scale(${(0.9 + 0.1 * e).toFixed(3)})`;
+      setStyle(c, 'transform', `translate3d(${dx.toFixed(1)}px, ${dy.toFixed(1)}px, 0) scale(${(0.9 + 0.1 * e).toFixed(3)})`);
 
       // Leader line from the card's edge to the pin.
       const pth = path.current;
       if (!pth) return;
       if (!towards) {
-        pth.style.opacity = '0';
-        if (dot.current) dot.current.style.opacity = '0';
-        if (ring.current) ring.current.style.opacity = '0';
-        if (label.current) label.current.style.opacity = '0';
+        setStyle(pth, 'opacity', '0');
+        if (dot.current) setStyle(dot.current, 'opacity', '0');
+        if (ring.current) setStyle(ring.current, 'opacity', '0');
+        if (label.current) setStyle(label.current, 'opacity', '0');
         return;
       }
-      const left = c.offsetLeft;
-      const top = c.offsetTop;
-      const w = c.offsetWidth;
-      const h = c.offsetHeight;
       // From the side facing the pin; from the top edge when the pin is above a
       // full-width card (phones).
       const overhead = towards.y < top - 12 && towards.x > left + 18 && towards.x < left + w - 18;
@@ -105,26 +139,43 @@ export function Plate({ id, side, anchor, accent, range, ramp, pin, children, cl
         kx = ex + (fromRight ? 22 : -22);
         ky = ey;
       }
-      pth.setAttribute('d', `M ${ex.toFixed(1)} ${ey.toFixed(1)} L ${kx.toFixed(1)} ${ky.toFixed(1)} L ${towards.x.toFixed(1)} ${towards.y.toFixed(1)}`);
+      setAttr(pth, 'd', `M ${ex.toFixed(1)} ${ey.toFixed(1)} L ${kx.toFixed(1)} ${ky.toFixed(1)} L ${towards.x.toFixed(1)} ${towards.y.toFixed(1)}`);
       const len = Math.hypot(towards.x - kx, towards.y - ky) + Math.hypot(kx - ex, ky - ey);
-      pth.style.strokeDasharray = `${len.toFixed(0)}`;
-      pth.style.strokeDashoffset = `${(len * (1 - e)).toFixed(0)}`;
-      pth.style.opacity = String(v * 0.85);
+      setStyle(pth, 'strokeDasharray', `${len.toFixed(0)}`);
+      setStyle(pth, 'strokeDashoffset', `${(len * (1 - e)).toFixed(0)}`);
+      setStyle(pth, 'opacity', String(v * 0.85));
+      const px = towards.x.toFixed(1);
+      const py = towards.y.toFixed(1);
       for (const n of [dot.current, ring.current]) {
         if (!n) continue;
-        n.setAttribute('cx', towards.x.toFixed(1));
-        n.setAttribute('cy', towards.y.toFixed(1));
-        n.style.opacity = String(v);
+        setAttr(n, 'cx', px);
+        setAttr(n, 'cy', py);
+        setStyle(n, 'opacity', String(v));
       }
       if (label.current) {
-        label.current.setAttribute('x', (towards.x + (fromRight ? 14 : -14)).toFixed(1));
-        label.current.setAttribute('y', (towards.y - 12).toFixed(1));
-        label.current.setAttribute('text-anchor', fromRight ? 'start' : 'end');
-        label.current.style.opacity = String(v * 0.9);
+        setAttr(label.current, 'x', (towards.x + (fromRight ? 14 : -14)).toFixed(1));
+        setAttr(label.current, 'y', (towards.y - 12).toFixed(1));
+        setAttr(label.current, 'text-anchor', fromRight ? 'start' : 'end');
+        setStyle(label.current, 'opacity', String(v * 0.9));
       }
     };
+    measure();
     update();
-    return onProjected(update);
+    // Layout changes: the viewport, the card's own size (its text reflowing), the layer it docks in.
+    const relayout = () => {
+      measure();
+      update();
+    };
+    const ro = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(relayout);
+    if (ro && card.current) ro.observe(card.current);
+    if (ro && root.current) ro.observe(root.current);
+    window.addEventListener('resize', relayout);
+    const unsubscribe = onProjected(update);
+    return () => {
+      unsubscribe();
+      ro?.disconnect();
+      window.removeEventListener('resize', relayout);
+    };
   }, [range, ramp, anchor, side]);
 
   return (

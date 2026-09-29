@@ -75,15 +75,17 @@ export function JourneyLoop() {
 
     const open = st.phase === 'cinematic' && !st.menuOpen && !st.dossier && !st.textVersionOpen;
     if (!open || st.reducedMotion) return;
-    // (Where the scroll itself is — the camera follows a moment behind, inside the same mist.)
+    // Where the scroll itself is — and the camera, which follows it a moment behind (in the film, at
+    // a cinematic pace at most: a hard fling back through the opening can leave it far behind). The
+    // world is exchanged only once both are in the whole mist, where nothing can be seen.
     const s = progress.target;
     // Past the end's seam: on from the start's, by as much as it went past.
-    if (inside && teams().state === 'teamsActive' && s > END_SEAM) {
+    if (inside && teams().state === 'teamsActive' && s > END_SEAM && mistAtEnd(p) >= 1) {
       wrapToStart(START_SEAM - END_SEAM);
       return;
     }
     // Back past the start's seam: on (backwards) from the end's.
-    if (!inside && s < START_SEAM) wrapToEnd(END_SEAM - START_SEAM);
+    if (!inside && s < START_SEAM && introTimeAt(p) <= START_CLEAR_FROM) wrapToEnd(END_SEAM - START_SEAM);
   });
 
   return null;

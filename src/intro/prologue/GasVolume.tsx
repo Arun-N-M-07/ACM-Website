@@ -150,8 +150,9 @@ vec3 fieldL(vec3 p, bool cheap, bool coarse) {
     vec3 outward = vec3(dc.x, 0.0, dc.y) / max(r, 0.3);
     vec3 q = p - outward * min(r, uFlood) * 0.18 - vec3(uTime * 0.018, uRel * 0.05 + uTime * 0.012, -uTime * 0.03);
     float nb = nz(q * 0.2);
-    float nd = coarse ? 0.5 : mix(0.5, nz(q * 0.55 + 0.31), gDetail);
-    float nl = (cheap || coarse) ? 0.5 : mix(0.5, nz(q * 1.6 + vec3(0.57, 0.0, 0.13)), gDetail * gDetail);
+    // (Far off, where the fine octaves are faded out entirely, they aren't fetched.)
+    float nd = (coarse || gDetail <= 0.0) ? 0.5 : mix(0.5, nz(q * 0.55 + 0.31), gDetail);
+    float nl = (cheap || coarse || gDetail <= 0.0) ? 0.5 : mix(0.5, nz(q * 1.6 + vec3(0.57, 0.0, 0.13)), gDetail * gDetail);
     float billow = nb * 0.55 + nd * 0.3 + nl * 0.15;
     // ── the flood: its front, ragged, runs out past everything
     float fill = 1.0 - smoothstep(uFlood - 3.0, uFlood + 0.5, r + (nb - 0.5) * 5.0);
@@ -229,7 +230,9 @@ vec3 fieldL(vec3 p, bool cheap, bool coarse) {
         float inFront = smoothstep(-0.05, 0.4, dz) * (1.0 - smoothstep(6.5, 9.0, dz));
         float inSlab = exp(-dz * dz / 0.3);
         smog *= 1.0 - live * region * (0.85 * inFront + 0.75 * inSlab);
-        if (!cheap) {
+        // (The strokes' fine detail is only fetched where a stroke can be — inside its slab, where the
+        // word has formed: everywhere else it is multiplied by zero. Likewise the wisps in front.)
+        if (!cheap && slab * live > 0.0) {
           // Fine fraying at the scale of the strokes, drifting up with the smog.
           float e1 = nz(p * 0.9 + vec3(uTime * 0.02, -uDissolve * 0.5, 0.0));
           float e3 = nz(vec3(p.x * 2.6, p.y * 2.0 - uTime * 0.035 - uDissolve * 0.8, p.z * 2.6));
@@ -248,12 +251,14 @@ vec3 fieldL(vec3 p, bool cheap, bool coarse) {
           float channel = smoothstep(0.58, 0.68, e4) * (1.0 - smoothstep(0.7, 0.84, e4));
           float tendril = m.g * smoothstep(0.6, 0.85, e2) * (1.0 - body);
           word = (shape * 2.6 * inner * (0.6 + 0.8 * e3) * (1.0 - (0.45 + 0.3 * uUnstable) * channel) + tendril * 1.2 + m.g * 0.12) * slab * live;
+        } else if (cheap) {
+          word = smoothstep(0.35, 0.7, m.r) * 2.0 * slab * live;
+        }
+        if (!cheap) {
           // Wisps still drift across in front of the words now and then.
           float front = smoothstep(0.15, 0.45, dz) * (1.0 - smoothstep(0.7, 1.3, dz));
-          float streak = smoothstep(0.5, 0.82, nz(vec3(p.x * 0.22 - uTime * 0.015, p.y * 0.9, p.z * 0.3)));
-          smog += front * streak * 0.6 * live * region * uAmount;
-        } else {
-          word = smoothstep(0.35, 0.7, m.r) * 2.0 * slab * live;
+          float wisp = front * live * region;
+          if (wisp > 0.0) smog += wisp * smoothstep(0.5, 0.82, nz(vec3(p.x * 0.22 - uTime * 0.015, p.y * 0.9, p.z * 0.3))) * 0.6 * uAmount;
         }
       }
     }
@@ -397,6 +402,7 @@ export function GasVolume() {
   const gl = useThree((s) => s.gl);
   const size = useThree((s) => s.size);
   const quality = useExperience((s) => s.quality);
+  const degrade = useExperience((s) => s.degrade);
   const reduced = useExperience((s) => s.reducedMotion);
   const composite = useRef<Mesh>(null);
   const portrait = size.width < size.height * 0.9;
@@ -490,12 +496,34 @@ export function GasVolume() {
     // The march runs at a fraction of the screen, set by a budget of pixels — what the tier spends on
     // a 1440×900 frame — rather than a fixed share of its width: at the same share a phone's narrow
     // frame left the words only a few pixels tall (the stacked second line a smudge), while drawing a
-    // fraction of what a desktop does. (Never below the tier's share; never above the screen's own.)
-    const share = quality === 'high' ? 0.62 : quality === 'medium' ? 0.52 : 0.42;
+    // fraction of what a desktop does. (Never below the tier's share, up to twice the budget — screens
+    // to 1920×1080 are drawn as they always were; a 2560×1440 one drew 1.4 million marched pixels, 19 ms
+    // a frame on a fast laptop GPU. Never above the screen's own.) A device that can't keep up
+    // (experience.degrade) is marched as the tiers below it are: coarser, fewer steps — uniforms and the
+    // target's size only, nothing rebuilt. The lowest tier (phones) has two rungs of its own below it,
+    // coarser only — the march is sized in CSS pixels, so a lower pixel ratio would never lighten it;
+    // and never fewer steps than the tier's own, which would march past the words' thin sheet.
+    const tier = quality === 'high' ? 2 : quality === 'medium' ? 1 : 0;
+    const level = tier === 0 ? -degrade : Math.max(0, tier - degrade);
+    const share = [0.3, 0.36, 0.42, 0.52, 0.62][level + 2];
     const budget = 1440 * 900 * share * share;
-    const scale = Math.max(share, Math.min(1, Math.sqrt(budget / Math.max(1, size.width * size.height))));
+    const px = Math.max(1, size.width * size.height);
+    const scale = Math.min(1, Math.max(share, Math.sqrt(budget / px)), Math.sqrt((2 * budget) / px));
     res.target.setSize(Math.max(2, Math.round(size.width * scale)), Math.max(2, Math.round(size.height * scale)));
-  }, [res, size.width, size.height, quality]);
+    res.mat.uniforms.uStepsA.value = [44, 44, 44, 64, 84][level + 2];
+    res.mat.uniforms.uShadows.value = level <= 0 ? 1 : 2;
+  }, [res, size.width, size.height, quality, degrade]);
+
+  // Warm: one march into the gas's own target as soon as it is built (behind the loader), so its
+  // program is linked — for that target — and its fields uploaded before the film's first frame.
+  // (It lives in a scene of its own, which the world's shader warm-up never sees.)
+  const camera = useThree((s) => s.camera);
+  useEffect(() => {
+    const prev = gl.getRenderTarget();
+    gl.setRenderTarget(res.target);
+    gl.render(volume.scene, camera);
+    gl.setRenderTarget(prev);
+  }, [gl, res, volume, camera]);
 
   useFrame(({ camera, clock }) => {
     const t = introFrame.t;

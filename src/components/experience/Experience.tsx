@@ -65,6 +65,9 @@ export function Experience() {
       webgl: ok ? 'ok' : 'unsupported',
     });
     st.setLoad(0.12, 'Typesetting');
+    // Fetch the world's code now, alongside the fonts, rather than after them (the canvas mounts
+    // once the fonts are ready; by then its chunk is here).
+    if (ok) void import('@/experience/ExperienceCanvas');
     let alive = true;
     fontsReady().then(() => {
       if (!alive) return;

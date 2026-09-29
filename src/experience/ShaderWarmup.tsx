@@ -85,7 +85,10 @@ export function ShaderWarmup({ onDone }: { onDone: () => void }) {
       });
       try {
         const r = gl as typeof gl & { compileAsync?: (s: typeof scene, c: typeof camera) => Promise<unknown> };
-        const pending = r.compileAsync ? r.compileAsync(scene, camera) : (gl.compile(scene, camera), null);
+        // (Asynchronously only where the driver links in parallel; elsewhere it would compile the same,
+        // with a console warning for want of the extension.)
+        const parallel = !!r.compileAsync && gl.extensions.has('KHR_parallel_shader_compile');
+        const pending = parallel ? r.compileAsync!(scene, camera) : (gl.compile(scene, camera), null);
         hidden.forEach((o) => (o.visible = false));
         hidden.length = 0;
         // Upload every texture a material holds now too (a large texture's
@@ -129,6 +132,12 @@ export function ShaderWarmup({ onDone }: { onDone: () => void }) {
         try {
           gl.setRenderTarget(target);
           gl.render(scene, camera);
+          // …and once to the canvas itself. Drawing to the screen takes programs of its own (tone
+          // mapping, sRGB output) — the Events are drawn straight to it — and a program is only really
+          // linked the first time it draws: that was a stall on the frame the film handed over to the
+          // Events. (Behind the loader, like the rest.)
+          gl.setRenderTarget(null);
+          gl.render(scene, camera);
         } finally {
           gl.setRenderTarget(prev);
           target.dispose();
@@ -148,15 +157,10 @@ export function ShaderWarmup({ onDone }: { onDone: () => void }) {
     };
   }, [gl, scene, camera, onDone]);
 
-  useEffect(
-    () => () => {
-      extras.mats.forEach((m) => m.dispose());
-      extras.line.dispose();
-      extras.geo.dispose();
-      extras.tex.dispose();
-    },
-    [extras],
-  );
+  // (The variant materials are kept, not disposed, when this unmounts: disposing the last material
+  // that uses a program deletes the program — and these exist to hold the variants that the journey's
+  // own materials only take on later, when a room streams in or a panel first draws. They are a
+  // handful of tiny materials, freed with the canvas.)
 
   return <group ref={group} position={[0, -1000, 0]} />;
 }

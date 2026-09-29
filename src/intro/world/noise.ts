@@ -32,6 +32,24 @@ function valueNoise(x: number, y: number, period: number, seed: number) {
  * non-repeating billows from one texture.
  */
 export function noiseTexture(size = 256) {
+  const tex = new CanvasTexture(noiseCanvas(size));
+  tex.wrapS = tex.wrapT = RepeatWrapping;
+  tex.colorSpace = NoColorSpace;
+  tex.minFilter = LinearMipmapLinearFilter;
+  tex.magFilter = LinearFilter;
+  tex.needsUpdate = true;
+  return tex;
+}
+
+/**
+ * The noise itself, drawn once per size and shared: the mist, the cloud and the story all ask for
+ * the same field (each gets its own texture over it, to own and dispose), and drawing it is a
+ * quarter of a million pixels of octaves on the main thread.
+ */
+const drawn = new Map<number, HTMLCanvasElement>();
+function noiseCanvas(size: number) {
+  const cached = drawn.get(size);
+  if (cached) return cached;
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = size;
   const ctx = canvas.getContext('2d')!;
@@ -55,13 +73,8 @@ export function noiseTexture(size = 256) {
       }
     }
   ctx.putImageData(img, 0, 0);
-  const tex = new CanvasTexture(canvas);
-  tex.wrapS = tex.wrapT = RepeatWrapping;
-  tex.colorSpace = NoColorSpace;
-  tex.minFilter = LinearMipmapLinearFilter;
-  tex.magFilter = LinearFilter;
-  tex.needsUpdate = true;
-  return tex;
+  drawn.set(size, canvas);
+  return canvas;
 }
 
 /** A soft round glow (for lights seen through mist). */

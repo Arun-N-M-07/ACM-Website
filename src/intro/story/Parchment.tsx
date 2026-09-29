@@ -27,7 +27,7 @@
  */
 import { useFrame, useThree } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
-import { BufferAttribute, BufferGeometry, Color, type Group, Matrix4, type PerspectiveCamera, PlaneGeometry, type Points, Quaternion, ShaderMaterial, type Texture, Vector3 } from 'three';
+import { BufferAttribute, BufferGeometry, Color, type Group, Matrix4, type Mesh, type PerspectiveCamera, PlaneGeometry, type Points, Quaternion, ShaderMaterial, type Texture, Vector3 } from 'three';
 import { useDisposable } from '@/systems/performance/useDisposable';
 import { introCameraAt } from '../camera';
 import { patchMist } from '../fog';
@@ -59,6 +59,8 @@ const UP = new Vector3(0, 1, 0);
 
 export function Parchment({ fragment, art, noise }: { fragment: Fragment; art: ParchmentArt; noise: Texture }) {
   const group = useRef<Group>(null);
+  const sheetBack = useRef<Mesh>(null);
+  const sheetFront = useRef<Mesh>(null);
   const wake = useRef<Points>(null);
   const occ = useMemo(() => paperOccluder(fragment.id), [fragment.id]);
   const size = useThree((s) => s.size);
@@ -66,7 +68,8 @@ export function Parchment({ fragment, art, noise }: { fragment: Fragment; art: P
 
   const res = useDisposable(() => {
     const geo = new PlaneGeometry(f.size[0], f.size[1], 72, 50);
-    const { material, uniforms } = createParchmentMaterial(art.texture, noise, f.size, art.lines, f.seed);
+    const { material, back, uniforms } = createParchmentMaterial(art.texture, noise, f.size, art.lines, f.seed);
+    patchMist(back);
     patchMist(material);
     // The wake: a few soft puffs of mist along the path it has just travelled.
     const wakeGeo = new BufferGeometry();
@@ -97,7 +100,7 @@ export function Parchment({ fragment, art, noise }: { fragment: Fragment; art: P
           gl_FragColor = vec4(uColor, a);
         }`,
     });
-    return { geo, material, uniforms, wakeGeo, wakeMat };
+    return { geo, material, back, uniforms, wakeGeo, wakeMat };
   }, [art, noise, f]);
 
   // The camera's walking speed around this fragment (for the ash left behind).
@@ -208,6 +211,10 @@ export function Parchment({ fragment, art, noise }: { fragment: Fragment; art: P
     u.uRollR.value = rollR;
     u.uReveal.value = span(t, f.ink[0], f.ink[1]);
     u.uBurn.value = b;
+    // (Burnt through, the sheet is gone — every fragment of it past the fire's front — while its ash
+    // still falls: the sheet isn't drawn.)
+    if (sheetBack.current) sheetBack.current.visible = b < 1;
+    if (sheetFront.current) sheetFront.current.visible = b < 1;
     u.uFlutter.value = 0.011 + 0.03 * k + 0.012 * b;
     // Before the sun, the sheet holds what little light there is (so it reads);
     // once the sun is up, the sun lights it. Turning, it flashes as it faces you.
@@ -218,16 +225,19 @@ export function Parchment({ fragment, art, noise }: { fragment: Fragment; art: P
     const dist = g.position.distanceTo(S.pos);
     u.uVeil.value = gasAmount(t) * 0.85 * (1 - Math.exp(-0.3 * Math.max(0, dist - 1.6))) * (1 - 0.55 * occ.presence);
     (u.uVeilColor.value as Color).copy(look.fogColor).lerp(VEIL_TINT, 0.35).multiplyScalar(1.15);
-    res.material.roughness = 0.9;
+    res.material.roughness = res.back.roughness = 0.9;
     void facing;
     void moving;
 
     // The wake: puffs where the sheet was a moment ago, thicker the faster it came.
     const wk = wake.current;
-    if (wk) {
+    const carry = a < FLY ? Math.sin(Math.PI * Math.min(1, fly * 1.1)) : 0;
+    // (Once it has come to rest the wake is nothing — every puff at no strength, discarded as drawn:
+    // it isn't drawn, or moved, at all.)
+    if (wk && carry <= 0) wk.visible = false;
+    else if (wk) {
       const pos = res.wakeGeo.getAttribute('position') as BufferAttribute;
       const att = res.wakeGeo.getAttribute('aWake') as BufferAttribute;
-      const carry = a < FLY ? Math.sin(Math.PI * Math.min(1, fly * 1.1)) : 0;
       for (let i = 0; i < WAKE; i++) {
         const lag = (i + 1) * 0.028;
         flightAt(Math.max(0, a - lag), f.side, edge, f.seed, _p);
@@ -246,8 +256,10 @@ export function Parchment({ fragment, art, noise }: { fragment: Fragment; art: P
   return (
     <>
       <group ref={group} visible={false}>
-        {/* (Drawn after the smog — GasVolume's composite is 30 — so its torn edge covers the smog behind it exactly.) */}
-        <mesh geometry={res.geo} material={res.material} renderOrder={31} name={`parchment-${f.id}`} userData={{ sheet: art.texture.image }} />
+        {/* (Drawn after the smog — GasVolume's composite is 30 — so its torn edge covers the smog behind it exactly.
+            Its back faces, then its front ones: two meshes in the same place, back first — see parchmentMaterial.) */}
+        <mesh ref={sheetBack} geometry={res.geo} material={res.back} renderOrder={31} />
+        <mesh ref={sheetFront} geometry={res.geo} material={res.material} renderOrder={31} name={`parchment-${f.id}`} userData={{ sheet: art.texture.image }} />
         <Ash fragment={f} art={art} speed={speed} />
         <UnfurlDust fragment={f} />
       </group>

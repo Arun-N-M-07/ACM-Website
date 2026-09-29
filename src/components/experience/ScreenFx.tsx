@@ -63,7 +63,8 @@ export function ScreenFx() {
   const mistBase = useRef<HTMLDivElement>(null);
   const mistA = useRef<HTMLDivElement>(null);
   const mistB = useRef<HTMLDivElement>(null);
-  const last = useRef({ blur: -1, mist: -1 });
+  const last = useRef({ blur: -1, mist: -1, vignette: '', fade: '', flash: '' });
+  const canvasEl = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
     if (mistA.current) mistA.current.style.backgroundImage = `url(${cloudTexture(3)})`;
@@ -71,15 +72,31 @@ export function ScreenFx() {
   }, []);
 
   useProgressFrame(() => {
-    const canvas = document.querySelector<HTMLCanvasElement>('.experience-canvas canvas');
+    // (Found once, and again only if the canvas is replaced; styles are written only when they change —
+    // an unchanged write still costs the page a style pass every frame.)
+    if (!canvasEl.current?.isConnected) canvasEl.current = document.querySelector<HTMLCanvasElement>('.experience-canvas canvas');
+    const canvas = canvasEl.current;
+    const was = last.current;
     const blur = Math.round(fx.blur * 10) / 10;
-    if (canvas && blur !== last.current.blur) {
+    if (canvas && blur !== was.blur) {
       canvas.style.filter = blur > 0.05 ? `blur(${blur}px)` : '';
-      last.current.blur = blur;
+      was.blur = blur;
     }
-    if (vignette.current) vignette.current.style.opacity = String(0.55 + fx.vignette * 0.45);
-    if (fade.current) fade.current.style.opacity = String(fx.fade);
-    if (flash.current) flash.current.style.opacity = String(Math.round(fx.flash * 100) / 100);
+    const vig = String(0.55 + fx.vignette * 0.45);
+    if (vignette.current && vig !== was.vignette) {
+      vignette.current.style.opacity = vig;
+      was.vignette = vig;
+    }
+    const fd = String(fx.fade);
+    if (fade.current && fd !== was.fade) {
+      fade.current.style.opacity = fd;
+      was.fade = fd;
+    }
+    const fl = String(Math.round(fx.flash * 100) / 100);
+    if (flash.current && fl !== was.flash) {
+      flash.current.style.opacity = fl;
+      was.flash = fl;
+    }
     // The mist: the clouds come first, unevenly; the even body of the mist closes behind them.
     const m = Math.round(fx.mist * 1000) / 1000;
     // Deep in it, the interface recedes too (the journey's chrome changes where its two ends meet).

@@ -30,7 +30,28 @@
  */
 import { music } from './music';
 
-type Layer = { gain: GainNode; filter: BiquadFilterNode; pan?: StereoPannerNode };
+/**
+ * A bed, and what was last sent to it: a target is sent again only when it moves (re-sending the same
+ * target changes nothing — the approach is memoryless), and a bed that has been asked for silence for
+ * a while stops its source (it has long since decayed to nothing) until it is wanted again.
+ */
+type Layer = {
+  gain: GainNode;
+  filter: BiquadFilterNode;
+  pan?: StereoPannerNode;
+  src: AudioBufferSourceNode | null;
+  brown: boolean;
+  level: number;
+  freq: number;
+  q: number;
+  panTo: number;
+  quietSince: number;
+};
+
+/** Below this a bed is silent (−100 dB), and after this long silent (s) its source is stopped. */
+const SILENT = 1e-5;
+const PARK_AFTER = 4;
+const NO_OPTS: { freq?: number; pan?: number; q?: number } = Object.freeze({});
 
 let bus: GainNode | null = null;
 let noiseBuf: AudioBuffer | null = null;
@@ -71,34 +92,79 @@ function ensure(): AudioContext | null {
   bus.connect(comp).connect(ctx.destination);
   // (Dev only, for the audio QA: the effects bus, to measure without the music.)
   if (process.env.NODE_ENV !== 'production') (globalThis as unknown as { __sfxBus?: GainNode }).__sfxBus = bus;
+  noise(ctx);
+  return ctx;
+}
+
+/** The two noises, made once per context (a million-odd random samples). */
+let noiseFor: AudioContext | null = null;
+function noise(ctx: AudioContext) {
+  if (noiseFor === ctx) return;
+  noiseFor = ctx;
   noiseBuf = makeNoise(ctx, false);
   brownBuf = makeNoise(ctx, true);
-  return ctx;
+}
+
+/** Make the noise as sound is turned on (inside the gesture's hand-off), not on the film's first sounding frame. */
+export function prepare() {
+  const ctx = music.context;
+  if (ctx && music.wantsSound) noise(ctx);
 }
 
 /** A looping noise bed through a filter, at zero until the director raises it. */
 function bed(ctx: AudioContext, name: string, type: BiquadFilterType, freq: number, q: number, brown = false, panned = false) {
-  const src = ctx.createBufferSource();
-  src.buffer = brown ? brownBuf : noiseBuf;
-  src.loop = true;
-  src.loopStart = Math.random();
   const filter = ctx.createBiquadFilter();
   filter.type = type;
   filter.frequency.value = freq;
   filter.Q.value = q;
   const gain = ctx.createGain();
   gain.gain.value = 0;
-  let node: AudioNode = src.connect(filter).connect(gain);
+  let node: AudioNode = filter.connect(gain);
   let pan: StereoPannerNode | undefined;
   if (panned) {
     pan = ctx.createStereoPanner();
     node = node.connect(pan);
   }
   node.connect(bus!);
-  src.start(0, Math.random() * 5);
-  const layer: Layer = { gain, filter, pan };
+  const layer: Layer = { gain, filter, pan, src: null, brown, level: 0, freq, q, panTo: 0, quietSince: -1 };
+  play(ctx, layer);
   layers.set(name, layer);
   return layer;
+}
+
+/** The bed's noise, looping from a random point (as when it was first made). */
+function play(ctx: AudioContext, l: Layer) {
+  const src = ctx.createBufferSource();
+  src.buffer = l.brown ? brownBuf : noiseBuf;
+  src.loop = true;
+  src.loopStart = Math.random();
+  src.connect(l.filter);
+  src.start(0, Math.random() * 5);
+  l.src = src;
+}
+
+/** Stop a long-silent bed's source (its filter, gain and pan stay, and remember where they were asked to be). */
+function park(l: Layer) {
+  if (!l.src) return;
+  l.src.stop();
+  l.src.disconnect();
+  l.src = null;
+}
+
+/** Start a parked bed again from silence, its colour and place where they were last asked for. */
+function wake(ctx: AudioContext, l: Layer, now: number) {
+  l.gain.gain.cancelScheduledValues(now);
+  l.gain.gain.setValueAtTime(0, now);
+  l.level = 0;
+  l.filter.frequency.cancelScheduledValues(now);
+  l.filter.frequency.setValueAtTime(l.freq, now);
+  l.filter.Q.cancelScheduledValues(now);
+  l.filter.Q.setValueAtTime(l.q, now);
+  if (l.pan) {
+    l.pan.pan.cancelScheduledValues(now);
+    l.pan.pan.setValueAtTime(l.panTo, now);
+  }
+  play(ctx, l);
 }
 
 function layer(name: string): Layer | null {
@@ -150,7 +216,7 @@ function layer(name: string): Layer | null {
 }
 
 /** Set a layer's level (and, optionally, its filter and pan) — smoothed; cheap to call every frame. */
-export function setLayer(name: string, level: number, opts: { freq?: number; pan?: number; q?: number } = {}) {
+export function setLayer(name: string, level: number, opts: { freq?: number; pan?: number; q?: number } = NO_OPTS) {
   const ctx = music.context;
   // (For the QA harness: each layer's level as the director last set it.)
   const dbg = (globalThis as unknown as { __sfxLayers?: Record<string, number> }).__sfxLayers;
@@ -159,17 +225,50 @@ export function setLayer(name: string, level: number, opts: { freq?: number; pan
   const l = layer(name);
   if (!l || !ctx) return;
   const now = ctx.currentTime;
-  l.gain.gain.setTargetAtTime(Math.max(0, level), now, 0.12);
-  if (opts.freq !== undefined) l.filter.frequency.setTargetAtTime(Math.min(ctx.sampleRate * 0.45, opts.freq), now, 0.15);
-  if (opts.q !== undefined) l.filter.Q.setTargetAtTime(opts.q, now, 0.2);
-  if (opts.pan !== undefined && l.pan) l.pan.pan.setTargetAtTime(Math.max(-1, Math.min(1, opts.pan)), now, 0.1);
+  const v = Math.max(0, level);
+  const freq = opts.freq === undefined ? l.freq : Math.min(ctx.sampleRate * 0.45, opts.freq);
+  const q = opts.q === undefined ? l.q : opts.q;
+  const pan = opts.pan === undefined || !l.pan ? l.panTo : Math.max(-1, Math.min(1, opts.pan));
+  if (!l.src) {
+    // Parked: asked for silence, it only remembers where it should be; asked for sound, it wakes.
+    if (v < SILENT) {
+      l.freq = freq;
+      l.q = q;
+      l.panTo = pan;
+      return;
+    }
+    wake(ctx, l, now);
+  }
+  if (Math.abs(v - l.level) >= SILENT) {
+    l.gain.gain.setTargetAtTime(v, now, 0.12);
+    l.level = v;
+  }
+  if (Math.abs(freq - l.freq) >= 0.1) {
+    l.filter.frequency.setTargetAtTime(freq, now, 0.15);
+    l.freq = freq;
+  }
+  if (Math.abs(q - l.q) >= 1e-3) {
+    l.filter.Q.setTargetAtTime(q, now, 0.2);
+    l.q = q;
+  }
+  if (l.pan && Math.abs(pan - l.panTo) >= 1e-3) {
+    l.pan.pan.setTargetAtTime(pan, now, 0.1);
+    l.panTo = pan;
+  }
+  if (v >= SILENT) l.quietSince = -1;
+  else if (l.quietSince < 0) l.quietSince = now;
+  else if (now - l.quietSince > PARK_AFTER) park(l);
 }
 
 /** Silence every layer (sound switched off, or the film left behind). */
 export function quietAll() {
   const ctx = music.context;
   if (!ctx) return;
-  for (const l of layers.values()) l.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.3);
+  for (const l of layers.values()) {
+    l.gain.gain.setTargetAtTime(0, ctx.currentTime, 0.3);
+    // (So the next level asked for is sent, whatever it is.)
+    l.level = -1;
+  }
 }
 
 // ─── cues ──────────────────────────────────────────────────────────────────

@@ -130,14 +130,69 @@ export function paragraph(
   return y + lines.length * lineHeight;
 }
 
+/**
+ * Fitted sizes already found. The search sets and measures the type at every step (dozens of font
+ * parses for a long line) and the walls redraw many times a second while they play, so each answer is
+ * kept: it depends only on the text, its type, the width — and the fonts (the key carries whether
+ * they have loaded, so the web font's metrics replace the fallback's). Bounded: cleared when full.
+ */
+const fitted = new Map<string, { size: number; set: number }>();
+
 /** Largest font size (≤ max) at which `value` fits in `maxWidth`. */
 export function fitSize(ctx: CanvasRenderingContext2D, value: string, maxWidth: number, spec: TypeSpec, max: number, min = 12) {
-  let size = max;
-  while (size > min) {
-    applyType(ctx, { ...spec, size });
-    if (ctx.measureText(value).width <= maxWidth) break;
-    size -= Math.max(1, size * 0.04);
+  const key = `${typeof document !== 'undefined' ? document.fonts?.status : ''}|${spec.family}|${spec.italic ? 1 : 0}|${spec.weight ?? ''}|${spec.tracking ?? ''}|${max}|${min}|${maxWidth}|${value}`;
+  const hit = fitted.get(key);
+  if (hit) {
+    // (Leaves the context's type as the search would have — untouched if it never set one.)
+    if (hit.set === hit.set) applyType(ctx, { ...spec, size: hit.set });
+    return hit.size;
   }
+  // The search steps down from max by 4% (at least 1) and takes the first size that fits — or the first
+  // at or under min. Measuring every step costs a font parse and a measure each (dozens for a long
+  // line), but type's width grows in proportion to its size (its tracking with it), so one measure at
+  // max says where the search will end; only that step and the one before it are measured to confirm,
+  // and if either disagrees the search walks on from there exactly as before. Same answer, same type
+  // left set on the context.
+  const step = (s: number) => s - Math.max(1, s * 0.04);
+  const fits = (s: number) => {
+    applyType(ctx, { ...spec, size: s });
+    last = s;
+    return ctx.measureText(value).width <= maxWidth;
+  };
+  let last = NaN;
+  let size = max;
+  if (size > min && !fits(size)) {
+    const est = (max * maxWidth) / ctx.measureText(value).width;
+    // Skip (without measuring) to the step the estimate points at…
+    let prev = size;
+    size = step(size);
+    while (size > min && size > est) {
+      prev = size;
+      size = step(size);
+    }
+    // …walk back while the step before still fits (the estimate ran long)…
+    while (prev < max && prev > min && fits(prev)) {
+      size = prev;
+      let p = max;
+      while (step(p) > prev) p = step(p);
+      prev = p;
+    }
+    // …and on while this one doesn't (it ran short), exactly as the full search would.
+    while (size > min && !fits(size)) size = step(size);
+  }
+  // (The search leaves the last size it tried set: this one, or — when it ran out at min — the one before.)
+  let set = NaN;
+  if (max > min) {
+    if (size > min) set = size;
+    else {
+      let p = max;
+      while (step(p) > size) p = step(p);
+      set = p;
+    }
+  }
+  if (set === set && last !== set) applyType(ctx, { ...spec, size: set });
+  if (fitted.size > 600) fitted.clear();
+  fitted.set(key, { size, set });
   return size;
 }
 

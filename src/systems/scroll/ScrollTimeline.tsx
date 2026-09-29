@@ -15,14 +15,23 @@ import { progress } from './progress';
 import { wheelGain } from './wheelShape';
 
 let lenis: Lenis | null = null;
+let trigger: ScrollTrigger | null = null;
 
-function maxScroll() {
-  return Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+/**
+ * The page's scroll position for progress `p`, by the same measure the ScrollTrigger reads progress
+ * with. (Not the window's height now: on a phone it changes as the browser's bars come and go, and
+ * the trigger — rightly — isn't re-measured for that; a position from the live height would land
+ * the journey a little off where it was sent, and move it across the loop's seam by a little more
+ * or less than the seam.)
+ */
+function scrollAt(p: number) {
+  if (trigger && trigger.end > trigger.start) return trigger.start + p * (trigger.end - trigger.start);
+  return p * Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
 }
 
 /** Smoothly scroll the journey to progress `p`. */
 export function scrollToProgress(p: number, duration = 2.4) {
-  const y = p * maxScroll();
+  const y = scrollAt(p);
   if (lenis) lenis.scrollTo(y, { duration, force: true, easing: (t: number) => 1 - Math.pow(1 - t, 3) });
   else window.scrollTo({ top: y, behavior: 'auto' });
 }
@@ -34,7 +43,7 @@ export function scrollToProgress(p: number, duration = 2.4) {
  * place. (The loop, where the track's two ends meet inside the mist: JourneyLoop.)
  */
 export function shiftProgress(delta: number) {
-  const dy = delta * maxScroll();
+  const dy = scrollAt(delta) - scrollAt(0);
   progress.target += delta;
   progress.value += delta;
   if (lenis) {
@@ -58,7 +67,7 @@ export function jumpToProgress(p: number, lead = 0, opts: { fade?: boolean } = {
   progress.snap = true;
   progress.snapFade = opts.fade ?? true;
   progress.snapLead = Math.max(0, Math.min(lead, p - progress.lock.min));
-  const y = p * maxScroll();
+  const y = scrollAt(p);
   if (lenis) lenis.scrollTo(y, { immediate: true, force: true });
   else window.scrollTo({ top: y, behavior: 'auto' });
 }
@@ -76,7 +85,7 @@ export function placeScroll(p: number) {
   // keep nudging the page until its scroll position agrees.
   let tries = 0;
   const place = () => {
-    const y = v * maxScroll();
+    const y = scrollAt(v);
     if (lenis) lenis.scrollTo(y, { immediate: true, force: true });
     else window.scrollTo({ top: y, behavior: 'auto' });
     if (progress.hold !== null && ++tries < 40) requestAnimationFrame(place);
@@ -94,7 +103,7 @@ function pullBack() {
   pullQueued = true;
   requestAnimationFrame(() => {
     pullQueued = false;
-    const y = progress.target * maxScroll();
+    const y = scrollAt(progress.target);
     if (lenis) lenis.scrollTo(y, { immediate: true, force: true });
     else window.scrollTo({ top: y, behavior: 'auto' });
   });
@@ -148,6 +157,7 @@ export function ScrollTimeline() {
         if (progress.setTarget(self.progress)) pullBack();
       },
     });
+    trigger = st;
     progress.setTarget(st.progress);
     // The track is sized in viewport heights, so a resize (rotation, window
     // drag) would change what the current pixel offset means. Keep the
@@ -157,7 +167,11 @@ export function ScrollTimeline() {
       kept = progress.target;
     };
     const afterRefresh = () => {
-      const y = kept * maxScroll();
+      const y = scrollAt(kept);
+      // (Lenis measures the page on a debounce of its own, a little after the trigger's refresh:
+      // measured now, or a longer page — a phone turned back upright — is scrolled no further than
+      // the shorter one went, and the next touch reads the journey from there.)
+      instance?.resize();
       if (instance) instance.scrollTo(y, { immediate: true, force: true });
       else window.scrollTo({ top: y, behavior: 'auto' });
       progress.target = kept;
@@ -170,6 +184,7 @@ export function ScrollTimeline() {
       ScrollTrigger.removeEventListener('refreshInit', beforeRefresh);
       ScrollTrigger.removeEventListener('refresh', afterRefresh);
       st.kill();
+      trigger = null;
       if (instance) {
         gsap.ticker.remove(tick);
         instance.destroy();
@@ -186,5 +201,5 @@ export function ScrollTimeline() {
     else lenis?.start();
   }, [phase, overlay, teamsLock, reducedMotion]);
 
-  return <div ref={track} className="scroll-track" style={{ height: `${SCROLL_LENGTH_VH}vh` }} aria-hidden="true" />;
+  return <div ref={track} className="scroll-track" style={{ ['--track' as string]: SCROLL_LENGTH_VH }} aria-hidden="true" />;
 }

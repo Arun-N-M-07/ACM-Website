@@ -7,12 +7,16 @@
 // the mesh that owns it (or, for a render target, the call that made it).
 //
 //   node scripts/qa/loop-memory.mjs <url> [loops=5] [sound|quiet] [--trace]
+// Env: W, H, MOBILE=1 (touch/mobile emulation, e.g. W=390 H=844 DPR=3), DPR.
 import puppeteer from 'puppeteer-core';
 const args = process.argv.slice(2);
 const TRACE = args.includes('--trace');
 const [url = 'http://localhost:3100', loopsArg = '5', sound = 'quiet'] = args.filter((a) => a !== '--trace');
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-const b = await puppeteer.launch({ executablePath: process.env.CHROME ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: 'new', args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--enable-precise-memory-info', '--js-flags=--expose-gc', '--autoplay-policy=no-user-gesture-required', '--window-size=1440,900'], defaultViewport: { width: 1440, height: 900 } });
+const W = Number(process.env.W ?? 1440);
+const H = Number(process.env.H ?? 900);
+const MOBILE = !!process.env.MOBILE;
+const b = await puppeteer.launch({ executablePath: process.env.CHROME ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: 'new', args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist', '--enable-precise-memory-info', '--js-flags=--expose-gc', '--autoplay-policy=no-user-gesture-required', `--window-size=${Math.max(W, 900)},${Math.max(H, 900)}`], defaultViewport: { width: W, height: H, deviceScaleFactor: Number(process.env.DPR ?? 1), isMobile: MOBILE, hasTouch: MOBILE } });
 const page = await b.newPage();
 const logs = [];
 page.on('console', (m) => ['error', 'warn'].includes(m.type()) && logs.push(`[${m.type()}] ${m.text().slice(0, 200)}`));

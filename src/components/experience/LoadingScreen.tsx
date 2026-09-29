@@ -62,13 +62,15 @@ export function LoadingScreen() {
     return () => window.clearTimeout(t);
   }, []);
 
-  // Buffer the score while the world builds, so the film never starts on a stall.
+  // Buffer the score while the world builds, so the film never starts on a stall. (Where the browser
+  // won't fetch it before a gesture — iOS — there is nothing to wait for once the world is ready.)
   useEffect(() => {
     if (!hasTrack) return;
     music.preload();
     const t0 = performance.now();
     const id = window.setInterval(() => {
-      if (music.ready || music.failed || performance.now() - t0 > SCORE_WAIT_MS) {
+      const held = music.held && useExperience.getState().phase === 'ready';
+      if (music.ready || music.failed || held || performance.now() - t0 > SCORE_WAIT_MS) {
         setScoreReady(true);
         window.clearInterval(id);
       }

@@ -48,7 +48,11 @@ export const QUALITY: Record<QualityTier, QualitySettings> = {
     environmentMap: true,
   },
   low: {
-    dpr: [1, 1.25],
+    // (Phones. The floor is below 1: on a weak GPU, when the frame still can't keep up at a pixel per
+    // CSS pixel with the runtime `degrade` knobs turned, fewer pixels than that is the last step — a
+    // smooth scroll is worth more than a sharper frame. Reached only by measured decline, never as a
+    // start: ExperienceCanvas.)
+    dpr: [0.75, 1.25],
     antialias: false,
     shadows: false,
     shadowMapSize: 512,

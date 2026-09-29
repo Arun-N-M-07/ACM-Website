@@ -41,7 +41,7 @@
 import { useEffect, useRef } from 'react';
 import { CORRIDOR } from '@/config/world';
 import { cloud } from '@/intro/look';
-import { PUZZLE_PIECES, puzzlePiece, puzzleSpan, readRoomClock, type RoomClock } from '@/scenes/events/exhibits/common';
+import { PUZZLE_PIECES, puzzlePiece, puzzleSpan, readRoomClock, type RoomClock } from '@/scenes/events/exhibits/roomClock';
 import { introCameraAt } from '@/intro/camera';
 import { CAN, GROUND_Y, gasAmount, rollAt, type RollState } from '@/intro/prologue/layout';
 import { introFrame } from '@/intro/state';
@@ -50,7 +50,7 @@ import { FRAGMENTS } from '@/intro/story/fragments';
 import { T } from '@/intro/timeline';
 import { LIGHTNING } from '@/intro/world/lightning';
 import { useExperience } from '@/store/experience';
-import { cue, type Cue, quietAll, setLayer } from '@/systems/audio/sfx';
+import { cue, type Cue, prepare, quietAll, setLayer } from '@/systems/audio/sfx';
 import { fx } from '@/systems/camera/effects';
 import { useProgressFrame } from './useProgressFrame';
 
@@ -119,6 +119,7 @@ export function SoundDirector() {
 
   useEffect(() => {
     if (!musicOn) quietAll();
+    else prepare();
   }, [musicOn]);
 
   useProgressFrame((_, dt) => {

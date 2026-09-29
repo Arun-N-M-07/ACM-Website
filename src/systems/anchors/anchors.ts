@@ -50,3 +50,17 @@ export function onProjected(cb: () => void) {
 export function emitProjected() {
   for (const cb of listeners) cb();
 }
+
+/**
+ * The canvas's size on screen (CSS px; its top-left is the viewport's). On a phone it is the large
+ * viewport, taller than the window while the browser's bars show (globals.css, .stage), so a point
+ * on screen is placed in the picture with this, not the window's size. (Set by AnchorProjector.)
+ */
+export const stage = { w: 0, h: 0 };
+
+/** A point on screen (CSS px) in the picture's normalised coordinates (−1..1, y up). */
+export function toNdc(clientX: number, clientY: number) {
+  const w = stage.w || window.innerWidth;
+  const h = stage.h || window.innerHeight;
+  return { x: (clientX / w) * 2 - 1, y: -(clientY / h) * 2 + 1 };
+}

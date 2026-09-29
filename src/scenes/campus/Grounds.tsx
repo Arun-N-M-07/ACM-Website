@@ -8,12 +8,14 @@
 import { useFrame } from '@react-three/fiber';
 import { useLayoutEffect, useRef } from 'react';
 import {
+  BackSide,
   BufferAttribute,
   type BufferGeometry,
   CircleGeometry,
   Color,
   CylinderGeometry,
   DoubleSide,
+  FrontSide,
   type Group,
   IcosahedronGeometry,
   type InstancedMesh,
@@ -205,9 +207,16 @@ function Fountains() {
       tall,
       small,
       foamGeo: new CircleGeometry(1, 24).rotateX(-Math.PI / 2),
-      colMat: new MeshBasicMaterial({ ...common, alphaMap: streaks, opacity: 0.85 }),
-      sheetMat: new MeshBasicMaterial({ ...common, alphaMap: streaks2, opacity: 0.32 }),
-      foamMat: new MeshBasicMaterial({ ...common, alphaMap: foam, opacity: 0.7 }),
+      // (The column and the falling sheet are seen through, their far sides behind their near: drawn as
+      // three draws a double-sided see-through thing — back faces, then front — but with a material and a
+      // mesh for each side (below, back first), so their programs aren't re-resolved twice a frame.)
+      colBack: new MeshBasicMaterial({ ...common, side: BackSide, alphaMap: streaks, opacity: 0.85 }),
+      colMat: new MeshBasicMaterial({ ...common, side: FrontSide, alphaMap: streaks, opacity: 0.85 }),
+      sheetBack: new MeshBasicMaterial({ ...common, side: BackSide, alphaMap: streaks2, opacity: 0.32 }),
+      sheetMat: new MeshBasicMaterial({ ...common, side: FrontSide, alphaMap: streaks2, opacity: 0.32 }),
+      // (Flat on the water and only ever seen from above, so of three's two transparent passes only the
+      // front one ever drew: one pass, the same pixels, no program lookups for the side switch.)
+      foamMat: new MeshBasicMaterial({ ...common, alphaMap: foam, opacity: 0.7, forceSinglePass: true }),
     };
   }, []);
   useFrame((_, dt) => {
@@ -223,7 +232,9 @@ function Fountains() {
         const r = i === 0 ? 0.95 : 0.6;
         return (
           <group key={z} position={[0, WATER_Y, z]}>
+            <mesh geometry={g.col} material={res.colBack} renderOrder={4} />
             <mesh geometry={g.col} material={res.colMat} renderOrder={4} />
+            <mesh geometry={g.sheet} material={res.sheetBack} renderOrder={5} />
             <mesh geometry={g.sheet} material={res.sheetMat} renderOrder={5} />
             <mesh geometry={res.foamGeo} material={res.foamMat} scale={[r, 1, r]} position={[0, 0.01, 0]} renderOrder={3} />
           </group>

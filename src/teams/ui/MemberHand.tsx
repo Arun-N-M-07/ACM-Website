@@ -32,6 +32,7 @@
 import { type CSSProperties, useEffect, useMemo, useRef } from 'react';
 import { type TeamDomain, domainIndexLabel } from '@/content/teams';
 import { smooth, useProgressFrame } from '@/components/experience/useProgressFrame';
+import { stage as screen } from '@/systems/anchors/anchors';
 import { useExperience } from '@/store/experience';
 import { applyType, fontsReady, makeCanvas, wrap } from '@/systems/textures/typeset';
 import { type Spring, stepSpring } from '../pointer';
@@ -60,6 +61,11 @@ interface Layout {
   /** The hand's centre on screen. */
   cx: number;
   cy: number;
+  /** The spacing of the cards across the hand (px). */
+  step: number;
+  /** The drawn card: its scale, and its offset from the hand's centre (px, before perspective). */
+  ds: number;
+  dy: number;
 }
 
 interface CardSim {
@@ -86,19 +92,62 @@ const clamp = (x: number, a: number, b: number) => Math.min(b, Math.max(a, x));
 const mix = (a: number, b: number, t: number) => a + (b - a) * t;
 const easeOut = (t: number) => 1 - (1 - t) ** 3;
 
-function measure(n: number): Layout {
+/** A drawn card comes this far forward (px), and this much larger: together, its size over a resting card's. */
+const DRAWN_Z = 170;
+const DRAWN_SCALE = 1.22;
+const NEAR = PERSPECTIVE / (PERSPECTIVE - DRAWN_Z);
+
+/**
+ * The screen's room for the hand, from the chrome that stays over it: the hint and bar above (and,
+ * upright, the domain's name, which heads the screen), the controls below.
+ */
+function chrome(root: Element | null, H: number, portrait: boolean) {
+  const q = (sel: string) => root?.querySelector(sel)?.getBoundingClientRect();
+  const above = Math.max(q('.domain-scroll')?.bottom ?? 0, portrait ? (q('.hand-ident')?.bottom ?? 0) : 0);
+  const below = q('.domain-controls')?.top ?? H;
+  return { top: above + 12, bottom: H - below + 12 };
+}
+
+function measure(n: number, root: Element | null): Layout {
   const W = window.innerWidth;
   const H = window.innerHeight;
   const portrait = W / H < 0.9;
   // Fewer cards, larger cards: a lone card is the hero.
   const few = n === 1 ? 1.16 : n === 2 ? 1.08 : 1;
-  const u = few * (portrait ? clamp(W * 0.42, 150, 230) : clamp(Math.min(W * 0.21, H * 0.34), 236, 340));
-  return { W, H, u, ch: u * 1.42, cx: W * (portrait ? 0.5 : 0.535), cy: H * (portrait ? 0.6 : 0.575) };
+  let u = few * (portrait ? clamp(W * 0.42, 150, 230) : clamp(Math.min(W * 0.21, H * 0.34), 236, 340));
+  const k = n === 2 ? 0.8 : n <= 4 ? 0.74 : Math.max(0.42, 2.6 / (n - 1));
+  const cx = W * (portrait ? 0.5 : 0.535);
+  let cy = H * (portrait ? 0.6 : 0.575);
+  const across = n === 1 ? 1.3 : 1 + (n - 1) * k + 0.16;
+  const drawn0 = 1.42 * DRAWN_SCALE * NEAR * u;
+  const drawnC = cy - 0.04 * u * NEAR;
+  // As laid out, wherever the hand — the whole fan, and a card drawn from it — is on screen.
+  if ((u * across) / 2 <= Math.min(cx, W - cx) && drawnC - drawn0 / 2 >= 0 && drawnC + drawn0 / 2 <= H) {
+    return { W, H, u, ch: u * 1.42, cx, cy, step: k * u, ds: DRAWN_SCALE, dy: -0.04 * u };
+  }
+
+  // A phone (upright, or on its side) has less room than that: there the cards come smaller rather
+  // than leave the screen — the fan across it, a drawn card clear of the chrome — and a drawn card
+  // comes larger instead, so its name and role still read.
+  const { top, bottom } = chrome(root, H, portrait);
+  const band = Math.max(1, H - top - bottom);
+  const room = W - 2 * Math.max(16, W * 0.04);
+  const drawnMax = Math.min(room, band / 1.42);
+  u = Math.max(40, Math.min(u, room / across, drawnMax / (DRAWN_SCALE * NEAR)));
+  const drawnW = Math.min(Math.max(DRAWN_SCALE * NEAR * u, Math.min(0.8 * W, 320)), drawnMax);
+  const ch = u * 1.42;
+  // The resting hand within the band; the drawn card at its place, or as near it as the band allows.
+  cy = clamp(cy, Math.min(top + 0.82 * u, H / 2), Math.max(H - bottom - 0.86 * u, H / 2));
+  const drawnH = 1.42 * drawnW;
+  const yc = clamp(cy - 0.04 * u * NEAR, top + drawnH / 2, Math.max(top + drawnH / 2, H - bottom - drawnH / 2));
+  return { W, H, u, ch, cx, cy, step: k * u, ds: drawnW / (u * NEAR), dy: (yc - cy) / NEAR };
 }
 
 /** The name block's width on a card, and its largest type (fractions of the card's width). */
 const NAME_W = 0.66;
 const NAME_MAX = 0.125;
+/** The card's face inside its margins (hand-card__face: padding 0.1 of the width either side). */
+const FACE_W = 0.8;
 
 /**
  * A name as large as the card allows in at most three lines, never leaving a
@@ -107,14 +156,18 @@ const NAME_MAX = 0.125;
 function nameSize(ctx: CanvasRenderingContext2D, name: string, u: number) {
   const width = NAME_W * u;
   let size = NAME_MAX * u;
+  let longest = 0;
   for (; size > NAME_MAX * u * 0.7; size *= 0.96) {
     applyType(ctx, { family: 'serif', size });
     const lines = wrap(ctx, name, width);
-    const fits = Math.max(...lines.map((l) => ctx.measureText(l).width)) <= width;
+    longest = Math.max(...lines.map((l) => ctx.measureText(l).width));
     const orphan = lines.length > 1 && lines.some((l) => l.replace(/[^\p{L}]/gu, '').length <= 2);
-    if (fits && lines.length <= 3 && !orphan) break;
+    if (longest <= width && lines.length <= 3 && !orphan) return size;
   }
-  return size;
+  // A single long word may run past the name's measure, but never off the card's face.
+  applyType(ctx, { family: 'serif', size });
+  longest = Math.max(...wrap(ctx, name, width).map((l) => ctx.measureText(l).width));
+  return longest > FACE_W * u ? (size * FACE_W * u) / longest : size;
 }
 
 /**
@@ -126,7 +179,7 @@ function restPose(i: number, n: number, L: Layout, lead: boolean): Pose {
   const j = (k: number) => Math.sin(i * 12.9898 + k * 78.233 + n) * 0.5;
   if (n === 1) return { x: L.u * 0.12, y: 0, z: 0, rx: 3, ry: -9, rz: -2.4 };
   const t = i - (n - 1) / 2;
-  const step = (n === 2 ? 0.8 : n <= 4 ? 0.74 : Math.max(0.42, 2.6 / (n - 1))) * L.u;
+  const step = L.step;
   const turn = n === 2 ? 3.2 : Math.min(4.6, 16 / (n - 1));
   return {
     x: t * step + j(1) * 0.03 * L.u,
@@ -164,7 +217,7 @@ export function MemberHand({ domain, index, open }: { domain: TeamDomain; index:
     sims.current = people.map(() => ({ h: spring(), p: spring(), s: spring(), tx: spring(), ty: spring(), lx: 9, ly: 9, last: '', lastVars: '' }));
     teamsFrame.member = -1;
     const place = () => {
-      const L = measure(n);
+      const L = measure(n, stage.current?.closest('.domain-detail') ?? null);
       layout.current = L;
       rest.current = people.map((_, i) => restPose(i, n, L, lead));
       const el = stage.current;
@@ -217,8 +270,8 @@ export function MemberHand({ domain, index, open }: { domain: TeamDomain; index:
 
     // The pointer, in CSS px, and where it is on each card at rest.
     const pointerOn = ready && f.pointer.active && !reduced;
-    const px = (f.pointer.x + 1) * 0.5 * L.W;
-    const py = (1 - f.pointer.y) * 0.5 * L.H;
+    const px = (f.pointer.x + 1) * 0.5 * (screen.w || L.W);
+    const py = (1 - f.pointer.y) * 0.5 * (screen.h || L.H);
     let hit = -1;
     let keep = false;
     let near = -1;
@@ -320,12 +373,12 @@ export function MemberHand({ domain, index, open }: { domain: TeamDomain; index:
         rz += Math.sign(i - drawn) * 3 * others;
       }
       x = mix(x, 0, d);
-      y = mix(y, -0.04 * L.u, d);
-      z = mix(z, 170, d);
+      y = mix(y, L.dy, d);
+      z = mix(z, DRAWN_Z, d);
       rx = mix(rx, -s.ty.v * 2, d);
       ry = mix(ry, s.tx.v * 3, d);
       rz = mix(rz, 0, d);
-      sc = mix(sc, 1.22, d);
+      sc = mix(sc, L.ds, d);
       // The deal: out of a stack at the opening, in the order they lie, the
       // depth order kept all the way (so no card passes through another).
       const lag = n > 1 ? 0.08 : 0;

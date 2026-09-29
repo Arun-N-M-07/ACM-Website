@@ -491,10 +491,12 @@ export function TalkSignal({ event, index, width, depth, clock, response }: Piec
         };
         paint();
         const map = toTexture(canvas);
-        document.fonts?.ready.then(() => {
-          paint();
-          map.needsUpdate = true;
-        });
+        // (Again once the web fonts are here — only if painting set one loading: otherwise it would paint the same.)
+        if (document.fonts && document.fonts.status !== 'loaded')
+          document.fonts.ready.then(() => {
+            paint();
+            map.needsUpdate = true;
+          });
         return { map, mat: new MeshBasicMaterial({ map, transparent: true, opacity: 0, depthWrite: false, toneMapped: false }) };
       }),
     [speakers, topics],
@@ -506,7 +508,8 @@ export function TalkSignal({ event, index, width, depth, clock, response }: Piec
 
   const nameRefs = useRef<(Mesh | null)[]>([]);
   const sweeps = useRef<(Mesh | null)[]>([]);
-  const state = useMemo(() => ({ v: { v: 0, e: 0 }, stage: 0, wall: 0, idle: false }), []);
+  // (`drawn`: what the line and cable were last drawn for — they are a pure function of it.)
+  const state = useMemo(() => ({ v: { v: 0, e: 0 }, stage: 0, wall: 0, idle: false, drawn: { s: NaN, act: NaN, res: null as unknown, energy: 0 } }), []);
   const white = useMemo(() => new Color('#fff4e6'), []);
   const bone = useMemo(() => new Color('#efe9df'), []);
 
@@ -526,7 +529,9 @@ export function TalkSignal({ event, index, width, depth, clock, response }: Piec
 
     // Along the cable, then outward along the line: the same voice, later the further it has come.
     const lineLive = s > 0.5 && s < PHRASES[PHRASES.length - 1] + PHRASE_LEN + res.cableLen / C_CABLE + L / C_ROOM + 1;
-    if (lineLive || !state.idle) {
+    // (Redrawn and re-uploaded only when the visit has moved: standing still, the buffers already hold this frame.)
+    const drawn = state.drawn;
+    if ((lineLive || !state.idle) && (s !== drawn.s || act !== drawn.act || res !== drawn.res)) {
       const wave = state.v;
       let wallEnergy = 0;
       for (let k = 0; k < n; k++) {
@@ -565,7 +570,6 @@ export function TalkSignal({ event, index, width, depth, clock, response }: Piec
       }
       pos.needsUpdate = true;
       col.needsUpdate = true;
-      state.wall += (wallEnergy - state.wall) * (1 - Math.exp(-dt * 2.5));
       // Cable: brightness only.
       const cc = res.cable.attributes.color as BufferAttribute;
       const ring = cc.count / (res.cableSeg + 1);
@@ -577,6 +581,13 @@ export function TalkSignal({ event, index, width, depth, clock, response }: Piec
         for (let j = 0; j < ring; j++) cc.setXYZ(i * ring + j, res.accent.r * b, res.accent.g * b, res.accent.b * b);
       }
       cc.needsUpdate = true;
+      drawn.s = s;
+      drawn.act = act;
+      drawn.res = res;
+      drawn.energy = wallEnergy;
+    }
+    if (lineLive || !state.idle) {
+      state.wall += (drawn.energy - state.wall) * (1 - Math.exp(-dt * 2.5));
       state.idle = !lineLive;
     }
 
@@ -674,10 +685,12 @@ function typePanel(width: number, height: number, paint: (ctx: CanvasRenderingCo
   };
   draw();
   const map = toTexture(canvas);
-  document.fonts?.ready.then(() => {
-    draw();
-    map.needsUpdate = true;
-  });
+  // (Only if drawing set a web font loading: otherwise the second draw would be the same.)
+  if (document.fonts && document.fonts.status !== 'loaded')
+    document.fonts.ready.then(() => {
+      draw();
+      map.needsUpdate = true;
+    });
   return { map, geo: new PlaneGeometry(width, height), mat: new MeshBasicMaterial({ map, transparent: true, depthWrite: false, toneMapped: false }) };
 }
 

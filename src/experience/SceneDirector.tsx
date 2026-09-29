@@ -56,12 +56,14 @@ export function SceneDirector() {
   const facility = useRef<Group>(null);
 
   useFrame((_, dt) => {
-    // What the opening's camera can see: the campus until it is down in the
-    // lobby, the corridor once the door begins to open onto it.
+    // What the opening's camera can see: the campus until it goes down the
+    // shaft (from half a beat before T.shaft the campus, sky and all, adds not
+    // one pixel to the frame — checked frame against frame), the corridor once
+    // the door begins to open onto it.
     const film = introFrame.active;
     const t = introFrame.t;
     const inside = teamsFrame.inside;
-    if (campus.current) campus.current.visible = film && t < T.lobby;
+    if (campus.current) campus.current.visible = film && t < T.shaft;
     if (corridor.current) corridor.current.visible = !film || t > T.door - 0.5;
     // The facility is somewhere else entirely while the camera is in the Teams world.
     if (facility.current) facility.current.visible = !inside;
