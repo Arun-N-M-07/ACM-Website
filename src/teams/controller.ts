@@ -181,7 +181,7 @@ export function updateTeams(dt: number, camera: PerspectiveCamera) {
     exitTeams({ reduced });
   }
 
-  // At rest at the entrance (facing THE TEAM, the scroll on its floor)?
+  // At rest at the entrance (facing THE CREW, the scroll on its floor)?
   const resting = f.inside && st.state === 'teamsActive' && progress.target <= progress.lock.min + 0.0006 && f.c <= C_ENTRY + 0.03 && Math.abs(f.cV) < 0.08;
   f.floorRest = resting ? f.floorRest + dt : 0;
 

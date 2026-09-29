@@ -1,0 +1,598 @@
+===============================================================
+ADDITIONAL FINAL CHANGES — CREW + END TRANSITION
+===============================================================
+
+There are THREE total tasks in this improvement pass:
+
+1. CodHer / Open Source Mentorship room redesign
+2. Rename the Teams experience to THE CREW
+3. Add a smooth mosaic/glitch end → start transition
+
+All three must be implemented carefully without breaking the
+existing experience.
+
+===============================================================
+TASK 1 — CODHER / OPEN SOURCE MENTORSHIP ROOM
+===============================================================
+
+Redesign and significantly improve the CodHer / Open Source
+Mentorship room.
+
+The current PC/laptop arrangement is GOOD and must remain.
+
+Do NOT replace the existing workstation arrangement.
+
+The room should continue to feel like a developer workspace.
+
+KEEP the existing commit heatmap.
+
+The commit heatmap is especially appropriate for an Open Source
+room, so preserve it and redesign its visual treatment to feel
+more integrated with the room.
+
+Adapt:
+
+- colors
+- glow
+- framing
+- material
+- lighting
+- depth
+- surrounding composition
+
+to the Open Source room's visual identity.
+
+Do not simply copy GitHub's exact colors or UI.
+
+Create a custom visual language.
+
+---------------------------------------------------------------
+
+The wall currently has additional visual potential.
+
+Create a new, strong wall concept related specifically to:
+
+- open source
+- contribution
+- collaboration
+- mentorship
+- Git workflows
+- repositories
+- pull requests
+- contributors
+- community
+
+Do NOT fill the wall with random decoration.
+
+Do NOT use generic:
+
+- code posters
+- giant GitHub logos
+- stock developer imagery
+- random neon graphics
+- floating code
+- generic cyberpunk elements
+
+Develop a cohesive architectural/physical concept.
+
+Potential directions include:
+
+- contribution constellation
+- branching Git installation
+- project/repository wall
+- contribution timeline
+- contributor network
+- pull-request / merge artifacts
+- physical-digital development installation
+
+Choose the strongest concept and implement it rather than
+combining every idea.
+
+The wall should have:
+
+- hierarchy
+- focal point
+- negative space
+- depth
+- relationship with the existing PCs
+- relationship with the commit heatmap
+- appropriate cinematic lighting
+
+The result should feel like an intentional Open Source
+Mentorship environment.
+
+Preserve:
+
+- existing PC/laptop arrangement
+- existing commit heatmap
+- existing room architecture
+- existing Teams architecture
+- existing camera behavior
+- existing performance standards
+
+Test the redesigned room from the ACTUAL camera path, not just
+from an editor/free-camera viewpoint.
+
+Test:
+
+- entering the room
+- approaching the room
+- viewing the wall
+- moving past it
+- reverse scrolling
+
+Do not modify unrelated domains.
+
+===============================================================
+TASK 2 — CHANGE "THE TEAM" TO "THE CREW"
+===============================================================
+
+The current Teams section should now be conceptually branded as:
+
+THE CREW
+
+The existing large:
+
+"THE TEAM"
+
+entrance/reveal must become:
+
+"THE CREW"
+
+Preserve the existing cinematic entrance concept and animation
+quality.
+
+Do NOT simply replace the text visually and leave the rest of
+the implementation semantically inconsistent.
+
+Perform a COMPLETE terminology audit of the Teams experience.
+
+Wherever "Team" / "Teams" is used specifically to refer to the
+website's Teams section, update the terminology appropriately
+to the new CREW concept.
+
+Examples to inspect include:
+
+- THE TEAM
+- TEAM section
+- Teams portal
+- Teams navigation labels
+- Teams-related UI text
+- chapter labels
+- accessibility labels
+- screen-reader labels
+- internal user-facing descriptions
+- transition text
+- section headings
+- loading/entry text
+- end-state text
+- relevant metadata or constants if they are user-facing
+
+The final user-facing experience should consistently communicate
+THE CREW.
+
+IMPORTANT:
+
+Do NOT blindly rename every occurrence of the word "team" in the
+entire codebase.
+
+Only change terminology that refers to the website's Teams
+experience.
+
+Do NOT change:
+
+- team member roles
+- organizational data
+- unrelated technical terminology
+- third-party/library terminology
+- code where "team" has a different legitimate meaning
+
+---------------------------------------------------------------
+
+DOMAIN DATA MUST REMAIN UNCHANGED
+
+The six domains remain exactly:
+
+1. Web and App Development
+2. Competitive Programming and Technical Development
+3. Events and Functioning
+4. Contents and Design
+5. HR and Logistics
+6. Marketing
+
+CORE remains part of the experience.
+
+Do not alter people assignments.
+
+Do not add roll numbers to the visual experience.
+
+---------------------------------------------------------------
+
+THE CREW ENTRANCE
+
+The existing cinematic 3D entrance must now say:
+
+THE CREW
+
+Preserve:
+
+- camera choreography
+- letterform treatment
+- entrance timing
+- scroll-driven behavior
+- depth
+- lighting
+- transition into the spine
+
+But polish the composition specifically for the new word.
+
+Because "CREW" has different letter geometry from "TEAM":
+
+- verify framing
+- verify letter spacing
+- verify camera alignment
+- verify the zoom/reveal
+- verify the transition into the spine
+
+Do NOT simply force the old TEAM geometry onto CREW.
+
+Make sure the new word looks intentional.
+
+===============================================================
+TASK 3 — END OF CREW → MOSAIC GLITCH → START
+===============================================================
+
+After the user reaches the end of the complete CREW experience,
+introduce a new cinematic transition back to the beginning.
+
+The desired visual language:
+
+FINAL CREW STATE
+↓
+slight additional scroll
+↓
+world begins to fragment
+↓
+mosaic/glitch transition
+↓
+image/world breaks into controlled visual tiles
+↓
+tiles dissolve/rearrange/fragment
+↓
+the existing opening atmosphere emerges
+↓
+START
+
+The transition should feel like the entire digital world is
+being deconstructed and reconstructed.
+
+It should be:
+
+- smooth
+- cinematic
+- mysterious
+- controlled
+- premium
+- atmospheric
+
+NOT:
+
+- a cheap glitch effect
+- a sudden screen filter
+- a hard cut
+- a loading animation
+- a random RGB glitch
+- a generic TV-error effect
+
+---------------------------------------------------------------
+
+IMPORTANT: SCROLL-DRIVEN
+
+The mosaic/glitch transition MUST be driven by the authoritative
+scroll/progress state.
+
+Do NOT use:
+
+- setTimeout
+- arbitrary delays
+- animation that plays independently of scroll
+- automatic timers
+- teleportation
+- hard progress jumps
+
+The user should control the transition with scrolling.
+
+For example:
+
+final Crew state
+→ 0%
+→ 25%
+→ 50%
+→ 75%
+→ 100%
+→ opening state
+
+The exact implementation is up to the existing architecture.
+
+---------------------------------------------------------------
+
+VISUAL CONCEPT
+
+Explore a sophisticated mosaic treatment.
+
+Possible visual behavior:
+
+- scene breaks into rectangular/square tiles
+- tiles subtly offset
+- depth layers separate
+- tiles distort
+- image fragments reorganize
+- fragments become atmospheric particles
+- fragments dissolve into fog
+- underlying opening scene begins to appear
+
+The effect should feel like:
+
+DIGITAL WORLD
+→ DECONSTRUCTION
+→ FRAGMENTATION
+→ ATMOSPHERE
+→ RECONSTRUCTION
+
+Avoid excessive chromatic aberration.
+
+Avoid aggressive RGB splitting.
+
+Avoid generic "glitch transition" presets.
+
+The effect should remain consistent with the cinematic visual
+language of the website.
+
+---------------------------------------------------------------
+
+START STATE REVEAL
+
+The final stage of the mosaic transition should naturally reveal
+the existing opening state.
+
+Do NOT create a second version of the Intro.
+
+Do NOT reload the page.
+
+Do NOT teleport the camera.
+
+Do NOT reset the application abruptly.
+
+Reuse the existing Intro start state.
+
+The user should feel as though the world has transformed back
+into its beginning.
+
+---------------------------------------------------------------
+
+CAMERA CONTINUITY
+
+The camera must remain continuous throughout:
+
+FINAL CREW
+→ MOSAIC
+→ ATMOSPHERE
+→ START
+
+No:
+
+- position snap
+- rotation snap
+- FOV jump
+- velocity discontinuity
+- sudden lighting jump
+- abrupt opacity change
+- progress discontinuity
+
+If the visual transition requires hiding the camera movement,
+the transition itself must provide that visual occlusion naturally.
+
+Do not use a second camera system.
+
+---------------------------------------------------------------
+
+AUDIO
+
+The mosaic transition should have an appropriate sound design
+layer if the existing audio architecture supports it.
+
+It should feel:
+
+- digital
+- spatial
+- mysterious
+- cinematic
+
+Avoid generic loud glitch sounds.
+
+The sound should be subtle enough that it does not compete with
+the background music.
+
+Audio must also be reversible/cleanly managed when the user
+scrolls backward.
+
+No stale transition sound should remain playing after leaving
+the transition.
+
+---------------------------------------------------------------
+
+REVERSE BEHAVIOR
+
+This is critical.
+
+The transition must work in BOTH directions.
+
+Forward:
+
+FINAL CREW
+→ MOSAIC
+→ START
+
+Reverse:
+
+START
+→ MOSAIC
+→ FINAL CREW
+
+The visual state must interpolate deterministically from the
+same authoritative progress.
+
+Do NOT implement separate forward and reverse animations that
+can drift apart.
+
+Do NOT use a one-shot animation.
+
+The same progress parameter should determine the transition state.
+
+---------------------------------------------------------------
+
+PERFORMANCE
+
+Do not create an expensive full-screen effect that destroys
+mobile performance.
+
+Prefer:
+
+- shader-based mosaic where appropriate
+- controlled render resolution
+- reusable buffers
+- existing post-processing architecture
+- limited tile counts
+- adaptive quality
+
+Avoid creating hundreds/thousands of independent React or
+Three.js objects unnecessarily.
+
+The transition must work on mobile as well.
+
+Use existing quality tiers where appropriate.
+
+---------------------------------------------------------------
+
+LOOP STABILITY
+
+Test:
+
+CREW
+→ MOSAIC
+→ START
+→ INTRO
+→ EVENTS
+→ CREW
+→ MOSAIC
+→ START
+
+Repeat multiple times.
+
+Verify:
+
+- no memory growth
+- no duplicate tiles
+- no duplicate animation loops
+- no duplicate audio
+- no resource leaks
+- no accumulated render targets
+- no stale state
+
+===============================================================
+INTEGRATION REQUIREMENTS
+===============================================================
+
+All THREE tasks must coexist cleanly.
+
+Do not allow:
+
+CodHer redesign
+or
+THE CREW rename
+or
+Mosaic transition
+
+to break:
+
+- Intro
+- Events
+- Teams/Crew
+- camera
+- Lenis
+- audio
+- responsive behavior
+- mobile experience
+- optimization work
+- infinite loop
+
+===============================================================
+VALIDATION
+===============================================================
+
+After implementation:
+
+1. Run typecheck.
+2. Run production build.
+3. Run git diff --check.
+4. Run existing QA scripts.
+5. Test the complete forward journey.
+6. Test complete reverse journey.
+7. Test the CodHer room.
+8. Verify THE CREW entrance.
+9. Verify all user-facing Teams terminology.
+10. Test CREW → mosaic → START.
+11. Test START → mosaic → CREW.
+12. Test repeated loops.
+13. Test desktop.
+14. Test mobile.
+15. Test Chrome.
+16. Test Safari.
+17. Test Firefox.
+
+===============================================================
+GIT SAFETY
+===============================================================
+
+DO NOT:
+
+- reset
+- revert
+- stash
+- overwrite unrelated work
+- delete working systems
+- push
+- commit unless explicitly requested
+
+===============================================================
+FINAL ACCEPTANCE
+===============================================================
+
+TASK 1:
+CodHer feels unmistakably like an Open Source Mentorship room.
+
+TASK 2:
+The Teams experience is consistently branded as THE CREW,
+with the new entrance reading:
+
+THE CREW
+
+TASK 3:
+The end of the Crew experience transitions smoothly through
+a premium mosaic/glitch deconstruction into the existing
+opening atmosphere.
+
+The entire experience remains:
+
+- scroll-driven
+- deterministic
+- reversible
+- cinematic
+- performant
+- mobile-compatible
+- desktop-safe
+- browser-compatible
+
+Do not merely implement the visual idea.
+
+Make it feel like it was always part of the original website.

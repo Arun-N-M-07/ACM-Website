@@ -2,7 +2,7 @@
 /**
  * Every content plate along the journey, in order: one per event room. (The
  * opening cinematic says what it has to say in the world itself — src/intro —
- * the portal speaks for itself — its sign, THE TEAMS — and the Teams world has
+ * the portal speaks for itself — its sign, THE CREW — and the Crew (the Teams world) has
  * its own interface: src/teams/ui.)
  */
 import { useMemo } from 'react';

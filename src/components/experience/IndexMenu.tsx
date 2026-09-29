@@ -72,8 +72,8 @@ export function IndexMenu() {
             ))}
           </ol>
         </nav>
-        <nav aria-label="Meet the team">
-          <p className="kicker">Meet the team</p>
+        <nav aria-label="Meet the crew">
+          <p className="kicker">Meet the crew</p>
           <ol className="index-rooms">
             {TEAM_DOMAINS.map((d, i) => (
               <li key={d.slug}>
@@ -143,7 +143,7 @@ export function IndexMenu() {
           <p className="kicker">Keys</p>
           <ul className="index-keys">
             <li>
-              <span className="kbd">Scroll</span> / <span className="kbd">Space</span> travel · hold the portal to enter the Teams
+              <span className="kbd">Scroll</span> / <span className="kbd">Space</span> travel · hold the portal to enter the Crew
             </li>
             <li>
               <span className="kbd">N</span> / <span className="kbd">P</span> next / previous stop

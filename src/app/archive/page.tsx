@@ -4,7 +4,7 @@ import { ArchiveDocument } from '@/components/archive/ArchiveDocument';
 export const metadata: Metadata = {
   title: 'The chapter in print',
   description:
-    'Everything about the ACM-CEG Student Chapter on one page: programmes and events, Prodigy and CodHer, the team, alumni, the Stack’D newsletter, FAQ and contact.',
+    'Everything about the ACM-CEG Student Chapter on one page: programmes and events, Prodigy and CodHer, the crew, alumni, the Stack’D newsletter, FAQ and contact.',
   alternates: { canonical: '/archive' },
 };
 

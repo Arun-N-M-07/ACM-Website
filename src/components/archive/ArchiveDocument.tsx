@@ -37,7 +37,7 @@ const TOC = [
   ['about', 'About'],
   ['programmes', 'Programmes'],
   ['gallery', 'Gallery'],
-  ['team', 'Team'],
+  ['team', 'Crew'],
   ['alumni', 'Alumni'],
   ['newsletter', 'Newsletter'],
   ['faq', 'FAQ'],
@@ -169,7 +169,7 @@ export function ArchiveDocument({ headingLevel = 1 }: { headingLevel?: 1 | 2 }) 
 
       <section id="team" className="archive-section" aria-labelledby="team-h">
         <p className="section-no">04</p>
-        <h2 id="team-h">The team</h2>
+        <h2 id="team-h">The crew</h2>
         <h3>Founder &amp; faculty</h3>
         <ul className="people faculty">
           {FACULTY.map((f) => (

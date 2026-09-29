@@ -120,7 +120,7 @@ export const CHAPTERS: ChapterDef[] = [
   { id: 'portal', number: '07', label: 'The Portal', jumpTo: SEGMENTS.portal.start + (SEGMENTS.portal.end - SEGMENTS.portal.start) * (PORTAL_DWELL + 0.08), segments: ['portal'] },
   // Entered through the portal (navigation plays the travel), never jumped into. (Its return — into
   // the mist, and round to the beginning — belongs to it.)
-  { id: 'teams', number: '08', label: 'The Teams', jumpTo: null, segments: ['teams', 'return'] },
+  { id: 'teams', number: '08', label: 'The Crew', jumpTo: null, segments: ['teams', 'return'] },
 ];
 
 export function chapterForSegment(seg: SegmentId): ChapterId {

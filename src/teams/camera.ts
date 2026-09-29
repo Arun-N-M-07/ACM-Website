@@ -88,7 +88,7 @@ export function orbitShot(c: number, comp: Composition, out: Shot) {
   return out;
 }
 
-// ─── THE TEAM: the entrance path (c from C_ENTRY to 0) ──────────────────────
+// ─── THE CREW: the entrance path (c from C_ENTRY to 0) ──────────────────────
 //
 // Out of the tunnel's mouth the camera stands far enough back to see the whole
 // title, approaches until the letters are enormous, skims the letter faces,
@@ -366,7 +366,7 @@ export const makeTunnel = (): TunnelFrame => ({ start: new Vector3(), exit: new 
 const _entry = makeShot();
 /**
  * The tunnel opens exactly where the entrance path begins (the floor of the
- * world's scroll), on the line of the camera's first look at THE TEAM — so the
+ * world's scroll), on the line of the camera's first look at THE CREW — so the
  * travel hands straight over to scroll, with no timed glide in between.
  */
 export function tunnelFor(comp: Composition, out: TunnelFrame) {
@@ -439,7 +439,7 @@ export function travelInPose(t: number, from: CameraPose, tunnel: TunnelFrame, c
   const s = 1 - Math.pow(1 - u, 1.7);
   _t.pos.lerpVectors(tunnel.start, tunnel.exit, s);
   _t.target.copy(_t.pos).addScaledVector(tunnel.dir, 10);
-  // In the last stretch the eye settles on THE TEAM, the entrance path's first look.
+  // In the last stretch the eye settles on THE CREW, the entrance path's first look.
   arrivalStartShot(tunnel, comp, _entry);
   _t.target.lerp(_entry.target, smoothstep(0.7, 1, u));
   // Wide at speed, compressed towards the exit.

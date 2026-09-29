@@ -119,7 +119,7 @@ export const teamsFrame = {
   focusK: 0,
 
   // ── Orbit ─────────────────────────────────────────────────────────────────
-  /** The orbit coordinate: < 0 the entrance (THE TEAM), 0 = card 01 centred … 6 = card 07, beyond = outro. */
+  /** The orbit coordinate: < 0 the entrance (THE CREW), 0 = card 01 centred … 6 = card 07, beyond = outro. */
   c: -0.35,
   /** dc/dt (cards per second), smoothed at the camera's rate (bank, particles). */
   cVel: 0,

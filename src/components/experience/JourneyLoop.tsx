@@ -70,7 +70,7 @@ export function JourneyLoop() {
   useProgressFrame((p) => {
     const st = useExperience.getState();
     const inside = teamsFrame.inside;
-    // The mist: at the end, inside the Teams world, past the last card; at the start, before the film.
+    // The mist: at the end, inside the Crew's world, past the last card; at the start, before the film.
     fx.mist = inside ? mistAtEnd(p) : introTimeAt(p) < T.prologue ? mistAtStart(p) : 0;
 
     const open = st.phase === 'cinematic' && !st.menuOpen && !st.dossier && !st.textVersionOpen;

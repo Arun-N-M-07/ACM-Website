@@ -1,6 +1,6 @@
 'use client';
 /**
- * THE TEAM — the entrance to the world, set as architecture.
+ * THE CREW — the entrance to the world, set as architecture.
  *
  * The site's own display face (letters.ts) extruded into solid slabs at the
  * scale of a building. The space between the words is a real passage: the
@@ -66,5 +66,5 @@ export function TeamEntrance({ env, comp }: { env: Texture | null; comp: Composi
     m.visible = travelling || teamsFrame.c < HIDE_AFTER;
   });
 
-  return <mesh ref={mesh} name="the-team-architecture" position={[O.x, O.y, O.z + ENTRY_Z]} geometry={res.geometry} material={res.material} />;
+  return <mesh ref={mesh} name="the-crew-architecture" position={[O.x, O.y, O.z + ENTRY_Z]} geometry={res.geometry} material={res.material} />;
 }

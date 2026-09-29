@@ -6,7 +6,7 @@
  * the camera, the post pass and the tunnel each frame.
  *
  *   enter:  hold completes → plunge into the ring → [crossing, hidden by a
- *           bloom-out] → streak tunnel → out of the mouth, facing THE TEAM
+ *           bloom-out] → streak tunnel → out of the mouth, facing THE CREW
  *           → teamsActive at once: the tunnel ends exactly on the entrance
  *           path's first pose, so scroll takes over with no timed glide.
  *           The world's light comes up over the next moment (ambient only —
@@ -56,7 +56,7 @@ function setInside(inside: boolean) {
   applyScrollLock();
 }
 
-/** The progress value the arrival settles on: the floor of the world, facing THE TEAM. */
+/** The progress value the arrival settles on: the floor of the world, facing THE CREW. */
 const REST_P = TEAMS_FLOOR;
 
 function resetTravel(dir: 1 | -1) {

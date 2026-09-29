@@ -67,7 +67,7 @@ export function PortalHold() {
       <button
         ref={btn}
         className="portal-target"
-        aria-label="Touch and hold to enter the Teams world"
+        aria-label="Touch and hold to enter the Crew"
         aria-describedby="portal-hold-hint"
         onPointerDown={(e) => {
           if (e.pointerType === 'mouse' && e.button !== 0) return;
@@ -106,7 +106,7 @@ export function PortalHold() {
         <span className="portal-label-bar">
           <span ref={bar} />
         </span>
-        <span className="portal-label-sub">to enter the Teams</span>
+        <span className="portal-label-sub">to enter the Crew</span>
       </div>
     </div>
   );

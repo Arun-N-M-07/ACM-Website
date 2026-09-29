@@ -32,7 +32,7 @@ const ndc = toNdc;
 const atGate = () => !teamsFrame.inside && progress.target >= progress.lock.max - 0.0004;
 const atFloor = () => teamsFrame.inside && progress.target <= progress.lock.min + 0.0006;
 /**
- * …and the camera has been at rest there, facing THE TEAM, for a moment. Only
+ * …and the camera has been at rest there, facing THE CREW, for a moment. Only
  * then does upward scroll count as the pull that goes back out through the
  * portal — so the momentum of one long fling back to the entrance can't carry
  * you out.

@@ -200,8 +200,8 @@ export function Portal() {
         drawKey="portal-lintel"
         draw={(ctx, w, h) => {
           text(ctx, 'BEYOND THE EVENTS', w / 2, h * 0.3, { family: 'mono', size: h * 0.15, color: 'rgba(239,233,223,0.55)', align: 'center', tracking: 0.32 });
-          const s = fitSize(ctx, 'THE TEAMS', w * 0.62, { family: 'sans', weight: 700, size: h, stretch: 'expanded', tracking: 0.24 }, h * 0.36);
-          text(ctx, 'THE TEAMS', w / 2, h * 0.84, { family: 'sans', weight: 700, size: s, color: '#efe9df', align: 'center', stretch: 'expanded', tracking: 0.2 });
+          const s = fitSize(ctx, 'THE CREW', w * 0.62, { family: 'sans', weight: 700, size: h, stretch: 'expanded', tracking: 0.24 }, h * 0.36);
+          text(ctx, 'THE CREW', w / 2, h * 0.84, { family: 'sans', weight: 700, size: s, color: '#efe9df', align: 'center', stretch: 'expanded', tracking: 0.2 });
         }}
       />
     </group>

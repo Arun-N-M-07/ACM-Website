@@ -22,7 +22,7 @@ export function DomainDetail() {
     <p className="domain-scroll" aria-hidden="true">Scroll to return</p>
     <nav className="domain-controls" aria-label="Domain controls" inert={!open}>
       <button onClick={() => stepDomain(-1)} disabled={!open || selected === 0} aria-label="Previous domain">← Previous</button>
-      <button onClick={closeDomain} disabled={!open} aria-label="Close">Return to Teams</button>
+      <button onClick={closeDomain} disabled={!open} aria-label="Close">Return to the Crew</button>
       <button onClick={() => stepDomain(1)} disabled={!open || selected === DOMAIN_COUNT - 1} aria-label="Next domain">Next →</button>
     </nav>
   </div>;

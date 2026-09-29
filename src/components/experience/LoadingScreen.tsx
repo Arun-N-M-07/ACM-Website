@@ -8,7 +8,7 @@
  * it hands the page's scroll to the visitor: the journey (the opening first)
  * moves only as they scroll.
  *
- * A deep link (#events, an event, a domain, #teams) opens the journey where
+ * A deep link (#events, an event, a domain, #crew) opens the journey where
  * it points instead — once: the hash is consumed as it is followed, so the
  * address bar no longer carries it and a refresh is a normal entry again.
  * Without one, Enter always starts the opening from its first frame, whatever
@@ -34,7 +34,7 @@ function deepLink(): (() => void) | null {
   if (!hash || hash === 'archive') return null;
   // Followed once: take it out of the address bar (a later refresh is a normal entry).
   history.replaceState(history.state, '', window.location.pathname + window.location.search);
-  if (hash === 'team' || hash === 'teams') return () => goToChapter('teams');
+  if (hash === 'crew' || hash === 'team' || hash === 'teams') return () => goToChapter('teams');
   const domain = TEAM_DOMAINS.findIndex((d) => d.slug === hash);
   if (domain >= 0) return () => goToDomain(domain);
   if (hash in SEGMENTS) return () => jumpToProgress(SEGMENTS[hash as keyof typeof SEGMENTS].start + 0.002);
