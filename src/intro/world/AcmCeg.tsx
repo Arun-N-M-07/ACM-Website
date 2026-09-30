@@ -7,14 +7,15 @@
  * slows into its composition and holds it (camera.ts), and one light runs across the letters while it
  * does. Then the camera tilts down and drops away through the cloud.
  *
- * It is set as a title (acmWordmark.ts): Montserrat, the site's own typeface, at a weight between
- * Medium and SemiBold, tracked wide, the hyphen drawn as the E's middle arm so it belongs to the
- * mark. It is cast as a gold piece. The letters are deep, their edges rounded into a broad polished
- * bevel that stays inside the letterform (the silhouette is the type's own), their faces dead flat.
- * The metal is fully metallic gold, its polish varying a little over the piece as a hand-finished
- * one's does. It is lit as a jeweller lights gold (goldStudio.ts): champagne on the faces,
- * deepening toward their feet under a key from above, deep amber on the sides, shadow beneath, and
- * the brightest light on the rolled edges, which answer it more strongly than the faces.
+ * It is set as a title (acmWordmark.ts): Montserrat SemiBold, the site's own typeface, tracked wide,
+ * the hyphen drawn as the E's middle arm and spaced as a stroke of the word, so it belongs to the mark.
+ * It is cast as a gold piece. The letters are deep, their edges rounded into a broad polished bevel
+ * that stays inside the letterform (the silhouette is the type's own), their faces dead flat. The
+ * metal is fully metallic gold, its polish varying a little over the piece as a hand-finished one's
+ * does. It is lit as a jeweller lights gold, by a studio whose lights are brighter than white
+ * (goldStudio.ts): the faces luminous champagne at their tops, running down through gold to deep
+ * amber at their feet under a key from above; the sides dark amber; shadow beneath; and the
+ * brightest light on the rolled edges and the curves, lines of light brighter than the metal's colour.
  *
  * The cloud reveals it. Below the cloud's top the letters are inside the cloud, veiled in its light,
  * so each one comes up out of it rather than from behind it: first a shape in the cloud, then, while it
@@ -33,11 +34,12 @@ import { useFrame, useThree } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
 import { BufferAttribute, type BufferGeometry, Color, ExtrudeGeometry, type Group, type Mesh, MeshPhysicalMaterial, Path, type PerspectiveCamera, Shape, Vector2 } from 'three';
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
+import { CHAPTERS } from '@/config/timeline';
 import { useDisposable } from '@/systems/performance/useDisposable';
 import { ACM_CEG, introCameraAt } from '../camera';
 import { look } from '../look';
 import { introFrame } from '../state';
-import { ease, T } from '../timeline';
+import { ease, introChapterAt, T } from '../timeline';
 import { WORDMARK, WORDMARK_TRACKING, type WordmarkGlyph } from './acmWordmark';
 import { CLOUD_TOP } from './Clouds';
 import { goldStudio } from './goldStudio';
@@ -49,13 +51,31 @@ const DEPTH = 0.2 * CAP;
  * The polished edge: how far it rounds over and how deep, in how many steps (smooth-shaded: see
  * letterGeometry). It is cut inside the letterform, so the silhouette stays the type's own weight.
  */
-const BEVEL = { thickness: 2.2, size: 1.7, segments: 7 };
+const BEVEL = { thickness: 2.8, size: 2.3, segments: 8 };
 
 /** How far from ACM-CEG the camera holds it (the end of the hold, where it is nearest). */
 const HOLD_DISTANCE = (() => {
   const c = introCameraAt(T.acmCegHold).pos;
   return Math.hypot(c.x - ACM_CEG.x, c.y - ACM_CEG.y, c.z - ACM_CEG.z);
 })();
+
+/** The chapter rail's row for the chapter the name stands in (its label is shown while the name is). */
+const RAIL_ROW = CHAPTERS.findIndex((c) => c.id === introChapterAt(T.acmCeg));
+
+/**
+ * How much of the frame's width the name, centred in it, may take and still stand clear of the chapter
+ * rail's type: from where the label of its chapter begins. Infinity where the rail is hidden (small
+ * landscape screens); null before the rail has come up.
+ */
+function railShare(width: number) {
+  const rail = document.querySelector('.rail');
+  if (!rail) return null;
+  const label = rail.querySelectorAll('li')[RAIL_ROW]?.querySelector('.label');
+  const r = label?.getBoundingClientRect();
+  if (!r || !r.width) return Infinity;
+  const gap = Math.max(24, width * 0.02);
+  return (2 * (r.left - gap - width / 2)) / width;
+}
 
 /** A glyph's ink, left and right (cap units, from its origin). */
 function inkX(g: WordmarkGlyph) {
@@ -157,6 +177,8 @@ float acmNoise(vec3 x) {
 export function AcmCeg() {
   const gl = useThree((s) => s.gl);
   const portrait = useThree((s) => s.size.width / Math.max(1, s.size.height) < 0.9);
+  // (The rail is fixed: it is measured once it is up, and again only after a resize.)
+  const rail = useRef({ share: Infinity, w: 0, h: 0 });
   const group = useRef<Group>(null);
   const letters = useRef<(Mesh | null)[]>([]);
   // (Shared, and kept for the renderer's life: goldStudio.ts.)
@@ -171,13 +193,13 @@ export function AcmCeg() {
       uSweepColor: { value: new Color('#ffe2b0') },
       uGlow: { value: 0 },
       uGlowColor: { value: new Color('#8a5a1c') },
-      uHaze: { value: 0.07 },
+      uHaze: { value: 0.03 },
       uHazeColor: { value: new Color() },
       uRoughVar: { value: 0.04 },
-      uEdgeGain: { value: 0.45 },
-      uTopGain: { value: 0.9 },
-      uKeyLow: { value: 0.8 },
-      uKeyHigh: { value: 1.08 },
+      uEdgeGain: { value: 0.6 },
+      uTopGain: { value: 1.2 },
+      uKeyLow: { value: 0.42 },
+      uKeyHigh: { value: 1.18 },
       uVeilY: { value: CLOUD_TOP },
       uVeilBand: { value: 12 },
       uVeilMax: { value: 0.92 },
@@ -261,7 +283,7 @@ export function AcmCeg() {
     return { placed, geos, mat, uniforms, width: Math.max(Math.abs(lo), Math.abs(hi)) * CAP, span: (hi - lo) * CAP, foot };
   }, [portrait, studio]);
 
-  useFrame(({ camera }) => {
+  useFrame(({ camera, size }) => {
     const g = group.current;
     if (!g) return;
     const t = introFrame.t;
@@ -271,11 +293,17 @@ export function AcmCeg() {
     if (!on) return;
     // Fitted to the frame (stacked on a portrait screen): its widest line takes no more of the
     // frame's width, as seen from where the camera holds (the lens as it is), than leaves it clear
-    // of the edges — and, on a landscape screen, of the chapter rail at the right — huge on any
-    // screen, never cut. (Never enlarged past its size.)
+    // of the edges and of the chapter rail at the right (on a phone turned sideways, or a tablet,
+    // the rail takes more of the frame than on a desktop) — huge on any screen, never cut. (Never
+    // enlarged past its size.)
+    const R = rail.current;
+    if (R.w !== size.width || R.h !== size.height) {
+      const measured = railShare(size.width);
+      if (measured !== null) Object.assign(R, { share: measured, w: size.width, h: size.height });
+    }
     const cam = camera as PerspectiveCamera;
     const tanH = Math.tan((cam.fov * Math.PI) / 360) * cam.aspect;
-    const share = portrait ? 0.84 : 0.73;
+    const share = Math.min(portrait ? 0.84 : 0.73, R.share);
     const scale = Math.min(1, (share * 2 * HOLD_DISTANCE * tanH) / res.span);
     g.scale.setScalar(scale);
     res.placed.forEach((_, i) => {
