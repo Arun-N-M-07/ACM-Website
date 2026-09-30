@@ -1,0 +1,1779 @@
+============================================================
+ACM-CEG EVENTS — COMPLETE EXPERIENCE REDESIGN
+============================================================
+
+IMPORTANT:
+THIS DOCUMENT IS THE AUTHORITATIVE SPECIFICATION.
+
+Read this ENTIRE FILE before implementing anything.
+
+Do not skim it.
+
+Do not summarize it and stop.
+
+Do not simply propose a design.
+
+Actually inspect the current ACM-CEG repository, inspect the
+referenced website, understand the interaction being described,
+and IMPLEMENT the experience.
+
+============================================================
+REFERENCE WEBSITE — VERY IMPORTANT
+============================================================
+
+REFERENCE:
+
+https://basement.studio/
+
+You MUST actually open and EXPERIENCE the website before
+implementing this.
+
+Do not rely only on the text of this specification.
+
+Use the browser / available browser tooling to inspect the
+real website.
+
+I am specifically referring to the way the Basement website
+presents its visual showcase/work archive and how the user
+interacts with individual items.
+
+I want you to understand the interaction by actually using it.
+
+Do not just search the HTML and assume you understand it.
+
+Experience:
+
+- the initial showcase/archive presentation
+- the large visual objects/items
+- how an item reacts when hovered
+- how the contextual label/action appears
+- how the selected item is communicated
+- what happens when an item is clicked
+- how the camera/view transitions
+- how the selected project becomes the focus
+- how the detailed content is presented after entering
+- how scrolling reveals the information
+- how the typography and spacing are arranged
+- how the page returns from the detailed view
+- how ESC/back navigation behaves if present
+- how the overall interaction feels
+
+The ACM-CEG implementation should use this interaction model
+as the primary reference for the new Events experience.
+
+============================================================
+IMPORTANT DISTINCTION
+============================================================
+
+For this task:
+
+The 2D EVENT INFORMATION EXPERIENCE should follow the
+Basement reference VERY CLOSELY.
+
+I do NOT mean:
+
+"make it vaguely inspired by Basement."
+
+I mean:
+
+Study the actual interaction and presentation closely and
+reproduce the same type of user experience and information
+architecture for ACM-CEG Events.
+
+The goal is that someone familiar with the Basement interaction
+would immediately recognize the interaction pattern.
+
+However:
+
+DO NOT copy Basement's source code.
+
+DO NOT copy proprietary assets.
+
+DO NOT copy their images.
+
+DO NOT copy their branding.
+
+DO NOT copy their logos.
+
+DO NOT copy their exact text.
+
+DO NOT copy their project content.
+
+DO NOT copy their proprietary implementation.
+
+Use ACM-CEG's own:
+
+- typography
+- event data
+- imagery
+- colors/materials
+- 3D environment
+- architecture
+- branding
+- portal
+- camera system.
+
+The interaction/presentation model should closely reproduce
+the reference experience.
+
+
+============================================================
+THE CORE IDEA
+============================================================
+
+The new Events experience is:
+
+                EVENTS ENTRY
+                     ↓
+            LARGE 3 × 3 ARCHIVE
+                     ↓
+          HOVER / FOCUS AN EVENT
+                     ↓
+      contextual action appears
+                     ↓
+          CLICK EVENT
+                     ↓
+       SMOOTH CAMERA TRANSITION
+                     ↓
+          SELECTED EVENT VIEW
+                     ↓
+           SCROLL THROUGH
+          EVENT INFORMATION
+                     ↓
+       DESCRIPTION / DETAILS
+                     ↓
+      REGISTRATION IF AVAILABLE
+                     ↓
+                ESC / BACK
+                     ↓
+          RETURN TO FULL SHELF
+                     ↓
+        USER CAN CHOOSE ANOTHER
+                     ↓
+             OR CONTINUE SCROLL
+                     ↓
+       ALL EVENTS' INFORMATION
+        IS PRESENTED SEQUENTIALLY
+                     ↓
+          FINAL EVENT CONTENT
+                     ↓
+          SHELF APPEARS AGAIN
+                     ↓
+             CONTINUE SCROLL
+                     ↓
+          SHELF SPLITS IN HALF
+                     ↓
+               PORTAL
+                     ↓
+             THE CREW
+
+
+This is the new Events information architecture.
+
+
+============================================================
+1. NO MORE FORCED EVENT ROOM TOUR
+============================================================
+
+The existing concept of physically touring individual
+event rooms should no longer be the default Events experience.
+
+The user should NOT have to:
+
+enter Event 01 room
+→ walk through it
+→ Event 02 room
+→ walk through it
+→ Event 03 room
+→ etc.
+
+Instead, Events becomes an ARCHIVE.
+
+The user first encounters one large physical archive.
+
+The archive contains all Events.
+
+The user chooses what they want to inspect.
+
+
+============================================================
+2. THE LARGE 3 × 3 ARCHIVE
+============================================================
+
+After entering the Events environment, the user should see
+a large, monumental 3 × 3 event archive.
+
+3 columns.
+
+3 rows.
+
+9 event positions.
+
+The archive should feel like a physical installation.
+
+It should NOT feel like:
+
+- HTML cards
+- a CSS grid
+- a dashboard
+- a website gallery
+- nine floating rectangles
+- a generic bookshelf
+- nine unrelated 3D boxes
+
+It should feel like a real architectural object.
+
+Think:
+
+museum archive
+exhibition wall
+institutional showcase
+architectural display
+physical event archive
+curated collection
+
+
+============================================================
+3. THE ARCHIVE ENVIRONMENT
+============================================================
+
+The shelf must NOT float in empty space.
+
+Create a convincing architectural environment around it.
+
+Possible elements:
+
+- structural side walls
+- vertical columns
+- recessed compartments
+- floor
+- ceiling
+- framing
+- practical lights
+- shadows
+- depth
+- atmospheric haze
+- architectural materials
+- subtle reflections
+- controlled highlights
+
+The exact architecture should be consistent with the existing
+ACM-CEG Events environment.
+
+Do not create a completely unrelated visual world.
+
+
+============================================================
+4. LARGE EVENTS TITLE
+============================================================
+
+A large 3D / environmental:
+
+EVENTS
+
+title should be integrated above or around the archive.
+
+It should feel like part of the physical installation.
+
+It should NOT look like:
+
+<h1>EVENTS</h1>
+
+placed over a WebGL object.
+
+Use the existing ACM-CEG typography language.
+
+
+============================================================
+5. EVENT POSITIONS
+============================================================
+
+Each of the 9 positions corresponds to a real event from the
+existing event dataset.
+
+Do not invent events.
+
+Do not invent event information.
+
+Do not fabricate:
+
+- titles
+- descriptions
+- dates
+- registration URLs
+- organizers
+- prizes
+- statistics
+- winners
+- categories.
+
+
+============================================================
+6. THE INITIAL SHELF IS AN INTERACTIVE INDEX
+============================================================
+
+The initial shelf is NOT merely decorative.
+
+It is the primary Events navigation surface.
+
+The user should be able to inspect the events directly.
+
+When the pointer moves over an event:
+
+the event becomes visually selected.
+
+The selected event should feel like a physical object being
+focused.
+
+
+============================================================
+7. HOVER BEHAVIOUR — BASEMENT INTERACTION REFERENCE
+============================================================
+
+This is one of the most important parts of this document.
+
+Study the actual Basement website interaction.
+
+When an item is hovered/focused there is a clear contextual
+response.
+
+ACM-CEG should implement the equivalent interaction.
+
+For example, conceptually:
+
+          EVENT OBJECT
+
+             ↓ hover
+
+     selected / emphasized
+
+             ↓
+
+      contextual action
+
+        "VISIT CODHER"
+
+or:
+
+        "EXPLORE CODHER"
+
+or:
+
+        "VISIT [EVENT NAME]"
+
+
+The exact wording can be determined from the ACM-CEG
+event name and design language.
+
+The important part is:
+
+The user should immediately understand:
+
+"I am currently focusing this event."
+
+The contextual action should belong visually to that event.
+
+
+============================================================
+8. HOVER VISUAL RESPONSE
+============================================================
+
+The selected event can respond through:
+
+- subtle depth movement
+- local illumination
+- material response
+- contrast
+- scale
+- edge highlight
+- contextual typography
+- surrounding event dimming
+
+Do NOT make this a generic CSS hover effect.
+
+It should feel like a physical archive object reacting.
+
+
+============================================================
+9. ONLY ONE EVENT SHOULD FEEL SELECTED
+============================================================
+
+When Event A is hovered:
+
+Event A = dominant.
+
+Other events = secondary.
+
+Do not make all nine objects equally bright.
+
+The selected item should establish hierarchy.
+
+
+============================================================
+10. CONTEXTUAL ACTION
+============================================================
+
+The selected event should reveal an action similar in spirit
+to the Basement interaction.
+
+For example:
+
+[ VISIT CODHER ]
+
+or:
+
+[ EXPLORE CODHER ]
+
+or:
+
+[ VIEW EVENT ]
+
+Use the actual event name.
+
+The action should be aesthetically integrated.
+
+Do NOT make a giant generic rounded CTA.
+
+Do NOT make it look like a SaaS dashboard.
+
+
+============================================================
+11. CLICKING AN EVENT
+============================================================
+
+When the user clicks the selected event:
+
+DO NOT instantly teleport.
+
+The camera should transition VERY SMOOTHLY toward that
+specific event.
+
+This is one of the highest-priority requirements.
+
+The camera movement should feel:
+
+- cinematic
+- physical
+- deliberate
+- extremely smooth
+- spatially coherent
+- premium
+
+The selected event should become the destination.
+
+The movement should feel like:
+
+"I'm approaching this particular archive item."
+
+NOT:
+
+"The webpage switched sections."
+
+
+============================================================
+12. CAMERA TRANSITION
+============================================================
+
+The camera should:
+
+1. recognize the selected event
+2. begin moving toward it
+3. maintain smooth interpolation
+4. preserve orientation continuity
+5. preserve appropriate FOV
+6. approach the selected event naturally
+7. settle into a dedicated event viewing composition
+
+No:
+
+- teleport
+- hard cut
+- snap
+- sudden FOV jump
+- second camera
+- arbitrary timeout
+- fake loading state
+
+
+============================================================
+13. EVENT DETAIL VIEW
+============================================================
+
+Once the camera has arrived at the selected event:
+
+the user should see the event as the primary subject.
+
+The event should have a dedicated visual composition.
+
+This is where the experience transitions from:
+
+3D ARCHIVE
+
+into:
+
+EVENT INFORMATION EXPERIENCE.
+
+
+============================================================
+14. THE 2D EVENT INFORMATION UI
+============================================================
+
+THIS IS THE MOST IMPORTANT REFERENCE REQUIREMENT.
+
+The detailed event information presentation should closely
+follow the Basement website's showcase/project presentation
+model.
+
+Again:
+
+Actually EXPERIENCE the reference website before implementing.
+
+Do not invent an unrelated editorial layout.
+
+Observe:
+
+- how the selected item becomes the main focus
+- how the title is presented
+- where metadata appears
+- how description content is positioned
+- how spacing is handled
+- how content enters
+- how the user scrolls through it
+- how secondary information is presented
+- how actions/links are presented
+- how the page maintains visual identity
+- how the experience feels like a showcase rather than a
+  conventional webpage.
+
+
+============================================================
+15. EVENT DETAIL STRUCTURE
+============================================================
+
+For each event, the detailed view should conceptually contain:
+
+EVENT TITLE
+
+EVENT METADATA
+
+DATE
+CATEGORY
+OTHER EXISTING INFORMATION
+
+LARGE EVENT DESCRIPTION
+
+ADDITIONAL INFORMATION
+
+REGISTRATION ACTION
+ONLY IF A VALID REGISTRATION LINK EXISTS
+
+
+The exact visual arrangement should be determined after
+studying the Basement reference.
+
+Do not turn this into a generic centered card.
+
+
+============================================================
+16. LARGE TYPOGRAPHY
+============================================================
+
+The event title should have strong visual presence.
+
+Use large editorial typography.
+
+The composition should have:
+
+- scale
+- negative space
+- hierarchy
+- controlled alignment
+- deliberate spacing
+
+Do not cram everything into a small panel.
+
+
+============================================================
+17. EVENT DESCRIPTION
+============================================================
+
+The event explanation should be genuinely readable.
+
+The user should be able to understand:
+
+What is this event?
+
+What does it involve?
+
+What is the purpose?
+
+What information does ACM-CEG currently provide about it?
+
+Use the actual existing description.
+
+Do not fabricate missing content.
+
+
+============================================================
+18. REGISTRATION
+============================================================
+
+If an event has a real registration link:
+
+show it.
+
+For example:
+
+REGISTER
+
+or the appropriate ACM-CEG wording.
+
+The registration action should visually belong to the event
+presentation.
+
+If no registration link exists:
+
+DO NOT show a fake registration button.
+
+Simply present the event information that exists.
+
+
+============================================================
+19. SCROLL INSIDE THE EVENT
+============================================================
+
+After clicking an event and arriving at its dedicated view:
+
+scrolling should reveal the event's information.
+
+The experience should not immediately dump all text on screen.
+
+Use the same general interaction philosophy as the Basement
+reference:
+
+large visual hierarchy
+→ information
+→ description
+→ details
+→ action.
+
+
+============================================================
+20. SCROLL SHOULD FEEL LIKE EXPLORING THE EVENT
+============================================================
+
+The scroll should not feel like:
+
+"scrolling down a normal webpage."
+
+It should feel like:
+
+"I am exploring the selected event."
+
+
+============================================================
+21. ESCAPE / BACK TO SHELF
+============================================================
+
+This is CRITICAL.
+
+After entering an event:
+
+the user should be able to press:
+
+ESC
+
+and return to the full 3 × 3 shelf view.
+
+The return must be smooth.
+
+Do NOT reload.
+
+Do NOT recreate the entire Events scene.
+
+Do NOT teleport.
+
+Do NOT reset the website.
+
+The camera should smoothly return to the archive composition.
+
+The shelf should once again be visible as a whole.
+
+
+============================================================
+22. ESC RETURN BEHAVIOUR
+============================================================
+
+Conceptually:
+
+FULL SHELF
+    ↓
+hover Event X
+    ↓
+click Event X
+    ↓
+camera smoothly approaches Event X
+    ↓
+Event X detail experience
+    ↓
+ESC
+    ↓
+camera smoothly returns
+    ↓
+FULL SHELF
+
+
+The transition should feel like leaving an exhibit and
+returning to the exhibition hall.
+
+
+============================================================
+23. IMPORTANT: ESC MUST NOT BREAK SCROLL STATE
+============================================================
+
+If the user presses ESC:
+
+the selected event state should be cleared correctly.
+
+No stale selected event.
+
+No stale contextual overlay.
+
+No stale camera target.
+
+No stale animation.
+
+No stale audio.
+
+The shelf should return to a clean interactive state.
+
+
+============================================================
+24. MULTIPLE EVENT EXPLORATION
+============================================================
+
+The user should be able to:
+
+open Event A
+→ ESC
+→ open Event B
+→ ESC
+→ open Event C
+
+without the system degrading.
+
+Each event should use the same architecture.
+
+No duplicated scene systems.
+
+
+============================================================
+25. THE OTHER IMPORTANT PATH
+============================================================
+
+The user may never click an event.
+
+They may simply scroll.
+
+In that case, the Events section should become a sequential
+editorial archive.
+
+
+============================================================
+26. SCROLLING THROUGH ALL EVENTS
+============================================================
+
+When the user is in the overall Events experience and simply
+scrolls without selecting a specific event:
+
+the event information should appear ONE EVENT AT A TIME.
+
+Conceptually:
+
+SHELF
+
+↓
+
+EVENT 01 INFORMATION
+
+↓
+
+EVENT 02 INFORMATION
+
+↓
+
+EVENT 03 INFORMATION
+
+↓
+
+EVENT 04 INFORMATION
+
+↓
+
+EVENT 05 INFORMATION
+
+↓
+
+EVENT 06 INFORMATION
+
+↓
+
+EVENT 07 INFORMATION
+
+↓
+
+EVENT 08 INFORMATION
+
+↓
+
+EVENT 09 INFORMATION
+
+↓
+
+SHELF AGAIN
+
+
+============================================================
+27. THE EDITORIAL ARRANGEMENT MUST FOLLOW THE REFERENCE
+============================================================
+
+This is another very important requirement.
+
+The overall event-information presentation should closely
+follow the arrangement philosophy of the Basement showcase.
+
+Do not create:
+
+Event 01
+---------
+centered card
+
+Event 02
+---------
+centered card
+
+Event 03
+---------
+centered card
+
+
+Instead, reproduce the same type of:
+
+- large visual hierarchy
+- spacing
+- title treatment
+- metadata positioning
+- description placement
+- action placement
+- visual rhythm
+- section composition
+- scroll storytelling
+
+that you observe when actually using Basement.
+
+ACM-CEG content replaces Basement's project content.
+
+ACM-CEG branding replaces Basement branding.
+
+But the information presentation model should remain
+recognizably close.
+
+
+============================================================
+28. EVENT SECTIONS SHOULD FEEL LIKE SHOWCASE ENTRIES
+============================================================
+
+Each event should feel like its own showcase entry.
+
+Not a card.
+
+Not a blog article.
+
+Not a university event announcement.
+
+A showcase entry.
+
+
+============================================================
+29. EVENT MEDIA
+============================================================
+
+If the ACM-CEG repository already contains imagery/media for
+an event:
+
+use it where appropriate.
+
+If it doesn't:
+
+do not fabricate media.
+
+The layout must still look complete through typography,
+spacing, composition and existing visual assets.
+
+
+============================================================
+30. EVENT ORDER
+============================================================
+
+Use the existing event ordering/data source.
+
+Do not randomly reorder events.
+
+The 3×3 shelf order and sequential editorial order should
+be intentional and consistent.
+
+If the repository already defines an event order, preserve it
+unless the current Events architecture explicitly requires
+another order.
+
+
+============================================================
+31. INITIAL SHELF → EDITORIAL EXPERIENCE
+============================================================
+
+The initial shelf remains visible first.
+
+If the user simply scrolls:
+
+the shelf transitions into the first event's editorial
+presentation.
+
+This should feel like entering the archive's content layer.
+
+
+============================================================
+32. INITIAL SHELF → SELECTED EVENT
+============================================================
+
+If the user instead hovers and clicks:
+
+the selected event becomes the destination.
+
+The camera approaches that event.
+
+The event detail presentation appears.
+
+The user can scroll through its information.
+
+ESC returns to the shelf.
+
+
+============================================================
+33. THESE TWO MODES MUST COEXIST
+============================================================
+
+MODE A:
+
+DIRECT EVENT EXPLORATION
+
+Shelf
+→ hover event
+→ contextual Visit Event
+→ click
+→ camera approaches event
+→ event information
+→ ESC
+→ shelf
+
+
+MODE B:
+
+SEQUENTIAL ARCHIVE READING
+
+Shelf
+→ scroll
+→ Event 01
+→ Event 02
+→ Event 03
+→ ...
+→ Event 09
+→ shelf
+
+
+Both must feel like the same system.
+
+
+============================================================
+34. THE VISIT THE CREW ACTION
+============================================================
+
+The initial shelf should also have:
+
+VISIT THE CREW
+
+This is independent from event selection.
+
+If the user activates it:
+
+the shelf physically splits.
+
+It should NOT jump directly to Crew.
+
+
+============================================================
+35. SHELF SPLIT
+============================================================
+
+The shelf splits into two physical halves.
+
+LEFT HALF
+moves left.
+
+RIGHT HALF
+moves right.
+
+CENTER
+opens.
+
+A portal / spatial passage becomes visible.
+
+The effect must feel physical.
+
+Not:
+
+fade out
+scale down
+random glitch
+dissolve.
+
+
+============================================================
+36. PORTAL
+============================================================
+
+The portal should feel like a hidden architectural passage.
+
+It should belong to the ACM-CEG world.
+
+Avoid generic:
+
+- magic portal
+- sci-fi ring
+- neon portal
+- gaming portal
+
+It should feel like the archive itself was concealing
+the next world.
+
+
+============================================================
+37. CAMERA TO PORTAL
+============================================================
+
+After the split:
+
+continued scrolling moves the camera toward the portal.
+
+Do not automatically teleport.
+
+The camera journey remains scroll-driven.
+
+
+============================================================
+38. THE CREW
+============================================================
+
+After the portal:
+
+continue into the EXISTING THE CREW experience.
+
+Preserve:
+
+- existing Crew entrance
+- touch-and-hold
+- domain experience
+- member experience
+- existing camera choreography
+- existing visual identity.
+
+
+============================================================
+39. END OF ALL EVENT CONTENT
+============================================================
+
+When the user reaches the end of Event 09 in the sequential
+editorial path:
+
+the shelf must return.
+
+The user should feel:
+
+"I have completed the event archive."
+
+
+============================================================
+40. FINAL SHELF
+============================================================
+
+After the final event:
+
+the physical 3×3 archive returns.
+
+Then:
+
+continue scrolling
+↓
+shelf splits
+↓
+portal
+↓
+camera approaches
+↓
+THE CREW
+
+
+============================================================
+41. SAME TRANSITION
+============================================================
+
+This transition MUST be shared.
+
+The initial:
+
+VISIT THE CREW
+
+and the final:
+
+EVENTS END → SHELF → CONTINUE
+
+must enter the same:
+
+SHELF_SPLIT → PORTAL → CREW
+
+implementation.
+
+One camera path.
+
+One transition.
+
+One portal.
+
+One Crew handoff.
+
+
+============================================================
+42. CAMERA ARCHITECTURE
+============================================================
+
+Preserve the existing camera architecture.
+
+Do NOT introduce a second camera.
+
+Do NOT create a hidden event camera.
+
+Use the existing camera controller/path architecture.
+
+Event selection should modify the existing camera path
+appropriately.
+
+Everything must remain reversible.
+
+
+============================================================
+43. SCROLL ARCHITECTURE
+============================================================
+
+Use the existing authoritative Lenis/progress architecture.
+
+Do NOT create a second scrolling system.
+
+Do NOT use:
+
+setTimeout
+setInterval
+arbitrary delays
+fake progress
+scroll snapping
+teleportation.
+
+
+============================================================
+44. EVENT SELECTION STATE
+============================================================
+
+Selection should be deterministic.
+
+Potential conceptual states:
+
+NO_SELECTION
+EVENT_SELECTED
+EVENT_DETAIL
+ARCHIVE_READING
+ARCHIVE_END
+CREW_TRANSITION
+
+
+But first inspect the existing state architecture.
+
+Do not duplicate Zustand state unnecessarily.
+
+
+============================================================
+45. REVERSIBILITY
+============================================================
+
+Everything must work backward.
+
+Forward:
+
+Shelf
+→ Event
+→ information
+→ next event
+→ shelf
+→ split
+→ portal
+→ Crew
+
+Backward:
+
+Crew
+→ portal
+→ split
+→ shelf
+→ Event 09
+→ Event 08
+→ ...
+→ Event 01
+→ shelf
+
+
+No broken reverse state.
+
+
+============================================================
+46. MID-ANIMATION REVERSAL
+============================================================
+
+Test:
+
+click Event
+
+camera halfway toward event
+
+reverse/ESC
+
+camera should return smoothly.
+
+Test:
+
+shelf halfway split
+
+reverse
+
+shelf should close.
+
+Test:
+
+camera halfway toward portal
+
+reverse
+
+camera should move back.
+
+No snap.
+
+
+============================================================
+47. VISUAL QUALITY
+============================================================
+
+The Events experience should feel:
+
+premium
+editorial
+architectural
+cinematic
+minimal
+intentional
+institutional
+interactive
+
+The user should feel that Events is a major part of the
+ACM-CEG world.
+
+
+============================================================
+48. MOBILE
+============================================================
+
+Mobile must retain the same conceptual interaction.
+
+3×3 shelf.
+
+Touch event.
+
+Selected event.
+
+Event detail.
+
+Back/close.
+
+Sequential editorial content.
+
+Final shelf.
+
+Split.
+
+Portal.
+
+Crew.
+
+
+============================================================
+49. MOBILE EVENT SELECTION
+============================================================
+
+Because mobile has no hover:
+
+tap an event
+
+→ focus/select it
+
+→ show contextual action
+
+→ second tap / explicit action
+
+→ enter event.
+
+
+Do not require tiny targets.
+
+
+============================================================
+50. MOBILE EVENT INFORMATION
+============================================================
+
+The 2D information must be comfortably readable.
+
+Do not shrink desktop typography until it becomes unreadable.
+
+Adapt:
+
+- margins
+- title scale
+- spacing
+- media
+- metadata
+- registration CTA
+- section height.
+
+
+============================================================
+51. ACCESSIBILITY
+============================================================
+
+Event titles/descriptions/registration links must remain
+accessible through DOM.
+
+Do not put essential event information exclusively into WebGL.
+
+Keyboard navigation must work.
+
+ESC must work.
+
+Reduced motion must remain coherent.
+
+
+============================================================
+52. AUDIO
+============================================================
+
+Use the existing audio architecture.
+
+Potential:
+
+event focus
+event entry
+event return
+shelf split
+portal reveal
+
+Avoid excessive UI sounds.
+
+No stale audio after ESC.
+
+No stale audio after reverse.
+
+
+============================================================
+53. PERFORMANCE
+============================================================
+
+Do not regress the existing optimization work.
+
+The 3×3 shelf should be lightweight.
+
+Event editorial content should primarily use efficient DOM/UI
+where appropriate.
+
+Do not create nine complete 3D environments.
+
+Do not duplicate renderers.
+
+Do not duplicate cameras.
+
+Do not create hundreds of objects unnecessarily.
+
+
+============================================================
+54. RESOURCE STABILITY
+============================================================
+
+Repeated:
+
+Shelf
+→ Event
+→ ESC
+→ Event
+→ ESC
+
+and:
+
+Events
+→ Crew
+→ Intro
+→ Events
+
+must not leak:
+
+- geometry
+- materials
+- textures
+- render targets
+- listeners
+- RAF callbacks
+- audio
+- DOM nodes
+- subscriptions.
+
+
+============================================================
+55. BROWSER / REAL EXPERIENCE TEST
+============================================================
+
+Actually test the interaction.
+
+Do not assume it works because the code compiles.
+
+Test:
+
+Chrome
+Safari
+Firefox
+
+Test:
+
+desktop
+mobile
+
+Test:
+
+mouse
+touch
+keyboard.
+
+
+============================================================
+56. BASEMENT REFERENCE VALIDATION
+============================================================
+
+Before finalizing the implementation:
+
+open the actual Basement website again.
+
+Compare the ACM-CEG Events experience against the reference
+interaction.
+
+Specifically compare:
+
+1. Initial archive/shelf presentation.
+2. Hover response.
+3. Contextual event action.
+4. Click interaction.
+5. Camera movement.
+6. Selected-item focus.
+7. Detailed information presentation.
+8. Typography scale.
+9. Metadata placement.
+10. Description layout.
+11. Registration/action placement.
+12. Scroll progression.
+13. Return/back interaction.
+14. Overall visual rhythm.
+
+If the implementation merely "looks nice" but does not capture
+the interaction model of the reference, continue refining it.
+
+
+============================================================
+57. IMPORTANT: DO NOT COPY THE WRONG THING
+============================================================
+
+We are NOT asking for:
+
+"Make ACM-CEG look like Basement Studio."
+
+We ARE asking for:
+
+"Use the actual Basement showcase interaction and information
+presentation as the direct UX reference for how ACM-CEG Events
+should behave."
+
+ACM-CEG remains visually distinct.
+
+
+============================================================
+58. DATA INTEGRITY
+============================================================
+
+All event content must come from the existing ACM-CEG event
+data.
+
+If a description is absent:
+
+do not invent one.
+
+If registration is absent:
+
+do not fabricate a link.
+
+If media is absent:
+
+do not fabricate media.
+
+
+============================================================
+59. NO FAKE LOADING STATES
+============================================================
+
+Do not add artificial:
+
+"Loading event..."
+
+states merely to create drama.
+
+The experience should feel immediate.
+
+
+============================================================
+60. NO ARBITRARY ANIMATION TIMERS
+============================================================
+
+Do not solve transitions using:
+
+setTimeout()
+setInterval()
+delayed state changes
+random delays.
+
+Use the existing scroll/progress architecture.
+
+
+============================================================
+61. NO SECOND INTRO
+============================================================
+
+The portal should lead into the existing Crew experience.
+
+Do not reload.
+
+Do not reconstruct the entire world.
+
+Do not create a second Intro.
+
+
+============================================================
+62. FINAL JOURNEY
+============================================================
+
+The ideal final experience is:
+
+EVENTS DOOR
+     ↓
+ARCHITECTURAL 3×3 SHELF
+     ↓
+     ├─────────────────────────────┐
+     │                             │
+     │ hover                       │
+     ↓                             ↓
+EVENT FOCUS                  VISIT THE CREW
+     ↓                             ↓
+contextual action             SHELF SPLITS
+     ↓                             ↓
+click                          PORTAL
+     ↓                             ↓
+camera moves                  CAMERA MOVES
+     ↓                             ↓
+EVENT DETAIL                    CREW
+     ↓
+scroll information
+     ↓
+registration if available
+     ↓
+ESC
+     ↓
+FULL SHELF
+     ↓
+choose another event
+     OR
+continue scrolling
+     ↓
+EVENT 01
+     ↓
+EVENT 02
+     ↓
+EVENT 03
+     ↓
+...
+     ↓
+EVENT 09
+     ↓
+SHELF RETURNS
+     ↓
+SHELF SPLITS
+     ↓
+PORTAL
+     ↓
+THE CREW
+
+
+============================================================
+63. FINAL CREATIVE INTENT
+============================================================
+
+The Events section should no longer feel like:
+
+"Here are nine rooms."
+
+It should feel like:
+
+"Here is the ACM-CEG event archive."
+
+The user sees everything first.
+
+They can choose.
+
+They can inspect a specific event.
+
+They can read the event.
+
+They can register.
+
+They can return.
+
+They can continue through the archive.
+
+And when the archive is complete:
+
+the archive itself opens.
+
+Behind it is THE CREW.
+
+
+============================================================
+64. FINAL ACCEPTANCE CRITERIA
+============================================================
+
+[ ] Claude actually inspected basement.studio.
+
+[ ] Claude actually experienced the relevant interaction.
+
+[ ] The 3×3 ACM-CEG event archive exists.
+
+[ ] The archive feels physical and architectural.
+
+[ ] Hover/focus behaves like the reference interaction.
+
+[ ] A contextual "Visit/Explore [Event]" action appears.
+
+[ ] Clicking an event produces an extremely smooth camera
+    transition toward that event.
+
+[ ] No teleportation.
+
+[ ] Event detail view exists.
+
+[ ] Event information follows the reference's editorial
+    presentation model closely.
+
+[ ] Event description is readable.
+
+[ ] Metadata is present where available.
+
+[ ] Registration is shown when a real link exists.
+
+[ ] No fake registration links.
+
+[ ] ESC returns to the complete shelf.
+
+[ ] Multiple events can be opened sequentially.
+
+[ ] Scrolling without selecting an event presents all events
+    sequentially.
+
+[ ] Event 01 → Event 02 → ... → Event 09 works.
+
+[ ] The editorial arrangement remains consistent with the
+    Basement reference.
+
+[ ] Final event returns to the physical shelf.
+
+[ ] VISIT THE CREW exists.
+
+[ ] VISIT THE CREW triggers the same shelf split transition.
+
+[ ] Final shelf also triggers the same shelf split transition.
+
+[ ] Shelf physically separates.
+
+[ ] Portal is revealed.
+
+[ ] Camera approaches portal through scroll.
+
+[ ] Existing THE CREW experience begins.
+
+[ ] Both routes use the same transition implementation.
+
+[ ] Reverse scrolling works.
+
+[ ] ESC works.
+
+[ ] Mobile works.
+
+[ ] Touch works.
+
+[ ] Accessibility works.
+
+[ ] Reduced motion works.
+
+[ ] Performance does not regress.
+
+[ ] Repeated loops do not leak.
+
+[ ] Existing Intro remains intact.
+
+[ ] Existing Crew remains intact.
+
+[ ] Existing camera architecture remains intact.
+
+[ ] Existing Lenis/progress architecture remains intact.
+
+[ ] Typecheck passes.
+
+[ ] Production build passes.
+
+[ ] git diff --check passes.
+
+[ ] Relevant QA passes.
+
+[ ] Full forward journey passes.
+
+[ ] Full reverse journey passes.
+
+[ ] Both Events → Crew paths pass.
+
+
+============================================================
+END
+============================================================
