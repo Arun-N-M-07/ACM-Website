@@ -372,6 +372,40 @@ html[data-teams-hover='true'] body {
   flex-direction: column;
   padding: calc(var(--u) * 0.1);
 }
+/* The member's portrait, printed into the coat (MemberHand Print; the print itself is made by
+   scripts/crew-portraits.mjs): its black ground is the card's own shade, so it has no edge — the
+   person comes up out of the card under the name and goes back into it above the foot. It lies under
+   the sheen and the edge, as a print under the card's lacquer, and the type stands over it. */
+.hand-card__print {
+  --yield: calc(var(--u) * (var(--foot-top, 1.28) - var(--print-top, 0.4)));
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(var(--u) * var(--print-top, 0.4));
+  height: calc(var(--u) * var(--print-h, 0.92));
+  pointer-events: none;
+  /* It yields to the foot (--foot-top, measured per card by MemberHand): gone just above it, however
+     many lines the domain's name takes there. */
+  -webkit-mask-image: linear-gradient(to bottom, #000 calc(var(--yield) - var(--u) * 0.17), transparent calc(var(--yield) - var(--u) * 0.02));
+  mask-image: linear-gradient(to bottom, #000 calc(var(--yield) - var(--u) * 0.17), transparent calc(var(--yield) - var(--u) * 0.02));
+}
+.hand-card__print img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  transition: opacity 0.7s var(--ease);
+  -webkit-user-drag: none;
+}
+.hand-card__print[data-ready='true'] img {
+  opacity: 1;
+}
+.hand-card__rule,
+.hand-card__role,
+.hand-card__name,
+.hand-card__foot {
+  position: relative;
+}
 .hand-card__rule {
   width: calc(var(--u) * 0.09);
   height: 1px;
@@ -386,7 +420,8 @@ html[data-teams-hover='true'] body {
   color: rgba(239, 233, 223, calc(0.56 + 0.2 * var(--lift, 0)));
 }
 .hand-card__name {
-  max-width: calc(var(--u) * 0.66);
+  /* (Its measure: 0.66 of the card, or its whole face for a word too long for that — MemberHand.) */
+  max-width: calc(var(--u) * var(--name-w, 0.66));
   margin-top: calc(var(--u) * 0.05);
   font: var(--w-sub) var(--name, calc(var(--u) * 0.125)) / 1.02 var(--serif);
   letter-spacing: var(--t-sub);
@@ -402,12 +437,26 @@ html[data-teams-hover='true'] body {
   text-transform: uppercase;
   color: rgba(239, 233, 223, 0.38);
 }
+/* (The card's number keeps to one line, however small the card.) */
+.hand-card__foot > span:first-child:not(.hand-card__domain) {
+  flex: none;
+  white-space: nowrap;
+}
 /* The domain's name, only on the card drawn from the hand. */
 .hand-card__domain {
   max-width: 62%;
   margin-left: auto;
   text-align: right;
   opacity: var(--drawn, 0);
+}
+/* Where a long domain name would reach up into the portrait's face (a small card, whose foot is set
+   larger than its share: MemberHand measures it), it is set at its legibility floor as drawn — it only
+   shows on a drawn card, which is shown larger — or, if even that reaches, left to the domain's heading. */
+.hand-slot[data-foot='fit'] .hand-card__domain {
+  font-size: max(calc(6px / var(--drawn-k, 1)), calc(var(--u) * 0.03));
+}
+.hand-slot[data-foot='bare'] .hand-card__domain {
+  display: none;
 }
 /* Light sliding across a coated card. */
 .hand-card__sheen {

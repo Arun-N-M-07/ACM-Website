@@ -16,6 +16,22 @@ Every photo slot mirrors a path on the current site's `assets/img/` folder. **Co
 
 Until a file exists, rooms show a typographic poster and the archive shows a captioned slot.
 
+## 1a. Crew portraits (the member cards)
+
+The member cards in THE CREW carry the chapter's own portraits, made from its photographs by `scripts/crew-portraits.mjs`:
+
+```
+node scripts/crew-portraits.mjs "acm photos"
+```
+
+- **Input:** a folder of photographs, **each named after its member** (`Prithvi.png`, `Manesh Ram.png`, …). The file name is the identity: it is matched to a member of `src/content/teams.ts` exactly (ignoring case, spaces and punctuation), by the start of the name (`SankaraKrishnan.png`, `Swayam.png`), or by a one-letter spelling variant of the first name that fits no one else (`Viswam.png` → Visvam Srinivasan). Anything unmatched, ambiguous, duplicated or missing stops the script with the list; nothing is guessed.
+- **Output:** one WebP per member in `public/media/crew/` (named after the member, ~30–60 KB each), and the member → print table `src/content/generated/crew-portraits.json` (with each print's source file, how it was matched, and the face found in it).
+- **Framing:** each face is found with macOS Vision (so the script runs on a Mac; the recorded faces are reused elsewhere while the photographs are unchanged) and brought to the same size and place on every card. No photograph is ever enlarged.
+- **Treatment:** the tones are mapped from the card's shade to a warm paper white, the black ground is let go of (the card's coat shows instead, so there is no edge), and the print fades under the name, above the foot and at the sides, printed down a little below the chin.
+- **Checking:** `node scripts/qa/crew-portraits.mjs [url] [out]` (`MOBILE=1 W=390 H=844` for a phone) verifies every member: the table against the file names, the face in each print against the face in every photograph, and every card in every domain on the site — then cycles the domains to check nothing accumulates, and writes a contact sheet of every drawn card.
+
+The source folder (`acm photos/`) holds full-size photographs (~1.5 MB each); keep it out of the repository — only the generated prints and table are needed.
+
 ## 2. The soundtrack
 
 The site plays **one track** in music mode — *The Batman* by Michael Giacchino (`src/config/music.ts`) — and nothing else. Entering with sound starts it about 1:10 into the recording (`SCORE_IN` in `src/intro/timeline.ts`), from inside the Enter click (the user gesture browsers require), and it plays on under the whole journey. The audio file is **not** in this repository and must not be committed.
@@ -42,5 +58,5 @@ Content-driven parts (event rooms, signage, the portal, the Teams world's cards)
 
 1. **CEG red building** — survey-accurate model (photogrammetry or drawings). The current one follows the real footprint and photographs, but its details are modelled by eye.
 2. **CEG campus** — the campus comes from OpenStreetMap (footprints, levels, roads, green areas); building detail and exact heights would need a survey. Re-run `npm run campus:build` to pick up map edits.
-3. **Photographs** — install from the site's `assets/img` (section 1). The Teams world deliberately shows no photographs yet.
+3. **Photographs** — install from the site's `assets/img` (section 1). The Crew's member cards carry the chapter's portraits (section 1a).
 4. Optional: bespoke hall / corridor shells if the chapter wants a signature interior.

@@ -3,7 +3,8 @@
  *
  * Names and members are exactly as supplied by the chapter — do not reorder,
  * shorten or rename them. CORE roles and roll numbers are chapter-supplied;
- * no photographs, bios or project descriptions are invented.
+ * no bios or project descriptions are invented. The members' portraits are the
+ * chapter's own photographs, keyed by these names (content/crewPortraits.ts).
  *
  * `slug` is only an identifier (keys, deep links); `tone` is the card's glass
  * tint — a design choice, not content.

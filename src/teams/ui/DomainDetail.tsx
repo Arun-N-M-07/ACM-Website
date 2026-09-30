@@ -1,16 +1,23 @@
 'use client';
 /** The open domain: its people as a hand of cards (MemberHand), and the controls. */
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { DOMAIN_COUNT, TEAM_DOMAINS } from '@/content/teams';
 import { smooth, useProgressFrame } from '@/components/experience/useProgressFrame';
 import { closeDomain, stepDomain } from '../focus';
 import { teamsFrame, useTeams } from '../state';
-import { MemberHand } from './MemberHand';
+import { MemberHand, preloadCrewPortraits } from './MemberHand';
 
 export function DomainDetail() {
   const state = useTeams(s => s.state), selected = useTeams(s => s.selected);
   const root = useRef<HTMLDivElement>(null);
   const open = state === 'domainDetail';
+  // The people's portraits are fetched as the visitor comes to the portal (or round the loop into the
+  // Crew), so a domain opens on its people.
+  useEffect(() => {
+    const ahead = (s: { state: string }) => s.state !== 'outside' && preloadCrewPortraits();
+    ahead(useTeams.getState());
+    return useTeams.subscribe(ahead);
+  }, []);
   useProgressFrame(() => {
     // The controls arrive with the end of the deal.
     if (root.current) root.current.style.setProperty('--controls', smooth(0.9, 1, teamsFrame.focus).toFixed(3));

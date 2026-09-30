@@ -11,9 +11,14 @@
  *                tilted, the one on top nearest, as a hand holds them, with
  *                small irregularities (a hand, not a grid). CORE's chair
  *                stands a touch proud of the others.
- *   a card       ROLE (mono) over NAME (serif) — the CORE language. Members
- *                have no role in the chapter's data, so they read MEMBER. No
- *                roll numbers, nothing invented.
+ *   a card       ROLE (mono) over NAME (serif) — the CORE language. CORE's
+ *                officers read their offices; each of the six domains is led
+ *                by its people, who read DIRECTOR. No roll numbers, nothing
+ *                invented. Below the name, the member's
+ *                portrait, printed into the coat (content/crewPortraits.ts):
+ *                its black ground is the card's own, so it has no edge — the
+ *                person comes up out of the card and goes back into it above
+ *                the foot, under the card's sheen like a print under lacquer.
  *   the pointer  approaching turns the nearest card a little towards you;
  *                reaching it pulls it out of the hand — forward, up, squared
  *                to the eye — while its neighbours give way and the outer
@@ -30,6 +35,7 @@
  * moving under the cursor never flickers its own hover.
  */
 import { type CSSProperties, useEffect, useMemo, useRef } from 'react';
+import { type CrewPortrait, crewPortrait, crewPortraitSources, PRINT_BAND, PRINT_FACE } from '@/content/crewPortraits';
 import { type TeamDomain, domainIndexLabel } from '@/content/teams';
 import { smooth, useProgressFrame } from '@/components/experience/useProgressFrame';
 import { stage as screen } from '@/systems/anchors/anchors';
@@ -41,6 +47,7 @@ import { teamsFrame } from '../state';
 interface Person {
   role: string;
   name: string;
+  portrait: CrewPortrait | null;
 }
 
 interface Pose {
@@ -92,6 +99,50 @@ const clamp = (x: number, a: number, b: number) => Math.min(b, Math.max(a, x));
 const mix = (a: number, b: number, t: number) => a + (b - a) * t;
 const easeOut = (t: number) => 1 - (1 - t) ** 3;
 
+/**
+ * The lowest the print may yield to its card's foot (card widths): its fade (0.17 of a card width,
+ * teams.css) never starts above the chin — on a small card the foot's type is set larger than its
+ * share, and a long domain name there would otherwise take the face.
+ */
+const YIELD_FLOOR = PRINT_FACE.y + PRINT_FACE.h / 2 + 0.17;
+
+let fetched = false;
+/**
+ * Fetch every print ahead of the domains (once, when the browser is idle; not on a data saver), so
+ * a domain opens on its people rather than waiting for them. DomainDetail calls it as the visitor
+ * comes to the portal.
+ */
+export function preloadCrewPortraits() {
+  if (fetched || typeof window === 'undefined') return;
+  fetched = true;
+  if ((navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData) return;
+  const idle = window.requestIdleCallback ?? ((run: () => void) => window.setTimeout(run, 300));
+  idle(() => {
+    for (const src of crewPortraitSources()) {
+      const img = new Image();
+      img.decoding = 'async';
+      img.src = src;
+    }
+  });
+}
+
+/**
+ * The member's portrait on the card. Unseen until it has loaded, then it comes up in the coat (a print
+ * that has not arrived, or never does, leaves the typographic card as it was — never a broken image).
+ */
+function Print({ portrait }: { portrait: CrewPortrait }) {
+  const img = useRef<HTMLImageElement>(null);
+  const show = () => img.current?.parentElement?.setAttribute('data-ready', 'true');
+  useEffect(() => {
+    if (img.current?.complete && img.current.naturalWidth) show();
+  }, []);
+  return (
+    <span className="hand-card__print" aria-hidden="true">
+      <img ref={img} src={portrait.src} width={portrait.width} height={portrait.height} alt="" decoding="async" draggable={false} onLoad={show} />
+    </span>
+  );
+}
+
 /** A drawn card comes this far forward (px), and this much larger: together, its size over a resting card's. */
 const DRAWN_Z = 170;
 const DRAWN_SCALE = 1.22;
@@ -108,7 +159,8 @@ function chrome(root: Element | null, H: number, portrait: boolean) {
   return { top: above + 12, bottom: H - below + 12 };
 }
 
-function measure(n: number, root: Element | null): Layout {
+/** `extra`: room the hand makes between its cards for long names (card widths: makeRoom), counted in its width. */
+function measure(n: number, root: Element | null, extra = 0): Layout {
   const W = window.innerWidth;
   const H = window.innerHeight;
   const portrait = W / H < 0.9;
@@ -116,9 +168,12 @@ function measure(n: number, root: Element | null): Layout {
   const few = n === 1 ? 1.16 : n === 2 ? 1.08 : 1;
   let u = few * (portrait ? clamp(W * 0.42, 150, 230) : clamp(Math.min(W * 0.21, H * 0.34), 236, 340));
   const k = n === 2 ? 0.8 : n <= 4 ? 0.74 : Math.max(0.42, 2.6 / (n - 1));
-  const cx = W * (portrait ? 0.5 : 0.535);
+  // A fan overlaps towards its top card, on the right, so on a wide screen it is set a little right of
+  // centre to balance; a lone card has nothing to balance, and stands on the screen's own axis (the
+  // axis of the controls and the hint above and below it).
+  const cx = W * (portrait || n === 1 ? 0.5 : 0.535);
   let cy = H * (portrait ? 0.6 : 0.575);
-  const across = n === 1 ? 1.3 : 1 + (n - 1) * k + 0.16;
+  const across = n === 1 ? 1.3 : 1 + (n - 1) * k + 0.16 + extra;
   const drawn0 = 1.42 * DRAWN_SCALE * NEAR * u;
   const drawnC = cy - 0.04 * u * NEAR;
   // As laid out, wherever the hand — the whole fan, and a card drawn from it — is on screen.
@@ -151,23 +206,98 @@ const FACE_W = 0.8;
 
 /**
  * A name as large as the card allows in at most three lines, never leaving a
- * lone initial on a line of its own (measured in the loaded serif).
+ * lone initial on a line of its own (measured in the loaded serif). Returns
+ * its size, its measure (card widths) and the lines it sets in.
  */
-function nameSize(ctx: CanvasRenderingContext2D, name: string, u: number) {
-  const width = NAME_W * u;
-  let size = NAME_MAX * u;
-  let longest = 0;
-  for (; size > NAME_MAX * u * 0.7; size *= 0.96) {
+function nameFit(ctx: CanvasRenderingContext2D, name: string, u: number) {
+  const setIn = (size: number, measure: number) => {
     applyType(ctx, { family: 'serif', size });
-    const lines = wrap(ctx, name, width);
-    longest = Math.max(...lines.map((l) => ctx.measureText(l).width));
-    const orphan = lines.length > 1 && lines.some((l) => l.replace(/[^\p{L}]/gu, '').length <= 2);
-    if (longest <= width && lines.length <= 3 && !orphan) return size;
+    return wrap(ctx, name, measure * u);
+  };
+  /** The largest size (down to the floor) at which the name sets within `measure`; 0 if none. */
+  const fit = (measure: number, lone: boolean) => {
+    for (let size = NAME_MAX * u; size > NAME_MAX * u * 0.7; size *= 0.96) {
+      const lines = setIn(size, measure);
+      const longest = Math.max(...lines.map((l) => ctx.measureText(l).width));
+      const orphan = lines.length > 1 && lines.some((l) => l.replace(/[^\p{L}]/gu, '').length <= 2);
+      if (longest <= measure * u && lines.length <= 3 && (lone || !orphan)) return size;
+    }
+    return 0;
+  };
+  const result = (size: number, measure: number) => ({ size, measure, lines: setIn(size, measure) });
+  const size = fit(NAME_W, false);
+  if (size) return result(size, NAME_W);
+  // A word too long for the name's measure (Purushothaman, Ananyalakshmi) would leave its name set
+  // far smaller than the names beside it: it may take the card's whole face instead — and keep a
+  // lone initial on the line after it, if keeping the initial beside it would cost the name its size.
+  // (At rest, the cards over it make it the room: makeRoom.)
+  const whole = fit(FACE_W, false);
+  const lone = fit(FACE_W, true);
+  if (whole || lone) return result(lone > whole * 1.08 ? lone : whole, FACE_W);
+  // Longer still: as large as the card's face allows.
+  let size0 = NAME_MAX * u * 0.7;
+  const longest = Math.max(...setIn(size0, FACE_W).map((l) => ctx.measureText(l).width));
+  if (longest > FACE_W * u) size0 = (size0 * FACE_W * u) / longest;
+  return result(size0, FACE_W);
+}
+
+/** Clear space kept, at rest, between the end of a name and the card over it (card widths). */
+const NAME_CLEAR = 0.035;
+
+/** A point on a card at rest (px from the card's top left) on screen — the hand as the pointer's hit-test sees it. */
+function onScreen(r: Pose, L: Layout, px: number, py: number) {
+  const k = PERSPECTIVE / (PERSPECTIVE - r.z);
+  const lx = px - L.u / 2;
+  const ly = py - L.ch / 2;
+  const c = Math.cos(r.rz * DEG);
+  const s = Math.sin(r.rz * DEG);
+  return { x: L.cx + (r.x + lx * c - ly * s) * k, y: L.cy + (r.y + lx * s + ly * c) * k };
+}
+
+/**
+ * At rest, no name runs under the card over it. Every card shows its upper left, where its name sits;
+ * where a name reaches further than the hand's spacing uncovers (a long name, set as large as its card
+ * allows), the cards over it move on just enough to clear it, and the hand is recentred. A hand whose
+ * names already clear is left exactly as it was. The room is given only as far as the screen has it.
+ * `names[i]`: the end of card i's longest line and that line's middle (px from the card's top left).
+ */
+function makeRoom(R: Pose[], L: Layout, names: ({ end: number; line: number } | null)[]) {
+  const n = R.length;
+  const out = R.map((r) => ({ ...r }));
+  let moved = 0;
+  for (let i = 0; i < n - 1; i++) {
+    const nm = names[i];
+    if (!nm) continue;
+    const a = out[i];
+    const b = out[i + 1];
+    const end = onScreen(a, L, nm.end, nm.line);
+    const top = onScreen(b, L, 0, 0);
+    const foot = onScreen(b, L, 0, L.ch);
+    const edge = top.x + ((end.y - top.y) * (foot.x - top.x)) / (foot.y - top.y || 1);
+    const short = NAME_CLEAR * L.u * (PERSPECTIVE / (PERSPECTIVE - a.z)) - (edge - end.x);
+    if (short <= 0) continue;
+    const dx = short / (PERSPECTIVE / (PERSPECTIVE - b.z));
+    for (let j = i + 1; j < n; j++) out[j].x += dx;
+    moved += dx;
   }
-  // A single long word may run past the name's measure, but never off the card's face.
-  applyType(ctx, { family: 'serif', size });
-  longest = Math.max(...wrap(ctx, name, width).map((l) => ctx.measureText(l).width));
-  return longest > FACE_W * u ? (size * FACE_W * u) / longest : size;
+  if (moved <= 0) return { poses: R, need: 0, given: 1 };
+  // Recentred, and within the screen: the hand's outer cards no nearer its edges than the layout keeps them.
+  const edge = Math.max(16, L.W * 0.04);
+  const reach = (f: number) => {
+    let lo = Infinity;
+    let hi = -Infinity;
+    out.forEach((r, i) => {
+      const x = R[i].x + (r.x - R[i].x) * f - (moved * f) / 2;
+      const k = PERSPECTIVE / (PERSPECTIVE - r.z);
+      lo = Math.min(lo, L.cx + (x - L.u * 0.55) * k);
+      hi = Math.max(hi, L.cx + (x + L.u * 0.55) * k);
+    });
+    return lo >= edge && hi <= L.W - edge;
+  };
+  let f = 1;
+  while (f > 0 && !reach(f)) f -= 0.1;
+  f = Math.max(0, f);
+  return { poses: out.map((r, i) => ({ ...r, x: R[i].x + (r.x - R[i].x) * f - (moved * f) / 2 })), need: moved / L.u, given: f };
 }
 
 /**
@@ -177,7 +307,8 @@ function nameSize(ctx: CanvasRenderingContext2D, name: string, u: number) {
 function restPose(i: number, n: number, L: Layout, lead: boolean): Pose {
   // Small, fixed irregularities, −0.5..0.5 per card.
   const j = (k: number) => Math.sin(i * 12.9898 + k * 78.233 + n) * 0.5;
-  if (n === 1) return { x: L.u * 0.12, y: 0, z: 0, rx: 3, ry: -9, rz: -2.4 };
+  // A lone card: at the hand's centre, held a little turned, as a single card is.
+  if (n === 1) return { x: 0, y: 0, z: 0, rx: 3, ry: -9, rz: -2.4 };
   const t = i - (n - 1) / 2;
   const step = L.step;
   const turn = n === 2 ? 3.2 : Math.min(4.6, 16 / (n - 1));
@@ -196,7 +327,11 @@ function restPose(i: number, n: number, L: Layout, lead: boolean): Pose {
 
 export function MemberHand({ domain, index, open }: { domain: TeamDomain; index: number; open: boolean }) {
   const people = useMemo<Person[]>(
-    () => (domain.officers ? domain.officers.map((o) => ({ role: o.role, name: o.name })) : domain.members.map((name) => ({ role: 'Member', name }))),
+    () =>
+      (domain.officers ? domain.officers.map((o) => ({ role: o.role, name: o.name })) : domain.members.map((name) => ({ role: 'Director', name }))).map((p) => ({
+        ...p,
+        portrait: crewPortrait(p.name),
+      })),
     [domain],
   );
   const n = people.length;
@@ -217,20 +352,86 @@ export function MemberHand({ domain, index, open }: { domain: TeamDomain; index:
     sims.current = people.map(() => ({ h: spring(), p: spring(), s: spring(), tx: spring(), ty: spring(), lx: 9, ly: 9, last: '', lastVars: '' }));
     teamsFrame.member = -1;
     const place = () => {
-      const L = measure(n, stage.current?.closest('.domain-detail') ?? null);
-      layout.current = L;
-      rest.current = people.map((_, i) => restPose(i, n, L, lead));
+      const root = stage.current?.closest('.domain-detail') ?? null;
       const el = stage.current;
-      if (!el) return;
-      el.style.setProperty('--u', `${L.u}px`);
-      el.style.setProperty('--ch', `${L.ch}px`);
-      el.style.setProperty('--cx', `${L.cx}px`);
-      el.style.setProperty('--cy', `${L.cy}px`);
-      // Each name set as large as its card allows (once the serif has loaded).
-      void fontsReady().then(() => {
-        if (layout.current !== L) return;
+      const apply = (L: Layout) => {
+        layout.current = L;
+        rest.current = people.map((_, i) => restPose(i, n, L, lead));
+        if (!el) return;
+        el.style.setProperty('--u', `${L.u}px`);
+        el.style.setProperty('--ch', `${L.ch}px`);
+        el.style.setProperty('--cx', `${L.cx}px`);
+        el.style.setProperty('--cy', `${L.cy}px`);
+        // (How much larger a drawn card is than one at rest: what shows only on a drawn card is sized for it.)
+        el.style.setProperty('--drawn-k', (L.ds * NEAR).toFixed(3));
+      };
+      // Each name set as large as its card allows, and where its longest line ends as the page sets it
+      // (a probe in the name's own type, untransformed): the hand at rest makes room for it (makeRoom).
+      const settle = (L: Layout) => {
         const { ctx } = makeCanvas(2, 2);
-        people.forEach((p, i) => slots.current[i]?.style.setProperty('--name', `${nameSize(ctx, p.name, L.u).toFixed(1)}px`));
+        const fits = people.map((p, i) => {
+          const fit = nameFit(ctx, p.name, L.u);
+          slots.current[i]?.style.setProperty('--name', `${fit.size.toFixed(1)}px`);
+          slots.current[i]?.style.setProperty('--name-w', String(fit.measure));
+          return fit;
+        });
+        const probe = document.createElement('span');
+        probe.style.cssText = 'position:absolute;left:-9999px;top:0;visibility:hidden;white-space:nowrap;pointer-events:none';
+        document.body.appendChild(probe);
+        const names = fits.map((fit, i) => {
+          const name = slots.current[i]?.querySelector<HTMLElement>('.hand-card__name');
+          if (!name) return null;
+          const cs = getComputedStyle(name);
+          for (const k of ['fontFamily', 'fontWeight', 'fontStyle', 'fontSize', 'letterSpacing'] as const) probe.style[k] = cs[k];
+          let end = 0;
+          let at = 0;
+          fit.lines.forEach((line, j) => {
+            probe.textContent = line;
+            const w = probe.getBoundingClientRect().width;
+            if (w > end) [end, at] = [w, j];
+          });
+          const lh = parseFloat(cs.lineHeight) || fit.size * 1.02;
+          return { end: name.offsetLeft + end, line: name.offsetTop + (at + 0.5) * lh };
+        });
+        probe.remove();
+        return makeRoom(
+          people.map((_, i) => restPose(i, n, L, lead)),
+          L,
+          names,
+        );
+      };
+      const L0 = measure(n, root);
+      apply(L0);
+      // The names (once the serif has loaded), and each portrait gone just above its card's foot, however
+      // many lines the domain's name takes there.
+      void fontsReady().then(() => {
+        if (layout.current !== L0) return;
+        let L = L0;
+        let room = settle(L);
+        // Where the screen hasn't the room the names need (a phone, upright), the hand is laid out again
+        // with it counted in: its cards a little smaller, every name still whole.
+        if (room.given < 1) {
+          const L1 = measure(n, root, room.need);
+          if (L1.u < L.u) {
+            apply(L1);
+            L = L1;
+            room = settle(L);
+          }
+        }
+        rest.current = room.poses;
+        slots.current.forEach((slot) => {
+          const foot = slot?.querySelector<HTMLElement>('.hand-card__foot');
+          if (!slot || !foot) return;
+          // A long domain name on a small card: at its floor as drawn, or not at all, rather than over the face.
+          slot.removeAttribute('data-foot');
+          let top = foot.offsetTop / L.u;
+          for (const fit of ['fit', 'bare']) {
+            if (top >= YIELD_FLOOR) break;
+            slot.setAttribute('data-foot', fit);
+            top = foot.offsetTop / L.u;
+          }
+          slot.style.setProperty('--foot-top', Math.max(YIELD_FLOOR, top).toFixed(3));
+        });
       });
     };
     place();
@@ -417,9 +618,9 @@ export function MemberHand({ domain, index, open }: { domain: TeamDomain; index:
     }
   });
 
-  const count = `${n} ${domain.officers ? (n === 1 ? 'Officer' : 'Officers') : n === 1 ? 'Member' : 'Members'}`;
+  const count = `${n} ${domain.officers ? (n === 1 ? 'Officer' : 'Officers') : n === 1 ? 'Director' : 'Directors'}`;
   return (
-    <div ref={stage} className="hand-stage" style={{ '--tone': domain.tone } as CSSProperties}>
+    <div ref={stage} className="hand-stage" style={{ '--tone': domain.tone, '--print-top': PRINT_BAND.top, '--print-h': PRINT_BAND.height } as CSSProperties}>
       <header ref={ident} className="hand-ident" style={{ opacity: 0 }}>
         <p className="hand-index">{domainIndexLabel(index)}</p>
         <h2 id="domain-detail-title" ref={heading} tabIndex={-1} className="hand-title">
@@ -443,6 +644,7 @@ export function MemberHand({ domain, index, open }: { domain: TeamDomain; index:
             >
               <span className="hand-card__shade" aria-hidden="true" />
               <span className="hand-card__face">
+                {person.portrait && <Print portrait={person.portrait} />}
                 <span className="hand-card__rule" aria-hidden="true" />
                 <span className="hand-card__role">{person.role}</span>
                 <span className="hand-card__name">{person.name}</span>

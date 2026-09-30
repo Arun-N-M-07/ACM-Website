@@ -709,6 +709,11 @@ This supersedes the room design in §9. The rooms were visually overbuilt for wh
   - a shadow it throws on the cards beneath;
   - light that slides across the coat from the pointer.
 - **Typography:** the CORE language: a short rule, ROLE as a label, NAME as a display line (the site's Montserrat; see ARCHITECTURE.md → Typography). Members have no role in the data, so they read MEMBER. Each name is measured in the loaded serif and set as large as its card allows, with no lone initial on a line. The foot carries "0N / 0N"; a drawn card also shows the domain's name. No roll numbers, nothing invented.
+- **Portraits:** each card carries its member's portrait, printed into the coat under the name (`content/crewPortraits.ts`; the prints are made by `scripts/crew-portraits.mjs`, see ASSETS.md → Crew portraits).
+  - Who is who comes from the photographs' file names, matched to the member names in `content/teams.ts`; the table is keyed by name, so it holds however the crew is ordered.
+  - Every face is framed the same: the same size, at the same place on the card, from the face each photograph was detected to hold (macOS Vision, run once in the script).
+  - The print's black ground is the card's own shade and is let go of, so the print has no edge: the person comes up out of the coat under the name and goes back into it above the foot. The print yields to the foot (`--foot-top`, measured per card), however many lines the domain's name takes there. It lies under the sheen and the edge, like a print under lacquer.
+  - At runtime it is one image per card: no blend modes, masks or filters in the 3D context beyond one static gradient mask. The prints are fetched when the visitor reaches the portal (`preloadCrewPortraits`, from `DomainDetail`); each fades in once decoded. A missing print leaves the typographic card, never a broken image.
 - **Composition by count:**
   - **one card** (Marketing): the hero, slightly off-axis;
   - **two**: an overlapping pair;
