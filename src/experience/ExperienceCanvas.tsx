@@ -180,6 +180,9 @@ export default function ExperienceCanvas() {
           const now = performance.now();
           const again = now - lastContextLoss < 30000;
           lastContextLoss = now;
+          // (It is lost already: taking this canvas down needn't ask for the loss again — a lost
+          // context has no extensions left to ask with, and three would only warn about it.)
+          gl.forceContextLoss = () => undefined;
           fx.fade = 1;
           experience().set({ webgl: again ? 'failed' : 'lost' });
         });

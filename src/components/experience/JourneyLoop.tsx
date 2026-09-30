@@ -46,7 +46,7 @@ import { SEGMENTS } from '@/config/timeline';
 import { progress } from '@/systems/scroll/progress';
 import { C_MIST, C_MIST_FULL, carouselAt } from '@/teams/layout';
 import { teams, teamsFrame } from '@/teams/state';
-import { wrapToEnd, wrapToStart } from './navigation';
+import { loopStill, wrapToEnd, wrapToStart } from './navigation';
 import { useProgressFrame } from './useProgressFrame';
 
 /** Eased gently (the mosaic's pace is the scroll's, nearly even across the passage). */
@@ -83,6 +83,14 @@ const mosaicAtStart = (p: number) => 1 - smooth((introTimeAt(p) - (T.mist + 4)) 
  */
 const END_SEAM = SEGMENTS.return.start + 0.8 * (SEGMENTS.return.end - SEGMENTS.return.start);
 const START_SEAM = progressAtIntroTime(T.mist + 3);
+/**
+ * With reduced motion there is no mist or mosaic to cross (the picture holds its still), so the loop
+ * is made as soon as the scroll has gone on past the last still — a little into the passage after the
+ * last card — or back out of the film, a little into the mist before its first frame (where entering
+ * puts the scroll: clear of it) (navigation.loopStill).
+ */
+const END_STILLS = SEGMENTS.return.start + 0.15 * (SEGMENTS.return.end - SEGMENTS.return.start);
+const START_STILLS = progressAtIntroTime(T.prologue - 2);
 
 export function JourneyLoop() {
   useProgressFrame((p) => {
@@ -96,11 +104,18 @@ export function JourneyLoop() {
     fx.mosaicSide = inside ? 0 : 1;
 
     const open = st.phase === 'cinematic' && !st.menuOpen && !st.dossier && !st.textVersionOpen;
-    if (!open || st.reducedMotion) return;
+    if (!open) return;
+    const s = progress.target;
+    if (st.reducedMotion) {
+      // Still to still, the loop too: the other end's still, the world exchanged in the dark.
+      if (progress.pending) return;
+      if (inside && teams().state === 'teamsActive' && s > END_STILLS) loopStill(1);
+      else if (!inside && s < START_STILLS) loopStill(-1);
+      return;
+    }
     // Where the scroll itself is — and the camera, which follows it a moment behind (in the film, at
     // a cinematic pace at most: a hard fling back through the opening can leave it far behind). The
     // world is exchanged only once both are in the whole mist, where nothing can be seen.
-    const s = progress.target;
     // Past the end's seam: on from the start's, by as much as it went past.
     if (inside && teams().state === 'teamsActive' && s > END_SEAM && mistAtEnd(p) >= 1) {
       wrapToStart(START_SEAM - END_SEAM);

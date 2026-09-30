@@ -155,13 +155,28 @@ export function wrapToEnd(delta: number) {
   shiftProgress(delta);
 }
 
+/**
+ * With reduced motion the ends meet still to still: on past the last still, the opening's first; back
+ * before the first, the last — landed on exactly, clear of where JourneyLoop makes this cut from the
+ * scroll, with the world exchanged in the dark (CameraRig: a pending change of place goes dark first).
+ */
+export function loopStill(dir: 1 | -1) {
+  const stops = REDUCED_MOTION_STOPS;
+  const land = dir > 0 ? stops[0] : stops[stops.length - 1];
+  progress.pending = () => (dir > 0 ? wrapToStart(land - progress.target) : wrapToEnd(land - progress.target));
+}
+
 /** Step to the next / previous framed stop (keyboard N / P). */
 export function stepStop(dir: 1 | -1) {
   const p = progress.target;
   const stops = REDUCED_MOTION_STOPS;
   const next = dir > 0 ? stops.find((s) => s > p + 0.0005) : [...stops].reverse().find((s) => s < p - 0.0005);
   // The ends meet: past the last still, the first; before the first, the last.
-  if (next === undefined) return dir > 0 ? (teamsFrame.inside ? loopToStart() : undefined) : loopToEnd();
+  if (next === undefined) {
+    if (dir > 0 && !teamsFrame.inside) return;
+    if (experience().reducedMotion) return loopStill(dir);
+    return dir > 0 ? loopToStart() : loopToEnd();
+  }
   // At the portal, N means "go through".
   if (!teamsFrame.inside && next > progress.lock.max) return enterTeamsWorld();
   if (teamsFrame.inside && next < progress.lock.min) return;

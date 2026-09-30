@@ -41,6 +41,8 @@ export function Sky() {
           sunDir: { value: SUN_DIRECTION.clone() },
           uFog: { value: new Color() },
           uHaze: { value: 0 },
+          uBelow: { value: new Color() },
+          uBelowSpan: { value: 0.2 },
           ...mistUniforms,
         },
         vertexShader: /* glsl */ `
@@ -54,13 +56,14 @@ export function Sky() {
           precision highp float;
           uniform vec3 zenith; uniform vec3 mid; uniform vec3 horizon; uniform vec3 sunColor; uniform vec3 sunDir;
           uniform vec3 uFog; uniform float uHaze;
+          uniform vec3 uBelow; uniform float uBelowSpan;
           uniform vec4 uMist; uniform vec3 uMistSun; uniform vec3 uMistGlow;
           varying vec3 vDir;
           void main() {
             float h = clamp(vDir.y, -0.2, 1.0);
             vec3 col = mix(horizon, mid, smoothstep(0.0, 0.38, h));
             col = mix(col, zenith, smoothstep(0.28, 0.95, h));
-            col = mix(col, horizon * 0.55, 1.0 - smoothstep(-0.2, 0.0, h));
+            col = mix(col, uBelow, 1.0 - smoothstep(-uBelowSpan, 0.0, h));
             float s = max(dot(normalize(vDir), sunDir), 0.0);
             col += sunColor * (pow(s, 8.0) * 0.35 + pow(s, 180.0) * 1.2) * smoothstep(-0.05, 0.1, h + 0.05);
             // The film's mist and haze (zero outside it).
@@ -96,6 +99,12 @@ export function Sky() {
     (u.sunColor.value as Color).copy(S0).lerp(look.sun.color, k);
     (u.sunDir.value as Vector3).copy(SUN_DIRECTION).lerp(look.sun.dir, k).normalize();
     (u.uFog.value as Color).copy(look.fogColor);
+    // Below the horizon the dome stands in for ground beyond the ground's edge. In the film that ground is
+    // lost in the air (seen from the flight, the campus's edge lies far off in the fog), so there the dome
+    // is the fog's colour from just under the horizon — else the ground's edge shows as a straight line
+    // wherever the cloud below the flight parts.
+    (u.uBelow.value as Color).copy(u.horizon.value as Color).multiplyScalar(0.55).lerp(look.fogColor, k);
+    u.uBelowSpan.value = 0.2 - 0.17 * k;
     // Haze: the denser the air, the less sky (the cloud takes it all).
     const haze = Math.min(1, Math.max(0, (look.fogDensity - 0.0035) / 0.02));
     u.uHaze.value = k * Math.max(haze * 0.96, look.cloud);

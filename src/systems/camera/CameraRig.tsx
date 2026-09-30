@@ -61,29 +61,38 @@ export function CameraRig() {
     // 1 ─ progress
     progress.cut = false;
     if (st.reducedMotion) {
-      // (A chapter change asked for just before reduced motion came on: made now — the stills cut anyway.)
-      if (progress.pending) {
-        const run = progress.pending;
-        progress.pending = null;
-        run();
-      }
-      // Cut between framed stills behind a short fade instead of flying.
       progress.snap = false;
       progress.snapLead = 0;
-      const want = nearestStop(progress.target);
-      if (lastStop.current < 0) {
-        lastStop.current = want;
-        progress.value = want;
-      }
-      if (want !== lastStop.current) fadingOut.current = true;
-      if (fadingOut.current) {
+      if (progress.pending) {
+        // A change of place asked for — the loop (JourneyLoop, navigation.stepStop), or a chapter asked
+        // for just before reduced motion came on — is made in the dark: the picture goes down, the
+        // world is exchanged, and the still it lands on comes up.
         fx.fade = Math.min(1, fx.fade + dt * 5);
         if (fx.fade >= 1) {
-          lastStop.current = want;
-          progress.value = want;
+          const run = progress.pending;
+          progress.pending = null;
+          run();
+          lastStop.current = nearestStop(progress.target);
+          progress.value = lastStop.current;
           fadingOut.current = false;
         }
-      } else if (st.phase !== 'travel') fx.fade = Math.max(0, fx.fade - dt * 4);
+      } else {
+        // Cut between framed stills behind a short fade instead of flying.
+        const want = nearestStop(progress.target);
+        if (lastStop.current < 0) {
+          lastStop.current = want;
+          progress.value = want;
+        }
+        if (want !== lastStop.current) fadingOut.current = true;
+        if (fadingOut.current) {
+          fx.fade = Math.min(1, fx.fade + dt * 5);
+          if (fx.fade >= 1) {
+            lastStop.current = want;
+            progress.value = want;
+            fadingOut.current = false;
+          }
+        } else if (st.phase !== 'travel') fx.fade = Math.max(0, fx.fade - dt * 4);
+      }
     } else {
       lastStop.current = -1;
       // A chapter change: the picture dims first (the camera where it is), and only at black does

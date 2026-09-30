@@ -147,6 +147,9 @@ export function Clouds() {
           float b = texture2D(uNoise, p * 2.2 - vec2(0.0, uTime * 0.006)).g;
           float n = a * 0.65 + b * 0.45;
           float body = smoothstep(1.0, 0.18, r + (0.5 - n) * 0.85);
+          // (…and gone before the billboard's edge, however far the noise pushes it: a mass is never cut straight.)
+          vec2 e = abs(q) * 2.0;
+          body *= smoothstep(1.0, 0.82, max(e.x, e.y));
           // You pass through, never meet a surface: masses fade as they come close.
           float near = smoothstep(4.0, 26.0, vDist);
           float alpha = body * near * uAmount;

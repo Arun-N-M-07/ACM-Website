@@ -128,10 +128,21 @@ export function openSpan(index: number): [number, number] {
   return right ? [0.05, 0.58] : [0.42, 0.95];
 }
 
+/**
+ * Where a back wall's title begins, as a fraction of its width. Upright on a phone the view meets the
+ * rooms on one side of the corridor from the side that loses the wall's left end (by up to a fifth of
+ * it, in the widest room): there the title starts where the phone's view of the wall does (openSpan),
+ * above the installation, instead of at the wall's edge, where the frame would cut it.
+ */
+function titleFrom(index: number) {
+  const w = typeof window === 'undefined' ? 1440 : window.innerWidth;
+  return w <= 760 && CORRIDOR.rooms[index]?.side === -1 ? openSpan(index)[0] : 0.045;
+}
+
 /** The exhibit's title, painted across the top of its back wall. Returns the y where the installation can start. */
 export function titleBand(ctx: CanvasRenderingContext2D, w: number, h: number, info: WallInfo, ink: string = BONE, dim: string = DIM) {
   const u = h / 100;
-  const x = w * 0.045;
+  const x = w * titleFrom(info.index);
   ctx.fillStyle = info.ev.accent;
   ctx.fillRect(x, u * 6, u * 5, u * 0.8);
   text(ctx, `ROOM ${pad2(info.index + 1)} / ${pad2(info.total)}   ·   ${info.ev.kind.toUpperCase()}   ·   ${info.ev.cadence.toUpperCase()}${info.ev.flagship ? '   ·   FLAGSHIP' : ''}`, x + u * 7, u * 7.2, {
@@ -140,7 +151,7 @@ export function titleBand(ctx: CanvasRenderingContext2D, w: number, h: number, i
     color: dim,
     tracking: 0.24,
   });
-  const size = fitSize(ctx, info.ev.title, w * 0.7, { family: 'serif', size: u * 13 }, u * 13, u * 7);
+  const size = fitSize(ctx, info.ev.title, Math.min(w * 0.7, w * 0.97 - x), { family: 'serif', size: u * 13 }, u * 13, u * 7);
   text(ctx, info.ev.title, x - u * 0.4, u * 20, { family: 'serif', size, color: ink });
   return u * 26;
 }
