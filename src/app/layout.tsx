@@ -5,6 +5,7 @@ import { KEYWORDS, SITE_DESCRIPTION, SITE_TITLE, SITE_URL, organizationJsonLd } 
 import './globals.css';
 import '@/teams/ui/teams.css';
 import '@/intro/ui/intro.css';
+import '@/scenes/events/events.css';
 
 /**
  * The site's one typeface: Montserrat, a variable font (weight 100–900), in

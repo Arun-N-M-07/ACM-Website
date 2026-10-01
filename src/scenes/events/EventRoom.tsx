@@ -7,13 +7,16 @@
  *
  * Generated entirely from the RoomLayout and the EventRecord; which
  * installation a room gets is its event's `artifact` (see exhibits/index.ts).
+ * It stands in its bay of the Events matrix (EventsHall) at the bay's scale —
+ * built as ever at full size, and scaled as a whole, so it is the same room
+ * the camera goes into.
  *
  * Local frame: origin at the centre of the room floor, the portal faces local
- * +z (toward the corridor), local x runs along the corridor.
+ * +z (out of the matrix), local x runs along the opening.
  */
 import { useFrame } from '@react-three/fiber';
 import { memo, useMemo, useRef } from 'react';
-import { AdditiveBlending, CanvasTexture, Color, CylinderGeometry, DoubleSide, MeshBasicMaterial, PlaneGeometry } from 'three';
+import { AdditiveBlending, CanvasTexture, Color, CylinderGeometry, DoubleSide, type Group, MeshBasicMaterial, PlaneGeometry } from 'three';
 import { type RoomLayout } from '@/config/world';
 import { merge, metricBox, place } from '@/systems/geometry/build';
 import { useLightAnchor } from '@/systems/lighting/lightPool';
@@ -29,12 +32,8 @@ interface Props {
   total: number;
 }
 
-/** Map a room-local point to world space. */
-function toWorld(layout: RoomLayout, rotY: number, lx: number, ly: number, lz: number): [number, number, number] {
-  const c = Math.cos(rotY);
-  const s = Math.sin(rotY);
-  return [layout.center[0] + lx * c + lz * s, layout.center[1] + ly, layout.center[2] - lx * s + lz * c];
-}
+/** Where a light anchor waits while its room isn't the one visited: out of every light's reach. */
+const PARKED_Y = -1e4;
 
 /**
  * A soft spot on the centrepiece: a faint cone of light from the ceiling and a
@@ -78,11 +77,13 @@ function ExhibitLight({ accent, height, level }: { accent: string; height: numbe
   );
 }
 
-/** (Its props are the corridor's fixed layout: the corridor re-rendering as rooms stream needn't re-render a room.) */
+/**
+ * (Its props are the matrix's fixed layout: re-rendering the hall needn't re-render a room. Its light
+ * follows it wherever its column of the matrix stands — EventsHall moves them as the matrix opens.)
+ */
 export const EventRoom = memo(function EventRoom({ layout, total }: Props) {
   const kit = useKit();
   const { event, length: W, depth: D, height: H } = layout;
-  const rotY = layout.side === -1 ? Math.PI / 2 : -Math.PI / 2;
   const exhibit = EXHIBITS[event.artifact];
   const { Piece } = exhibit;
   const clock = useRoomClock(layout.index);
@@ -116,13 +117,23 @@ export const EventRoom = memo(function EventRoom({ layout, total }: Props) {
   const signalBlue = useMemo(() => new Color('#83bbff'), []);
   const roomColor = useMemo(() => new Color(event.accent), [event.accent]);
 
-  // Light: brightens while you're inside; a room that "boots" stays dark until it does.
-  const anchorPos = useMemo(() => toWorld(layout, rotY, 0, H - 0.7, -D * 0.1), [layout, rotY, H, D]);
-  const anchor = useLightAnchor(anchorPos, event.flagship ? '#ffd2a2' : '#ffdcb4', event.flagship ? 95 : 65, event.flagship ? 20 : 15);
+  // Light: brightens while you're inside; a room that "boots" stays dark until it does. (At the
+  // room's scale: the reach with it, the intensity as its square — the room lit as it was built. It
+  // waits out of reach unless this is the room being visited, so the few pooled lights stay with the
+  // hall and the matrix — systems/lighting.)
+  const k = layout.scale;
+  const anchor = useLightAnchor([0, PARKED_Y, 0], event.flagship ? '#ffd2a2' : '#ffdcb4', (event.flagship ? 95 : 65) * k * k, (event.flagship ? 20 : 15) * k);
+  const group = useRef<Group>(null);
   const level = useRef(0.5);
   const response = useRef(1);
   useFrame((_, dt) => {
     const c = clock.current;
+    // (Pointed at in the matrix, across the hall, it asks the pool for a light of its own.)
+    if ((c.here || c.near) && group.current) {
+      group.current.updateWorldMatrix(true, false);
+      anchor.position.set(0, H - 0.7, -D * 0.1).applyMatrix4(group.current.matrixWorld);
+      anchor.priority = c.here ? 1 : 12;
+    } else anchor.position.y = PARKED_Y;
     // The shared blue signal takes on this installation's colour as it performs.
     accentMat.color.copy(signalBlue).lerp(roomColor, sstep(c.u, 0, .85)).multiplyScalar(1.25);
     let target = (c.here ? 1.3 : c.near ? 0.7 : 0.45) * response.current;
@@ -167,7 +178,7 @@ export const EventRoom = memo(function EventRoom({ layout, total }: Props) {
   );
 
   return (
-    <group position={layout.center} rotation={[0, rotY, 0]} name={`room-${event.slug}`}>
+    <group ref={group} position={layout.center} scale={layout.scale} name={`room-${event.slug}`}>
       <mesh geometry={geo.shell} material={kit.concreteDark} />
       <mesh geometry={geo.floor} material={kit.floor} />
       <mesh geometry={geo.ceiling} material={kit.ceiling} />

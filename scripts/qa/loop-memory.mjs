@@ -1,4 +1,4 @@
-// Loop / resource QA: runs whole journeys through the real loop (opening beats, Events rooms, the
+// Loop / resource QA: runs whole journeys through the real loop (opening beats, the Events' rooms, the
 // portal and the Teams world to the end of the return, where JourneyLoop wraps to the start) and,
 // at the same resting point after each loop, reports the renderer's GPU resources (geometries,
 // textures, programs), JS heap, DOM size, window/document listeners and audio nodes created —

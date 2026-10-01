@@ -9,11 +9,12 @@
  * plays the travel (it is never a cut); leaving it for an earlier chapter
  * crosses back instantly behind the jump's fade.
  */
-import { CHAPTERS, PORTAL_DWELL, progressForRoom, SEGMENTS, type ChapterId } from '@/config/timeline';
-import { CORRIDOR } from '@/config/world';
+import { CHAPTERS, PORTAL_DWELL, SEGMENTS, type ChapterId } from '@/config/timeline';
+import { EVENTS } from '@/content/events';
 import { DOMAIN_COUNT } from '@/content/teams';
+import { resetEvents, roomProgress } from '@/scenes/events/controller';
 import { experience } from '@/store/experience';
-import { REDUCED_MOTION_STOPS } from '@/systems/camera/shots';
+import { activeStops, REDUCED_MOTION_STOPS } from '@/systems/camera/shots';
 import { progress } from '@/systems/scroll/progress';
 import { jumpToProgress, scrollToProgress, shiftProgress } from '@/systems/scroll/ScrollTimeline';
 import { closeDomain, resetFocus } from '@/teams/focus';
@@ -46,6 +47,7 @@ const PORTAL_STAND = SEGMENTS.portal.start + (SEGMENTS.portal.end - SEGMENTS.por
 /** Resume the journey at progress p (default: standing before the portal). */
 export function backToJourney(p = PORTAL_STAND) {
   close();
+  resetEvents();
   jumpOutside(p);
 }
 
@@ -63,7 +65,10 @@ export function enterTeamsWorld(domain?: number) {
   }
   if (domain !== undefined) onArrival(() => scrollToProgress(progressForDomain(domain), reduced ? 0.01 : 2.4));
   const here = progress.value >= SEGMENTS.portal.start + (SEGMENTS.portal.end - SEGMENTS.portal.start) * (PORTAL_DWELL - 0.05);
-  if (!here) jumpToProgress(PORTAL_STAND);
+  if (!here) {
+    resetEvents();
+    jumpToProgress(PORTAL_STAND);
+  }
   // Let the cut land (and the portal settle) before going through.
   window.setTimeout(() => enterTeams({ reduced: experience().reducedMotion }), here ? 0 : 700);
 }
@@ -81,9 +86,14 @@ export function goToChapter(id: ChapterId) {
   const def = CHAPTERS.find((c) => c.id === id);
   if (!def || def.jumpTo === null) return;
   const to = def.jumpTo;
-  if (experience().reducedMotion) return jumpOutside(to);
+  if (experience().reducedMotion) {
+    resetEvents();
+    return jumpOutside(to);
+  }
   progress.pending = () => {
     leaveTeams();
+    // (A visit to an event's room never outlives a move elsewhere: let go behind the cut.)
+    resetEvents();
     progress.fadeInRate = 1.15;
     jumpToProgress(to, CHAPTER_LEAD);
   };
@@ -92,9 +102,14 @@ export function goToChapter(id: ChapterId) {
 /** How far before a chapter's opening a chapter change lands (progress: a couple of the film's beats). */
 const CHAPTER_LEAD = 0.004;
 
+/**
+ * Event i's room, from the index or a link: the room visited — cut to behind the jump's fade, as its
+ * installation begins (with reduced motion, its framed still, the installation played).
+ */
 export function goToRoom(index: number) {
   close();
-  jumpOutside(progressForRoom(Math.max(0, Math.min(CORRIDOR.rooms.length - 1, index))));
+  const p = roomProgress(Math.max(0, Math.min(EVENTS.length - 1, index)), experience().reducedMotion ? 1 : 0.02);
+  jumpOutside(p);
 }
 
 /** Travel to domain i (entering the world if needed). */
@@ -114,6 +129,7 @@ export function goToDomain(i: number) {
  */
 export function loopToStart() {
   close();
+  resetEvents();
   leaveTeams();
   teams().set({ state: 'outside', selected: null });
   experience().set({ activeRoom: -1 });
@@ -125,6 +141,7 @@ export function loopToStart() {
 /** …and backwards: from the start of the track, in the mist, to its end, in the same mist. */
 export function loopToEnd() {
   close();
+  resetEvents();
   resetFocus();
   const p = placeInside(1);
   jumpToProgress(p - 4 * LOOP_EDGE, 0, { fade: false });
@@ -141,6 +158,7 @@ export const LOOP_EDGE = 1e-4;
  */
 export function wrapToStart(delta: number) {
   close();
+  resetEvents();
   leaveTeams();
   teams().set({ state: 'outside', selected: null });
   experience().set({ activeRoom: -1 });
@@ -148,6 +166,7 @@ export function wrapToStart(delta: number) {
 }
 export function wrapToEnd(delta: number) {
   close();
+  resetEvents();
   resetFocus();
   placeInside(1);
   // (The orbit takes up its place on this frame — a cut, not a spring through every card.)
@@ -169,7 +188,8 @@ export function loopStill(dir: 1 | -1) {
 /** Step to the next / previous framed stop (keyboard N / P). */
 export function stepStop(dir: 1 | -1) {
   const p = progress.target;
-  const stops = REDUCED_MOTION_STOPS;
+  // (While an event is visited, its stills — and none past its end: the choice there is the visitor's.)
+  const stops = activeStops();
   const next = dir > 0 ? stops.find((s) => s > p + 0.0005) : [...stops].reverse().find((s) => s < p - 0.0005);
   // The ends meet: past the last still, the first; before the first, the last.
   if (next === undefined) {

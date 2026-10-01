@@ -1,0 +1,805 @@
+/* The Events' interface (scenes/events/EventsUI): the matrix's hit areas, the label a lit bay
+   gets and its way in, the way on to the Crew — and an event's record, an editorial page the room
+   unfolds into. Moved from the frame: --hub (the whole matrix in the picture, 0..1), --unfold (the
+   room giving way to its record, 0..1), --decide (the choice at its end, 0..1), and on each part of
+   the record, --in (how far it has come into view). */
+
+.evx {
+  --hub: 0;
+  --unfold: 0;
+  --decide: 0;
+  --evx-line: rgba(239, 233, 223, 0.16);
+  --evx-line-strong: rgba(239, 233, 223, 0.34);
+  --evx-gold: #d9b98c;
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+}
+.evx[data-phase='travel'],
+.evx[data-phase='loading'],
+.evx[data-phase='ready'] {
+  display: none;
+}
+.evx-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+.evx-br {
+  color: var(--bone-dim);
+  font-weight: var(--w-meta);
+}
+.evx-arrow {
+  display: inline-block;
+  transition: transform 0.35s var(--ease);
+}
+
+/* ── The whole matrix ────────────────────────────────────────────────────── */
+
+.evx-hub {
+  position: absolute;
+  inset: 0;
+  opacity: var(--hub);
+  visibility: hidden;
+}
+.evx-bays {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.evx-bay {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  cursor: pointer;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
+}
+.evx-hub[data-live='true'] .evx-bay {
+  pointer-events: auto;
+}
+.evx-bay:focus-visible {
+  outline: 1px solid rgba(239, 233, 223, 0.7);
+  outline-offset: 6px;
+}
+
+/* A lit bay's label: the way in, in brackets, on a small dark ground — going with the pointer inside
+   that room's own opening (placed every frame: EventsUI) over its hatching (EventsHall). Changes at
+   once from one room to the next. */
+.evx-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s var(--ease);
+  will-change: transform;
+}
+.evx-label[data-on='true'] {
+  opacity: 1;
+}
+.evx-label-text {
+  display: block;
+  padding: 3px 7px 4px;
+  font-family: var(--sans);
+  font-weight: var(--w-ui);
+  font-size: 16px;
+  line-height: 1.2;
+  letter-spacing: -0.005em;
+  white-space: nowrap;
+  color: #f4f1ea;
+  background: rgba(8, 8, 9, 0.72);
+}
+/* (The touch bar's number.) */
+.evx-label-num {
+  font-family: var(--mono);
+  font-weight: var(--w-meta);
+  font-size: 10px;
+  letter-spacing: var(--t-num);
+  color: var(--bone-dim);
+}
+
+/* On a touch screen, a tapped room's name and its way in, at the foot of the screen — large. */
+.evx-focusbar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: grid;
+  gap: 10px;
+  padding: 16px var(--gutter) calc(16px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(0deg, rgba(8, 8, 10, 0.96), rgba(8, 8, 10, 0.9) 70%, rgba(8, 8, 10, 0));
+  transform: translate3d(0, 105%, 0);
+  transition: transform 0.36s var(--ease);
+}
+.evx-focusbar[data-on='true'] {
+  transform: none;
+}
+.evx-hub[data-live='true'] .evx-focusbar[data-on='true'] {
+  pointer-events: auto;
+}
+.evx-focusbar-name {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0;
+  font-family: var(--sans);
+  font-weight: var(--w-title);
+  font-size: 22px;
+  letter-spacing: var(--t-heading);
+  color: var(--bone);
+}
+.evx-focusbar-kind {
+  margin-left: auto;
+  font-family: var(--mono);
+  font-weight: var(--w-label);
+  font-size: 9.5px;
+  letter-spacing: var(--t-label);
+  text-transform: uppercase;
+  color: var(--bone-dim);
+}
+.evx-focusbar-visit {
+  min-height: 48px;
+  font-family: var(--mono);
+  font-weight: var(--w-label);
+  font-size: 12px;
+  letter-spacing: var(--t-label);
+  text-transform: uppercase;
+  color: var(--ink);
+  background: var(--bone);
+  border: 1px solid var(--bone);
+}
+.evx-focusbar-visit .evx-br {
+  color: rgba(11, 11, 12, 0.5);
+}
+
+/* The way on, at the matrix's foot (as wide as what it says: centred on the screen, not shrunk to the
+   half of it right of its anchor). */
+.evx-crew {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  width: max-content;
+  max-width: calc(100vw - 2 * var(--gutter));
+  will-change: transform;
+}
+.evx-crew-hint {
+  margin: 0;
+  font-family: var(--mono);
+  font-weight: var(--w-meta);
+  font-size: 10px;
+  letter-spacing: var(--t-ui);
+  text-transform: uppercase;
+  color: var(--bone-dim);
+  white-space: nowrap;
+}
+/* The way on: an invitation, set as a line of the page — not a button's box. A hairline under it draws
+   in from the left when it is pointed at, and the arrow leans on. */
+.evx-crew-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35em;
+  min-height: 44px;
+  padding: 10px 2px 8px;
+  font-family: var(--sans);
+  font-weight: var(--w-title);
+  font-size: 17px;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  color: var(--bone);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
+}
+.evx-crew-k {
+  color: var(--bone-dim);
+}
+.evx-crew-btn::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 4px;
+  height: 1px;
+  background: var(--bone);
+  opacity: 0.35;
+  transform-origin: left center;
+  transition:
+    opacity 0.3s var(--ease),
+    transform 0.45s var(--ease);
+}
+.evx-hub[data-live='true'] .evx-crew-btn {
+  pointer-events: auto;
+}
+.evx-crew-btn:hover::after,
+.evx-crew-btn:focus-visible::after {
+  opacity: 0.9;
+}
+.evx-crew-btn:focus-visible {
+  outline: 1px solid rgba(239, 233, 223, 0.7);
+  outline-offset: 4px;
+}
+.evx-crew-btn:hover .evx-arrow,
+.evx-crew-btn:focus-visible .evx-arrow {
+  transform: translate3d(0, 3px, 0);
+}
+.evx[data-touch='true'] .evx-crew {
+  display: none;
+}
+.evx[data-touch='true'] .evx-hub[data-live='true'] .evx-crew {
+  display: grid;
+}
+/* (A room tapped: its bar has the foot of the screen; the way on steps aside until it is let go.) */
+.evx-crew[data-away='true'] {
+  opacity: 0;
+  visibility: hidden;
+}
+@media (orientation: landscape) {
+  .evx-focusbar {
+    padding-right: calc(var(--gutter) + 96px);
+  }
+}
+
+/* ── An event's record ───────────────────────────────────────────────────── */
+
+/* One page with the room above it: as the scroll goes on, the room's picture goes up the screen
+   (CameraRig lifts it by the share of the screen the canvas has) and the black canvas comes up under
+   it, edge to edge — no fade, no cut. On the canvas only type and hairlines, on three columns:
+     pitch black        the canvas, and the negative space
+     warm off-white     the name, what it is, the values, the choices
+     muted grey         labels, the number, the way back
+     dark grey          the rules
+   The hierarchy is in size, weight, place and contrast. Its spaces are set by the type (which the
+   screen's width sets) — never by the screen's height, never as a block of screen. */
+.evx {
+  --ed-black: #000;
+  --ed-white: #ebe7e0;
+  --ed-soft: #dcd8d1;
+  --ed-label: #7a7772;
+  --ed-number: #6f6c68;
+  --ed-rule: rgba(255, 255, 255, 0.12);
+  /* Three columns, as wide as each other, across the canvas. */
+  --ed-col-gap: clamp(12px, 1.2vw, 24px);
+  --ed-tight: clamp(10px, 1vw, 18px);
+  --ed-step: clamp(18px, 1.9vw, 34px);
+  --ed-breath: clamp(44px, 4.6vw, 80px);
+  /* The name's size — and no larger than lets a line of it keep to its column (--word: its letters). */
+  --ed-title: clamp(52px, 6.4vw, 132px);
+  --ed-title-room: calc((100vw - 2 * var(--gutter) - 2 * var(--ed-col-gap)) / 3);
+  /* What the event is: large, readable copy, set tight. */
+  --ed-copy: clamp(20px, 2.15vw, 44px);
+  /* The site's top bar: what goes up under it goes into black. */
+  --ed-bar: calc(env(safe-area-inset-top, 0px) + 76px);
+}
+.evx-record {
+  position: absolute;
+  inset: 0;
+  visibility: hidden;
+  overflow: hidden;
+}
+.evx-record[data-on='true'] {
+  visibility: visible;
+}
+.evx-sheet {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  min-height: 100vh;
+  padding: 0 var(--gutter);
+  background: var(--ed-black);
+  /* (The black carried on below its foot: never a sliver of the room under the end of the record.) */
+  box-shadow: 0 100vh 0 0 var(--ed-black);
+  will-change: transform;
+}
+/* Once the canvas has the screen, what goes up under the top bar goes into its black (a band as deep
+   as the bar — black, not a fade). */
+.evx-record::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: var(--ed-bar);
+  background: var(--ed-black);
+  opacity: var(--covered, 0);
+  pointer-events: none;
+}
+.evx-record[data-on='true'] .evx-sheet {
+  pointer-events: auto;
+}
+[data-reveal] {
+  --in: 0;
+  opacity: calc(0.12 + 0.88 * var(--in));
+  transform: translate3d(0, calc((1 - var(--in)) * 14px), 0);
+}
+
+/* The opening, right at the canvas's edge: the name in the first column (its number under it, and
+   under that, small, which event and the way back); in the second, what it is; in the third, what it
+   is for — large, set tight, the same voice. */
+.evx-intro {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: var(--ed-col-gap);
+  align-items: start;
+  padding-top: clamp(20px, 2vw, 36px);
+}
+.evx-name {
+  grid-column: 1;
+  display: grid;
+  justify-items: start;
+}
+.evx-title,
+.evx-count {
+  margin: 0;
+  font-family: var(--sans);
+  line-height: 0.86;
+  letter-spacing: -0.05em;
+}
+.evx-title {
+  font-size: min(var(--ed-title), calc(var(--ed-title-room) / (var(--word, 8) * 0.58)));
+  font-weight: var(--w-display);
+  color: var(--ed-white);
+  overflow-wrap: break-word;
+}
+.evx-title:focus {
+  outline: none;
+}
+.evx-count {
+  margin-top: 0.12em;
+  font-size: calc(var(--ed-title) * 0.52);
+  font-weight: var(--w-title);
+  color: var(--ed-number);
+}
+.evx-lede {
+  margin: 0;
+  font-family: var(--sans);
+  font-weight: var(--w-title);
+  font-size: var(--ed-copy);
+  line-height: 1.04;
+  letter-spacing: -0.03em;
+  color: var(--ed-soft);
+}
+.evx-meta {
+  display: grid;
+  justify-items: start;
+  margin-top: var(--ed-step);
+}
+.evx-toplink,
+.evx-meta-at {
+  font-family: var(--sans);
+  font-weight: var(--w-ui);
+  font-size: 13px;
+  letter-spacing: -0.005em;
+  color: var(--ed-label);
+}
+.evx-meta-at {
+  line-height: 20px;
+}
+.evx-toplink {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  min-height: 32px;
+  transition: color 0.2s var(--ease);
+}
+.evx-toplink:hover,
+.evx-toplink:focus-visible {
+  color: var(--ed-white);
+}
+
+/* The rest of the story: each part on a hairline across the canvas — its label in the first column,
+   the part itself across the other two. */
+.evx-split {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: var(--ed-col-gap);
+  margin-top: var(--ed-breath);
+  padding-top: clamp(10px, 0.9vw, 16px);
+  border-top: 1px solid var(--ed-rule);
+}
+.evx-split > * {
+  grid-column: 2 / -1;
+}
+.evx-split > .evx-side {
+  grid-column: 1;
+}
+/* (Category, then About: one thought, close.) */
+.evx-split.evx-about {
+  margin-top: var(--ed-step);
+}
+.evx-cap {
+  margin: 0;
+  font-family: var(--sans);
+  font-weight: var(--w-title);
+  font-size: clamp(16px, 1.45vw, 28px);
+  line-height: 1.05;
+  letter-spacing: -0.03em;
+  color: var(--ed-label);
+}
+.evx-cap-note {
+  display: block;
+  margin-top: 6px;
+  font-size: 13px;
+  letter-spacing: 0;
+}
+.evx-kindlist {
+  margin: 0;
+  font-family: var(--sans);
+  font-weight: var(--w-title);
+  font-size: clamp(20px, 2.15vw, 44px);
+  line-height: 1.04;
+  letter-spacing: -0.03em;
+  color: var(--ed-white);
+}
+.evx-dot {
+  color: var(--ed-label);
+}
+/* The record's own words: two columns of readable copy. */
+.evx-text {
+  margin: 0;
+  font-family: var(--sans);
+  font-weight: var(--w-sub);
+  font-size: clamp(16px, 1.35vw, 24px);
+  line-height: 1.3;
+  letter-spacing: -0.015em;
+  color: var(--ed-soft);
+}
+.evx-said {
+  column-count: 2;
+  column-gap: var(--ed-col-gap);
+}
+
+/* Rows, ruled: a hairline each, drawn in from the left as they arrive. */
+.evx-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.evx-rows > * {
+  position: relative;
+  padding: 10px 0 11px;
+}
+.evx-rows > * + *::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 1px;
+  background: var(--ed-rule);
+  transform: scaleX(var(--in, 1));
+  transform-origin: left center;
+}
+.evx-facts > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: var(--ed-col-gap);
+  align-items: baseline;
+}
+.evx-facts dt,
+.evx-facts dd {
+  margin: 0;
+  font-family: var(--sans);
+  font-weight: var(--w-title);
+  font-size: clamp(17px, 1.45vw, 28px);
+  line-height: 1.12;
+  letter-spacing: -0.025em;
+}
+.evx-facts dt {
+  color: var(--ed-label);
+}
+.evx-facts dd {
+  color: var(--ed-white);
+}
+.evx-details > * + * {
+  margin-top: var(--ed-step);
+}
+.evx-steps,
+.evx-prog {
+  counter-reset: evx-step;
+}
+.evx-steps > li,
+.evx-prog > li {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: var(--ed-col-gap);
+  align-items: baseline;
+}
+.evx-steps-sequence > li {
+  grid-template-columns: 2.4em minmax(0, 1fr) minmax(0, 1fr);
+}
+.evx-steps-sequence > li::after {
+  counter-increment: evx-step;
+  content: counter(evx-step, decimal-leading-zero);
+  grid-column: 1;
+  grid-row: 1;
+  font-family: var(--sans);
+  font-weight: var(--w-title);
+  font-size: 13px;
+  color: var(--ed-label);
+}
+.evx-steps-sequence > li > .evx-step-title {
+  grid-column: 2;
+}
+.evx-steps-sequence > li > .evx-step-note {
+  grid-column: 3;
+}
+.evx-step-title {
+  font-family: var(--sans);
+  font-weight: var(--w-title);
+  font-size: clamp(17px, 1.45vw, 28px);
+  line-height: 1.12;
+  letter-spacing: -0.025em;
+  color: var(--ed-white);
+}
+.evx-step-note {
+  font-family: var(--sans);
+  font-weight: var(--w-sub);
+  font-size: clamp(14px, 1.05vw, 18px);
+  line-height: 1.4;
+  color: var(--ed-soft);
+}
+.evx-related > li {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  column-gap: var(--ed-col-gap);
+  align-items: baseline;
+}
+.evx-related-note {
+  font-family: var(--sans);
+  font-weight: var(--w-sub);
+  font-size: clamp(15px, 1.2vw, 21px);
+  line-height: 1.35;
+  color: var(--ed-soft);
+}
+/* The exhibition's reading of an event, in a line: its steps, one on from another. */
+.evx-path {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.15em 0.4em;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--sans);
+  font-weight: var(--w-title);
+  font-size: clamp(20px, 2.15vw, 44px);
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+  color: var(--ed-white);
+}
+.evx-path + .evx-path {
+  margin-top: var(--ed-tight);
+}
+.evx-path-to {
+  color: var(--ed-label);
+}
+.evx-rowlink {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
+  min-height: 40px;
+  font-family: var(--sans);
+  font-weight: var(--w-title);
+  font-size: clamp(17px, 1.45vw, 28px);
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+  text-decoration: none;
+  color: var(--ed-white);
+}
+.evx-rowlink-go {
+  font-size: 0.8em;
+  color: var(--ed-label);
+  transition:
+    transform 0.3s var(--ease),
+    color 0.2s var(--ease);
+}
+.evx-rowlink:hover .evx-rowlink-go {
+  color: var(--ed-white);
+  transform: translate3d(3px, -3px, 0);
+}
+
+/* The foot: where next — back to the full view in the second column, the next event in the third. */
+.evx-decide {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: var(--ed-col-gap);
+  margin-top: var(--ed-breath);
+  padding: clamp(10px, 0.9vw, 16px) 0 calc(env(safe-area-inset-bottom, 0px) + clamp(28px, 3.6vw, 64px));
+  border-top: 1px solid var(--ed-rule);
+}
+.evx-decide-note {
+  grid-column: 1;
+}
+.evx-choice {
+  position: relative;
+  display: grid;
+  align-content: start;
+  justify-items: start;
+  gap: 10px;
+  padding: 0 0 8px;
+  text-align: left;
+}
+.evx-choice::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--ed-white);
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform 0.55s var(--ease);
+}
+.evx-choice:hover::after,
+.evx-choice:focus-visible::after {
+  transform: scaleX(1);
+}
+.evx-choice-k {
+  font-family: var(--sans);
+  font-weight: var(--w-title);
+  font-size: 13px;
+  color: var(--ed-label);
+}
+.evx-choice-t {
+  font-family: var(--sans);
+  font-weight: var(--w-title);
+  font-size: clamp(20px, 2.15vw, 44px);
+  line-height: 1.02;
+  letter-spacing: -0.03em;
+  color: var(--ed-white);
+}
+.evx-choice-big {
+  font-weight: var(--w-display);
+  font-size: clamp(36px, 4.4vw, 88px);
+  line-height: 0.9;
+  letter-spacing: -0.05em;
+}
+.evx-choice-go {
+  font-family: var(--sans);
+  font-weight: var(--w-title);
+  font-size: 13px;
+  color: var(--ed-soft);
+}
+.evx-back:hover .evx-arrow {
+  transform: translate3d(-6px, 0, 0);
+}
+.evx-next:hover .evx-arrow {
+  transform: translate3d(6px, 0, 0);
+}
+
+/* In the Events the site's chapter rail is a quiet index (it says where the journey is; it never moves
+   the scroll), and while a record is on the screen it steps back altogether: the event is the page. */
+html[data-evx-quiet='true'] .rail {
+  opacity: 0.38;
+  transition: opacity 0.3s var(--ease);
+}
+html[data-evx-quiet='true'] .rail:hover,
+html[data-evx-quiet='true'] .rail:focus-within {
+  opacity: 1;
+}
+html[data-evx-record='true'] .rail {
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.3s var(--ease),
+    visibility 0s linear 0.3s;
+}
+
+/* ── Smaller screens ─────────────────────────────────────────────────────── */
+
+/* Narrower: the name across the top; what it is, and what it is for, side by side under it; the later
+   parts' labels over them. */
+@media (max-width: 1000px) {
+  .evx {
+    --ed-title: clamp(48px, 9vw, 96px);
+    --ed-title-room: calc(100vw - 2 * var(--gutter));
+    --ed-copy: clamp(19px, 2.6vw, 28px);
+  }
+  .evx-intro {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    row-gap: var(--ed-step);
+  }
+  .evx-name {
+    grid-column: 1 / -1;
+    grid-template-columns: auto auto 1fr;
+    align-items: end;
+    column-gap: 0.3em;
+  }
+  .evx-count {
+    margin: 0;
+  }
+  .evx-meta {
+    justify-self: end;
+    justify-items: end;
+    margin: 0;
+  }
+  .evx-split,
+  .evx-decide {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: 12px;
+  }
+  .evx-split > *,
+  .evx-split > .evx-side,
+  .evx-decide > *,
+  .evx-decide-note {
+    grid-column: 1 / -1;
+  }
+  .evx-decide {
+    row-gap: 24px;
+  }
+}
+/* One column: the number and the way back over the name, then what it is, what it is for, and the
+   rest in the same order. */
+@media (max-width: 640px) {
+  .evx {
+    --ed-title: clamp(44px, 14vw, 72px);
+    --ed-copy: clamp(19px, 5.4vw, 24px);
+  }
+  .evx-intro {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .evx-intro > * {
+    grid-column: 1;
+  }
+  .evx-name {
+    grid-template-columns: auto 1fr;
+    grid-template-areas: 'count meta' 'title title';
+    align-items: end;
+    row-gap: 4px;
+  }
+  .evx-title {
+    grid-area: title;
+  }
+  .evx-count {
+    grid-area: count;
+  }
+  .evx-meta {
+    grid-area: meta;
+  }
+  .evx-said {
+    column-count: 1;
+  }
+  .evx-facts > div,
+  .evx-steps > li,
+  .evx-prog > li,
+  .evx-related > li {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  }
+  .evx-steps-sequence > li {
+    grid-template-columns: 2.2em minmax(0, 1fr);
+  }
+  .evx-steps-sequence > li > .evx-step-note {
+    grid-column: 2;
+  }
+}
+
+/* Reduced motion: the record is all there at once, and it scrolls. */
+.evx[data-reduced='true'] .evx-record {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.evx[data-reduced='true'] .evx-page {
+  position: relative;
+}
+.evx[data-reduced='true'] [data-reveal] {
+  transform: none;
+}
+.evx[data-reduced='true'] .evx-label *,
+.evx[data-reduced='true'] .evx-focusbar {
+  transition: none !important;
+}

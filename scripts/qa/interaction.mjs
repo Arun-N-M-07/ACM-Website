@@ -44,9 +44,12 @@ try {
     await page.keyboard.press('Tab');
     assert.equal(await page.evaluate(() => document.activeElement === document.querySelector('.index button')), true, 'Index traps focus');
     await page.click('.index-rooms button');
-    await settle();
-    assert.equal(await page.evaluate(() => window.__acm.store.getState().activeRoom), 0);
-    await page.click('[data-plate^="room-"][aria-hidden="false"] .plate-btn');
+    await settle(2600);
+    assert.equal(await page.evaluate(() => window.__acm.store.getState().activeRoom), 0, 'The index takes you into event 01\'s room');
+    // (The dossier: opened from the index, over the room.)
+    await page.click('.ctl-index');
+    await page.waitForSelector('.index');
+    await page.click('.index-rooms .text-link');
     await page.waitForSelector('.dossier');
     const before = await page.evaluate(() => window.__acm.progress.value);
     await page.mouse.wheel({ deltaY: 800 });
@@ -55,18 +58,22 @@ try {
     await page.keyboard.press('Escape');
     await page.waitForSelector('.dossier', { hidden: true });
 
-    const signal = async (room, visit) => {
-      await page.evaluate((r, v) => window.__acm.jump(window.__acm.roomProgress(r, v)), room, visit);
+    // The light route: from the lobby across the hall to the matrix, on through its opening to the portal —
+    // and back, exactly.
+    const signal = async (p) => {
+      await page.evaluate((p) => window.__acm.jump(p), p);
       await settle();
       return page.evaluate(() => {
         const g = window.__acm.scene.getObjectByName('connected-signal');
         return { count: g.children[1].geometry.drawRange.count, head: g.children[2].position.toArray() };
       });
     };
-    const first = await signal(0, .6);
-    const later = await signal(4, .6);
+    const hub = await page.evaluate(() => window.__acm.events.hubRest);
+    const opened = await page.evaluate(() => { const s = window.__acm.segments.portal; return s.start + (s.end - s.start) * 0.5; });
+    const first = await signal(hub);
+    const later = await signal(opened);
     assert.ok(later.count > first.count, 'Light route grows forward');
-    const reversed = await signal(0, .6);
+    const reversed = await signal(hub);
     assert.deepEqual(reversed, first, 'Light route rewinds exactly');
 
     // The portal: walled until held. The Teams world has no closing plate or footer: past the sixth

@@ -15,10 +15,12 @@
  * top, greyer underneath), sorted back to front every frame so their soft
  * edges layer correctly, and faded as the camera passes through them — there
  * is no plane to meet. The scene's fog does the rest (look.ts: white, dense).
+ * As ACM-CEG comes up out of the sea, a violet light comes into the cloud
+ * round it (look.violet): light on white cloud, its crowns lit lavender.
  */
 import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
-import { Color, DynamicDrawUsage, InstancedBufferAttribute, type InstancedMesh, Object3D, PlaneGeometry, ShaderMaterial, Vector3 } from 'three';
+import { Color, DynamicDrawUsage, InstancedBufferAttribute, type InstancedMesh, Object3D, PlaneGeometry, ShaderMaterial, Vector2, Vector3 } from 'three';
 import { useExperience } from '@/store/experience';
 import { useDisposable } from '@/systems/performance/useDisposable';
 import { CAMPUS } from '@/config/world';
@@ -116,6 +118,11 @@ export function Clouds() {
         uShade: { value: new Color('#9aa3ab') },
         uFog: { value: new Color() },
         uFogDensity: { value: 0.02 },
+        uViolet: { value: 0 },
+        // (A multiplier — what the violet light leaves of white — and the light itself, on the crowns.)
+        uVioletTint: { value: new Color(0.82, 0.73, 1) },
+        uVioletLight: { value: new Color('#b49ae6') },
+        uName: { value: new Vector2(ACM_CEG.x, ACM_CEG.z) },
       },
       vertexShader: /* glsl */ `
         attribute vec2 aMass;  // size, seed
@@ -123,6 +130,8 @@ export function Clouds() {
         varying float vSeed;
         varying float vDist;
         varying float vHeight;
+        varying float vNear;
+        uniform vec2 uName;
         void main() {
           vUv = uv;
           vSeed = aMass.y;
@@ -130,15 +139,18 @@ export function Clouds() {
           vDist = -c.z;
           vec3 world = (instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
           vHeight = clamp((world.y - ${CLOUD_BASE.toFixed(1)}) / ${(CLOUD_TOP - CLOUD_BASE).toFixed(1)}, 0.0, 1.0);
+          // How near the name a mass lies (its light falls off across the sea).
+          vec2 dn = (world.xz - uName) / 420.0;
+          vNear = exp(-dot(dn, dn));
           c.xy += position.xy * aMass.x;
           gl_Position = projectionMatrix * c;
         }`,
       fragmentShader: /* glsl */ `
         uniform sampler2D uNoise;
-        uniform float uTime, uAmount, uFogDensity;
-        uniform vec3 uLit, uShade, uFog;
+        uniform float uTime, uAmount, uFogDensity, uViolet;
+        uniform vec3 uLit, uShade, uFog, uVioletTint, uVioletLight;
         varying vec2 vUv;
-        varying float vSeed, vDist, vHeight;
+        varying float vSeed, vDist, vHeight, vNear;
         void main() {
           vec2 q = vUv - 0.5;
           float r = length(q) * 2.0;
@@ -160,9 +172,16 @@ export function Clouds() {
           float lit = smoothstep(0.15, 0.95, top) * (0.55 + 0.45 * vHeight);
           vec3 col = mix(uShade, uLit, lit);
           col *= 0.9 + 0.2 * smoothstep(0.35, 0.75, n);
-          // Far masses dissolve into the air around them.
+          // The violet light the name is revealed in: light falling on white cloud — its lit crowns
+          // take it most, its shadowed bellies a deeper tint, the masses round the name more than the
+          // far sea. (The cloud stays white where the light doesn't reach.)
+          // Far masses dissolve into the air around them…
           float haze = 1.0 - exp(-uFogDensity * uFogDensity * vDist * vDist * 0.35);
           col = mix(col, uFog, haze);
+          // …and the light reaches them still, a little less for the air between.
+          float v = uViolet * (0.3 + 0.5 * vNear) * (1.0 - 0.4 * haze);
+          col *= mix(vec3(1.0), uVioletTint, v * (0.38 + 0.22 * (1.0 - lit)));
+          col += uVioletLight * v * lit * 0.12;
           gl_FragColor = vec4(col, alpha * 0.96);
         }`,
     });
@@ -183,12 +202,15 @@ export function Clouds() {
     if (!on) return;
     // Back to front, so soft edges layer properly.
     const cp = camera.position;
+    // Above the cloud, from just after the camera comes out of it until it drops back in: still.
+    const still = Math.min(1, Math.max(0, (t - T.cloudOut) / 1.5)) * (1 - Math.min(1, Math.max(0, (t - (T.cloudTop - 1.5)) / 1.5)));
     order.sort((i, j) => tmp.copy(masses[j].p).distanceToSquared(cp) - tmp.copy(masses[i].p).distanceToSquared(cp));
     order.forEach((k, i) => {
       const s = masses[k];
       dummy.position.copy(s.p);
-      // A slow drift across the layer.
-      dummy.position.x += Math.sin(clock.elapsedTime * 0.02 + s.seed) * 6;
+      // A slow drift across the layer — inside it, where the camera passes through; above it, where
+      // ACM-CEG stands on the sea, the sea holds still (its light changes, not its place).
+      dummy.position.x += Math.sin(clock.elapsedTime * 0.02 + s.seed) * 6 * (1 - still);
       dummy.updateMatrix();
       m.setMatrixAt(i, dummy.matrix);
       res.seeds.setXY(i, s.size, s.seed);
@@ -196,7 +218,8 @@ export function Clouds() {
     m.instanceMatrix.needsUpdate = true;
     res.seeds.needsUpdate = true;
     const u = res.mat.uniforms;
-    u.uTime.value = clock.elapsedTime;
+    // (The billows' own slow turning goes with the beat: they keep still when the scroll does.)
+    u.uTime.value = t * 1.5;
     u.uAmount.value = Math.min(1, Math.max(0, (t - (T.rise + 3)) / 2));
     // Seen from below, the masses are their shaded bellies.
     const under = Math.min(1, Math.max(0, (CLOUD_BASE + 12 - cp.y) / 45));
@@ -210,6 +233,7 @@ export function Clouds() {
     (u.uShade.value as Color).lerp(_flash, Math.min(1, look.flash * 0.5)).multiplyScalar(1 + 1.8 * look.flash);
     (u.uFog.value as Color).copy(look.fogColor);
     u.uFogDensity.value = look.fogDensity;
+    u.uViolet.value = look.violet;
   });
 
   return <instancedMesh ref={mesh} args={[res.geo, res.mat, count]} frustumCulled={false} renderOrder={7} />;

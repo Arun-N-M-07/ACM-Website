@@ -46,6 +46,7 @@ interface ExperienceState {
 
   segment: SegmentId;
   chapter: ChapterId;
+  /** The event whose room is being visited, in the Events (-1: none). */
   activeRoom: number;
   dossier: string | null;
   menuOpen: boolean;

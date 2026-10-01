@@ -10,9 +10,11 @@
  *             friction, the gas, the air past a sheet in flight, a burning
  *             sheet's combustion, the air of the cloud as the camera moves
  *             through it, the light-well's shaft (air and its resonances),
- *             the room beyond the Events door. All are noise, shaped: nothing
- *             here is a sustained tone (no hum, no drone), and no bed plays
- *             after the film — the music is the continuous bed.
+ *             the room beyond the Events door; the air of an event's room
+ *             while the camera is in it, and the hall's between one room and
+ *             the next. All are noise, shaped: nothing here is a sustained
+ *             tone (no hum, no drone), and none is a bed under the whole
+ *             journey — the music is the continuous bed.
  *   cues      short events, played when the film makes them: the canister's
  *             contact, each contact as it turns, its settle; the pressure and
  *             the release; the swell of the words; a sheet's flaps in the air
@@ -210,6 +212,14 @@ function layer(name: string): Layer | null {
     // The Events beyond their door: the air of a large room, opening as the door does.
     case 'eventsAir':
       return bed(ctx, name, 'lowpass', 300, 0.6, true);
+    // An event's room, from inside it: the air of that room — its colour (band and width) is the room's
+    // own acoustic, set by the director; heard from the side its bay is on as the camera comes to it,
+    // and from all round inside.
+    case 'roomAir':
+      return bed(ctx, name, 'bandpass', 520, 0.8, true, true);
+    // Between one room and the next, through the hall: its air, moving as the camera does.
+    case 'hallAir':
+      return bed(ctx, name, 'lowpass', 260, 0.6, true);
     // The loop's mosaic (experience/mosaic): the world coming apart into tiles and points of light —
     // a fine, airy shimmer that brightens as they scatter and wanders across the space…
     case 'mosaicShimmer':

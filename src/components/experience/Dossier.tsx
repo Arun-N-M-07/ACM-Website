@@ -24,7 +24,7 @@ const pad2 = (n: number) => String(n).padStart(2, '0');
 const words = (s: string) => new Set(s.toLowerCase().match(/[a-z0-9]+/g) ?? []);
 
 /** The summary once, and the record only if it says more than the summary. */
-function essenceOf(ev: EventRecord) {
+export function essenceOf(ev: EventRecord) {
   const sum = words(ev.summary);
   const desc = words(ev.description);
   let shared = 0;
@@ -33,12 +33,6 @@ function essenceOf(ev: EventRecord) {
   return repeats ? { essence: ev.description, record: null } : { essence: ev.summary, record: ev.description };
 }
 
-/** The card a room's dossier grows out of, if it is on screen. */
-function cardFor(slug: string) {
-  const el = document.querySelector<HTMLElement>(`.plate[data-plate="room-${slug}"] .plate-card`);
-  if (!el || Number(getComputedStyle(el).opacity) < 0.2) return null;
-  return el.getBoundingClientRect();
-}
 
 export function Dossier() {
   const slug = useExperience((s) => s.dossier);
@@ -111,14 +105,9 @@ export function Dossier() {
       sheet.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 160 }).onfinish = done;
       return;
     }
-    const to = cardFor(shown);
-    const from = sheet.getBoundingClientRect();
     content.current?.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 180, fill: 'forwards' });
     backdrop.current?.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 520, delay: 120, fill: 'forwards' });
-    const end = to
-      ? { transform: `translate(${to.left - from.left}px, ${to.top - from.top}px) scale(${to.width / from.width}, ${to.height / from.height})`, opacity: 0.2 }
-      : { transform: 'translateX(48px)', opacity: 0 };
-    sheet.animate([{ transform: 'none', opacity: 1 }, end], { duration: 520, delay: 120, easing: 'cubic-bezier(0.6, 0, 0.8, 0.4)', fill: 'forwards' }).onfinish = done;
+    sheet.animate([{ transform: 'none', opacity: 1 }, { transform: 'translateX(48px)', opacity: 0 }], { duration: 520, delay: 120, easing: 'cubic-bezier(0.6, 0, 0.8, 0.4)', fill: 'forwards' }).onfinish = done;
   }, [closing, shown, reduced]);
 
   if (!ev) return null;

@@ -83,13 +83,14 @@ function paintStudio(gl: WebGLRenderer) {
   const x = c.getContext('2d')!;
   // The front (what the faces see, their tops at ≈ 0.47 and their feet at ≈ 0.51): a soft box of warm
   // light over champagne, deepening through gold to amber, then shadow.
-  rows(x, [...SKY, [0.445, '#fbeed3'], [0.465, '#f2dcae'], [0.48, '#d6b57a'], [0.495, '#9c7440'], [0.51, '#5c3e1e'], [0.525, '#3a2812'], ...GROUND]);
+  // (Its deep tones are deep gold, not brown: a gold piece's shadow keeps the metal's colour.)
+  rows(x, [...SKY, [0.445, '#fff2d6'], [0.462, '#f6e0ae'], [0.476, '#e2bd70'], [0.492, '#b78636'], [0.508, '#7a4f16'], [0.525, '#43290c'], ...GROUND]);
   // Behind and to the sides (what the letters' sides see): a dimmer sky, the same ground, the band deep amber.
   const back = document.createElement('canvas');
   back.width = W;
   back.height = H;
   const b = back.getContext('2d')!;
-  rows(b, [...BACK_SKY, [0.445, '#8e6b3c'], [0.47, '#5e4222'], [0.5, '#3c2a16'], [0.515, '#2c1f10'], ...GROUND]);
+  rows(b, [...BACK_SKY, [0.445, '#9a6c2a'], [0.47, '#674216'], [0.5, '#3f280c'], [0.515, '#2c1c09'], ...GROUND]);
   // …laid over the front everywhere but the front: full behind the name (u ≈ 0.25), gone toward the
   // camera (u ≈ 0.75), blending between (so the letters at the ends of the word are a shade deeper).
   const mask = b.createLinearGradient(0, 0, W, 0);

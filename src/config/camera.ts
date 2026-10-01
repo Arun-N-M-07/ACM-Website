@@ -8,10 +8,10 @@ import { EYE_Y, PORTAL, UNDERGROUND } from './world';
 import { lookPose, makePose } from '@/systems/camera/pose';
 
 export const CAMERA_STATES = {
-  /** The corridor mouth, looking north down the Events corridor: the handoff from the intro. */
+  /** The corridor mouth, looking north into the Events hall: the handoff from the intro. */
   facilityEnd: makePose([0, EYE_Y, UNDERGROUND.hall.north + 2.5], 0, 0, 54),
 
-  // Down the vestibule towards the portal, then standing square on to it.
+  // Down the passage behind the Events matrix towards the portal, then standing square on to it.
   portalApproach: lookPose([0, EYE_Y, PORTAL.z + 17], [0, PORTAL.y + 0.6, PORTAL.z], 54),
   portalStand: lookPose([0, EYE_Y + 0.1, PORTAL.z + 8.8], [0, PORTAL.y - 0.15, PORTAL.z], 50),
 } as const;

@@ -3,128 +3,72 @@
  * camera pose. Each segment's first pose equals the previous segment's last
  * pose, so the whole journey is one continuous move. The opening's segments
  * are shot by src/intro/camera.ts (its last pose is `facilityEnd`, where the
- * Events segment begins).
+ * Events segment begins); the Events' by scenes/events/track.
  */
 import { CAMERA_STATES as S } from '@/config/camera';
-import { EVENT_STATION_WEIGHTS, PORTAL_DWELL, PORTAL_GATE, SEGMENTS, segmentAt, segmentProgress, progressForRoom } from '@/config/timeline';
+import { EVENTS_TRACK, PORTAL_DWELL, PORTAL_GATE, PORTAL_SPLIT, eventsAt, segmentAt, segmentProgress } from '@/config/timeline';
 import { progressAtIntroTime } from '@/intro/controller';
 import { STILLS } from '@/intro/timeline';
+import { RECORD_STILL, recordWall } from '@/scenes/events/controller';
+import { eventsState } from '@/scenes/events/state';
+import { eventsCamera, HUB_REST, hubPose, type EventsShot } from '@/scenes/events/track';
 import { teamsStops } from '@/teams/layout';
-import { CORRIDOR, EYE_Y } from '@/config/world';
-import {
-  angleDelta,
-  copyPose,
-  easeInOutSine,
-  emptyPose,
-  lerpPose,
-  lookPose,
-  makePose,
-  sampleTrack,
-  type CameraPose,
-  type PoseKey,
-} from './pose';
+import { copyPose, easeInOutSine, emptyPose, sampleTrack, smoothstep, type CameraPose, type PoseKey } from './pose';
 
-/** Fraction of each event station spent travelling (the rest is the dwell). */
-const TRAVEL = 0.52;
+/**
+ * What the last evaluated shot asks of the camera rig: how far it is composed for the screen's shape
+ * (1: the rig's generic widening for tall screens stays out of it), and the scale of the space the
+ * camera is in (1 the hall; a room's own inside it — the rig's small motions are scaled with it).
+ */
+export const cinematic = { composed: 0, scale: 1 };
+const eventsShot: EventsShot = { composed: 0, scale: 1 };
 
-const corridorEntry = makePose([0, EYE_Y, CORRIDOR.start + 1], 0, 0, 54);
-export const STATION_POSES: CameraPose[] = CORRIDOR.rooms.map((r) => lookPose(r.viewpoint, r.focus, r.event.flagship ? 66 : 62));
-const lastStation = STATION_POSES[STATION_POSES.length - 1] ?? corridorEntry;
-
-// Out of the last room, down the vestibule, and stand square on to the portal
-// (from PORTAL_DWELL on, the camera holds there: the hold zone).
+// The matrix opening onto the portal (from the whole matrix), down the passage, and stand square on to
+// it (from PORTAL_DWELL on, the camera holds there: the hold zone).
+const _hub = emptyPose();
+const _near = emptyPose();
+const APPROACH_AT = PORTAL_SPLIT + (PORTAL_DWELL - PORTAL_SPLIT) * 0.5;
 const portalKeys: PoseKey[] = [
-  { t: 0, pose: lastStation },
-  { t: PORTAL_DWELL * 0.55, pose: S.portalApproach, ease: easeInOutSine },
+  { t: 0, pose: _hub },
+  // While the columns part: a step towards the opening, down a little.
+  { t: PORTAL_SPLIT * 0.85, pose: _near, ease: easeInOutSine },
+  { t: APPROACH_AT, pose: S.portalApproach, ease: easeInOutSine },
   { t: PORTAL_DWELL, pose: S.portalStand, ease: easeInOutSine },
   { t: 1, pose: S.portalStand },
 ];
 
-/** Progress range of a room's dwell (when the camera is looking into it). */
-export function roomDwellRange(index: number): [number, number] {
-  const w = EVENT_STATION_WEIGHTS;
-  let acc = 0;
-  for (let k = 0; k <= index; k++) acc += w[k];
-  const width = w[index + 1];
-  const s = SEGMENTS.events;
-  return [s.start + (s.end - s.start) * (acc + width * TRAVEL), s.start + (s.end - s.start) * (acc + width)];
-}
+/** Up across [a, b] and back down across [c, d]. */
+const swell = (x: number, a: number, b: number, c: number, d: number) => smoothstep(a, b, x) * (1 - smoothstep(c, d, x));
 
-/** Where along the events segment we are: which station, and how far into its dwell. */
-export function eventStationAt(p: number): { index: number; travel: number; dwell: number } {
-  const u = segmentProgress(p, 'events');
-  let acc = 0;
-  const w = EVENT_STATION_WEIGHTS;
-  for (let k = 0; k < w.length; k++) {
-    if (u <= acc + w[k] || k === w.length - 1) {
-      const f = Math.min(1, Math.max(0, (u - acc) / w[k]));
-      if (k === 0) return { index: -1, travel: f, dwell: 0 };
-      return { index: k - 1, travel: Math.min(1, f / TRAVEL), dwell: f < TRAVEL ? 0 : (f - TRAVEL) / (1 - TRAVEL) };
-    }
-    acc += w[k];
-  }
-  return { index: -1, travel: 0, dwell: 0 };
-}
-
-const _mid = emptyPose();
-
-/**
- * Between rooms the camera backs out through one portal, turns down the
- * corridor and steps in through the next: position and heading both follow a
- * quadratic Bézier through a corridor waypoint, so the move never stops or
- * cuts a corner through a wall.
- */
-function travel(prev: CameraPose, cur: CameraPose, t: number, out: CameraPose) {
-  const m = _mid;
-  m.x = 0;
-  m.y = EYE_Y;
-  m.z = (prev.z + cur.z) / 2;
-  m.yaw = 0;
-  m.pitch = 0;
-  m.roll = 0;
-  m.fov = 56;
-  const q = (a: number, b: number, c: number) => (1 - t) * (1 - t) * a + 2 * (1 - t) * t * b + t * t * c;
-  out.x = q(prev.x, m.x, cur.x);
-  out.y = q(prev.y, m.y, cur.y);
-  out.z = q(prev.z, m.z, cur.z);
-  const ma = prev.yaw + angleDelta(prev.yaw, m.yaw);
-  const ca = ma + angleDelta(ma, cur.yaw);
-  out.yaw = q(prev.yaw, ma, ca);
-  out.pitch = q(prev.pitch, m.pitch, cur.pitch);
-  out.roll = 0;
-  out.fov = q(prev.fov, m.fov, cur.fov);
+function evaluatePortal(u: number, aspect: number, out: CameraPose) {
+  hubPose(aspect, _hub);
+  copyPose(_hub, _near);
+  _near.z -= Math.min(3.5, (_hub.z - S.portalApproach.z) * 0.2);
+  _near.y -= 0.6;
+  sampleTrack(portalKeys, u, out);
+  // The columns coming home — the outer ones into the wall, the middle one into the floor: the
+  // smallest settling of the picture as each does (EventsHall: splitOffsets).
+  const k = u / PORTAL_SPLIT;
+  out.y -= 0.018 * swell(k, 0.55, 0.61, 0.61, 0.7) + 0.026 * swell(k, 0.93, 0.99, 0.99, 1.08);
+  cinematic.composed = 1 - smoothstep(PORTAL_SPLIT * 0.85, APPROACH_AT, u);
+  cinematic.scale = 1;
   return out;
 }
 
-function evaluateEvents(p: number, out: CameraPose) {
-  const { index, travel: tr, dwell } = eventStationAt(p);
-  if (index < 0) return lerpPose(S.facilityEnd, corridorEntry, easeInOutSine(tr), out);
-  const prev = index === 0 ? corridorEntry : STATION_POSES[index - 1];
-  const cur = STATION_POSES[index];
-  if (dwell <= 0) return index === 0 ? lerpPose(prev, cur, easeInOutSine(tr), out) : travel(prev, cur, easeInOutSine(tr), out);
-  // Inside the room: a slow step further in while it performs, then back to
-  // the threshold so the next move starts exactly from the station pose.
-  copyPose(cur, out);
-  const room = CORRIDOR.rooms[index];
-  const lean = Math.sin(Math.PI * dwell);
-  const dx = room.focus[0] - room.viewpoint[0];
-  const dz = room.focus[2] - room.viewpoint[2];
-  const len = Math.hypot(dx, dz) || 1;
-  out.x += (dx / len) * lean * 1.5;
-  out.z += (dz / len) * lean * 1.5;
-  out.fov = cur.fov - lean * 3;
-  return out;
-}
-
-/** Evaluate the cinematic camera for scroll progress `p` (0..1). */
-export function evaluateCinematic(p: number, out: CameraPose): CameraPose {
+/** Evaluate the cinematic camera for scroll progress `p` (0..1), for a screen of this shape. */
+export function evaluateCinematic(p: number, out: CameraPose, aspect = 16 / 9): CameraPose {
   const seg = segmentAt(p);
   const u = segmentProgress(p, seg);
+  cinematic.composed = 0;
+  cinematic.scale = 1;
   switch (seg) {
     case 'events':
-      return evaluateEvents(p, out);
+      eventsCamera(p, eventsState().selected, aspect, out, eventsShot);
+      cinematic.composed = eventsShot.composed;
+      cinematic.scale = eventsShot.scale;
+      return out;
     case 'portal':
-      return sampleTrack(portalKeys, u, out);
+      return evaluatePortal(u, aspect, out);
     case 'teams':
       // Only reachable through the portal (the Teams camera takes over there);
       // outside it, the gate keeps you standing before the ring.
@@ -139,22 +83,37 @@ export function evaluateCinematic(p: number, out: CameraPose): CameraPose {
 
 /**
  * Reduced-motion "stills": the camera cuts between these instead of flying.
- * Each is a progress value whose pose frames a chapter well.
+ * Each is a progress value whose pose frames a chapter well. (In the Events, the
+ * room part's stills are a visited event's — its room played, its record's first
+ * screen, and (the scroll moving it) the choice at its end — and are only stills
+ * while one is visited: activeStops.)
  */
+const ROOM_STILLS = [eventsAt('room', 1), RECORD_STILL];
 export const REDUCED_MOTION_STOPS: number[] = [
   // The opening's framed stills.
   ...STILLS.map(progressAtIntroTime),
-  SEGMENTS.events.start,
-  ...CORRIDOR.rooms.map((_, i) => progressForRoom(i)),
+  HUB_REST,
+  ...ROOM_STILLS,
   PORTAL_GATE - 0.0002,
   // Inside the Teams world (the gate keeps these out of reach until the portal is entered).
   ...teamsStops(),
-];
+].sort((a, b) => a - b);
+
+/** The stills there are now: a visited event's (and none past its end), or none of its. */
+export function activeStops() {
+  if (!eventsState().visiting) return REDUCED_MOTION_STOPS.filter((s) => !ROOM_STILLS.includes(s));
+  const stops = REDUCED_MOTION_STOPS.filter((s) => s <= EVENTS_TRACK.branch.end);
+  // (Its record's end, where the choice is — as far on as the record is long: reduced motion's record
+  // scrolls itself, and ends at its first screen.)
+  const end = recordWall();
+  return end > RECORD_STILL + 1e-6 ? [...stops, end] : stops;
+}
 
 export function nearestStop(p: number) {
-  let best = REDUCED_MOTION_STOPS[0];
+  const stops = activeStops();
+  let best = stops[0];
   let bestD = Infinity;
-  for (const s of REDUCED_MOTION_STOPS) {
+  for (const s of stops) {
     const d = Math.abs(s - p);
     if (d < bestD) {
       bestD = d;

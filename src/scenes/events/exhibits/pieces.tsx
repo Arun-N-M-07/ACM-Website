@@ -1047,8 +1047,8 @@ export function PatternRoom({ event, clock, response }: PieceProps) {
     // The plinths answer the pointer: the nearest one's label and edge come up.
     plinthRefs.current.forEach((g, p) => {
       if (!g) return;
-      g.getWorldPosition(at.w);
-      at.w.y += PLINTH.h;
+      // (The plinth's top, in the world: the room may stand at its bay's scale.)
+      g.localToWorld(at.w.set(0, PLINTH.h, 0));
       const target = pointerNear(at.w, camera, 0.12);
       at.hover[p] += (target - at.hover[p]) * (1 - Math.exp(-dt * 10));
     });

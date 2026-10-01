@@ -29,9 +29,18 @@
  *                  speed) — its entry, its release into the lobby; the room
  *                  beyond the Events door, heard as air as it opens; the
  *                  door's mechanism; the threshold into the Events
- *   the Events     the Prodigy wall: each piece's move and its lock, as the
- *                  picture has it (exhibits/common: puzzleSpan). Nothing else
- *                  plays in the rooms: no bed, no hum — the music is the bed.
+ *   the Events     going into a room and out of it, room to room: the room's
+ *                  own air (each room its acoustic — not a tune), coming up
+ *                  through its frame from the side its bay is on, around the
+ *                  camera inside, under its record; between rooms the hall's
+ *                  air, as loud as the camera moves and settling as it stops.
+ *                  Nothing at the whole matrix (the music is its bed). The
+ *                  Prodigy wall: each piece's move and its lock, as the
+ *                  picture has it (exhibits/common: puzzleSpan).
+ *                  The matrix opening onto the portal: its columns' mechanism,
+ *                  heard as the lobby's door is — waking, the pressure letting
+ *                  go, the columns moving, and each coming home. (A bay's
+ *                  tracing and the threshold into a room: scenes/events.)
  *
  * One-off events play when the film crosses their beat going forward (never
  * scrubbed back, never on a jump), and re-arm once it is back before them.
@@ -39,9 +48,12 @@
  * crossing is the travel's own: teams/travel.ts.)
  */
 import { useEffect, useRef } from 'react';
-import { CORRIDOR } from '@/config/world';
+import { PORTAL_SPLIT, SCROLL_LENGTH_VH, segmentAt, segmentProgress } from '@/config/timeline';
+import { EVENT_ROOMS } from '@/config/world';
+import { EVENTS, type RoomArtifact } from '@/content/events';
 import { cloud } from '@/intro/look';
 import { PUZZLE_PIECES, puzzlePiece, puzzleSpan, readRoomClock, type RoomClock } from '@/scenes/events/exhibits/roomClock';
+import { eventsFrame } from '@/scenes/events/state';
 import { introCameraAt } from '@/intro/camera';
 import { CAN, GROUND_Y, gasAmount, rollAt, type RollState } from '@/intro/prologue/layout';
 import { introFrame } from '@/intro/state';
@@ -52,6 +64,7 @@ import { LIGHTNING } from '@/intro/world/lightning';
 import { useExperience } from '@/store/experience';
 import { cue, type Cue, prepare, quietAll, setLayer } from '@/systems/audio/sfx';
 import { fx } from '@/systems/camera/effects';
+import { progress } from '@/systems/scroll/progress';
 import { useProgressFrame } from './useProgressFrame';
 
 const DOOR_BEATS = 6.5;
@@ -74,8 +87,43 @@ const CUES: { at: number; name: Cue; level?: number; pan?: number; variant?: num
 ];
 
 /** The Prodigy room (its artifact is the puzzle wall). */
-const PRODIGY_ROOM = CORRIDOR.rooms.findIndex((r) => r.event.artifact === 'puzzle-wall');
+const PRODIGY_ROOM = EVENTS.findIndex((e) => e.artifact === 'puzzle-wall');
+/**
+ * The matrix opening (EventsHall: splitOffsets — the outer columns home at 0.62 of it, the middle one at
+ * 1): when each moment of its mechanism sounds, as a fraction of the opening. Forward only.
+ */
+const SPLIT_CUES: { at: number; name: Cue; level?: number }[] = [
+  { at: 0.02, name: 'doorWake' },
+  { at: 0.09, name: 'doorPressure' },
+  { at: 0.2, name: 'doorRetract' },
+  { at: 0.6, name: 'doorHome', level: 0.75 },
+  { at: 0.97, name: 'doorHome' },
+];
+/** How far the matrix has opened at progress p (0 before the portal segment, 1 once it has). */
+const splitAt = (p: number) => {
+  const seg = segmentAt(p);
+  return seg === 'portal' ? Math.min(1, segmentProgress(p, 'portal') / PORTAL_SPLIT) : seg === 'teams' || seg === 'return' ? 1 : 0;
+};
 const prodigyClock: RoomClock = { u: -0.3, here: false, near: false, presence: 0 };
+
+/**
+ * Each room's acoustic — the band its air sits in and how wide — as its installation is built: a
+ * quiet office, a hall of voices, a lecture room, a small workshop… the same air, different rooms
+ * (never a tune of its own).
+ */
+const ROOM_AIR: Record<RoomArtifact, { freq: number; q: number; level: number }> = {
+  interview: { freq: 380, q: 0.9, level: 0.75 },
+  voices: { freq: 560, q: 0.6, level: 1 },
+  lectern: { freq: 320, q: 0.7, level: 0.9 },
+  blocks: { freq: 720, q: 1.1, level: 0.8 },
+  sequence: { freq: 900, q: 1.3, level: 0.7 },
+  leaderboard: { freq: 620, q: 0.8, level: 1 },
+  'puzzle-wall': { freq: 440, q: 0.6, level: 1.1 },
+  'contribution-graph': { freq: 1050, q: 1, level: 0.75 },
+  'hack-tables': { freq: 760, q: 0.7, level: 1 },
+};
+/** The camera's pace through the Events (vh of scroll per second) that counts as moving in earnest. */
+const MOVING_VH_S = 40;
 /** Every layer the film plays (all silenced once it is left behind). */
 /**
  * The loop's mosaic, heard: silent at both ends (the world whole, the mist whole — the mist's own
@@ -130,13 +178,19 @@ export function SoundDirector() {
   const arrivals = useRef<ArrivalState[]>(FRAGMENTS.map(() => ({ flap: null, snap: true })));
   /** The Prodigy room's clock last frame (null: not in it). */
   const prodigyU = useRef<number | null>(null);
+  /** How far the matrix had opened last frame (null: not in the journey). */
+  const splitPrev = useRef<number | null>(null);
+  /** The journey's progress last frame, and how much the camera is moving through the Events (0..1, smoothed). */
+  const lastP = useRef<number | null>(null);
+  const motion = useRef(0);
+  const lastEnter = useRef(0);
 
   useEffect(() => {
     if (!musicOn) quietAll();
     else prepare();
   }, [musicOn]);
 
-  useProgressFrame((_, dt) => {
+  useProgressFrame((p, dt) => {
     if (!musicOn) return;
     const st = useExperience.getState();
     const t = introFrame.t;
@@ -169,9 +223,44 @@ export function SoundDirector() {
           }
         }
       } else prodigyU.current = null;
+      // Room to room: the room's air comes up as the camera passes through its frame (from the side its
+      // bay is on, centred once inside), and goes under its record; between rooms, through the hall,
+      // the hall's air — as loud as the camera is moving (smoothed, and settling as it stops), quiet
+      // again at rest. At the whole matrix, nothing: the matrix is the music's.
+      const v = eventsFrame.view;
+      // (How much the camera is moving through the Events: the scroll's own pace, or a room's entry
+      // playing — its choreography, at its own pace.)
+      const scrolling = progress.cut || dt <= 0 ? 0 : Math.min(1, (Math.abs(p - (lastP.current ?? p)) * SCROLL_LENGTH_VH) / dt / MOVING_VH_S);
+      const entering = dt <= 0 ? 0 : Math.min(1, (Math.abs(eventsFrame.view.enter - lastEnter.current) / dt) * 2);
+      const moving = Math.max(scrolling, entering);
+      lastP.current = p;
+      lastEnter.current = eventsFrame.view.enter;
+      motion.current += (moving - motion.current) * (1 - Math.exp(-dt * 3));
+      const inRooms = st.phase === 'cinematic' && v.index >= 0 && v.enter > 0;
+      if (inRooms) {
+        const r = EVENT_ROOMS[v.index];
+        const air = ROOM_AIR[r.event.artifact];
+        const here = smooth(0.55, 1, v.enter) * (1 - 0.65 * v.unfold);
+        const side = (r.col - 1) * 0.45 * (1 - smooth(0.3, 0.92, v.enter)) * (st.reducedMotion ? 0.3 : 1);
+        setLayer('roomAir', 0.011 * air.level * here, { freq: air.freq * (0.85 + 0.15 * v.inside), q: air.q, pan: side });
+        const between = Math.sin(Math.PI * Math.min(1, v.enter)) * (1 - v.inside);
+        setLayer('hallAir', 0.014 * between * (0.25 + 0.75 * motion.current * (st.reducedMotion ? 0.4 : 1)), { freq: 180 + 220 * motion.current });
+      } else {
+        setLayer('roomAir', 0);
+        setLayer('hallAir', 0);
+      }
+      // The matrix opening: each moment of its mechanism as it is crossed going forward (not on a jump).
+      const sp = st.phase === 'cinematic' ? splitAt(p) : null;
+      const was = splitPrev.current;
+      splitPrev.current = sp;
+      if (sp !== null && was !== null && sp > was && sp - was < 0.25) for (const c of SPLIT_CUES) if (was < c.at && sp >= c.at) cue(c.name, { level: c.level });
       return;
     }
     prodigyU.current = null;
+    splitPrev.current = null;
+    lastP.current = null;
+    setLayer('roomAir', 0);
+    setLayer('hallAir', 0);
     // How fast the film is moving (beats per second), smoothed; a jump is not movement.
     const step = prev === null ? 0 : t - prev;
     const jump = Math.abs(step) > 4;

@@ -8,12 +8,11 @@
 import { fx } from '@/systems/camera/effects';
 import dynamic from 'next/dynamic';
 import { useEffect, useState } from 'react';
-import { SEGMENTS } from '@/config/timeline';
+import { EVENTS_TRACK, SEGMENTS } from '@/config/timeline';
 import { SafeBoundary } from '@/scenes/shared/SafeBoundary';
 import { useExperience } from '@/store/experience';
 import { detectDevice, detectWebGL, prefersReducedMotion } from '@/systems/performance/quality';
 import { music } from '@/systems/audio/music';
-import { roomDwellRange } from '@/systems/camera/shots';
 import { progress } from '@/systems/scroll/progress';
 import { jumpToProgress, ScrollTimeline, scrollToProgress } from '@/systems/scroll/ScrollTimeline';
 import { fontsReady } from '@/systems/textures/typeset';
@@ -25,9 +24,11 @@ import { Dossier } from './Dossier';
 import { IndexMenu } from './IndexMenu';
 import { KeyboardNav } from './KeyboardNav';
 import { LoadingScreen } from './LoadingScreen';
-import { Plates } from './Plates';
 import { ScreenFx } from './ScreenFx';
 import { TeamsExperience } from '@/teams/TeamsExperience';
+import { EventsUI } from '@/scenes/events/EventsUI';
+import { eventsDebug } from '@/scenes/events/debug';
+import { resetEvents, roomProgress } from '@/scenes/events/controller';
 import { IntroExperience } from '@/intro/IntroExperience';
 import { introDebug } from '@/intro/debug';
 import { teamsDebug } from '@/teams/debug';
@@ -77,7 +78,12 @@ export function Experience() {
     // Test hook (dev builds, or ?debug in production): lets the visual test
     // harness jump through the journey deterministically.
     if (process.env.NODE_ENV !== 'production' || new URLSearchParams(window.location.search).has('debug')) {
-      (window as unknown as { __acm: unknown }).__acm = { jump: jumpToProgress, scroll: scrollToProgress, store: useExperience, progress, segments: SEGMENTS, music, roomProgress: (i: number, d: number) => { const [a, b] = roomDwellRange(i); return a + (b - a) * d; }, teams: teamsDebug, intro: introDebug, fx };
+      // (A jump anywhere but an event's room part lets go of a visit, as every jump the site makes does.)
+      const jump = (p: number, lead?: number, opts?: { fade?: boolean }) => {
+        if (!(p >= EVENTS_TRACK.branch.start && p <= EVENTS_TRACK.branch.end)) resetEvents();
+        jumpToProgress(p, lead, opts);
+      };
+      (window as unknown as { __acm: unknown }).__acm = { jump, scroll: scrollToProgress, store: useExperience, progress, segments: SEGMENTS, music, roomProgress, events: eventsDebug, teams: teamsDebug, intro: introDebug, fx };
     }
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
     const onChange = () => useExperience.getState().set({ reducedMotion: mq.matches });
@@ -136,7 +142,7 @@ export function Experience() {
       <ScreenFx />
       <ScrollTimeline />
       <IntroExperience />
-      <Plates />
+      <EventsUI />
       <TeamsExperience />
       <ChapterRail />
       <TopBar />

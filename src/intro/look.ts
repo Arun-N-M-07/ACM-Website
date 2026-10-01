@@ -344,6 +344,21 @@ const exposure = numberTrack([
   [T.end, 1.05],
 ]);
 
+/**
+ * The light ACM-CEG is revealed in: as its letters come up out of the cloud, one by one, a violet light
+ * comes into the cloud around them — from none as the first breaks the surface to its fullest as the
+ * last settles (AcmCeg: each letter 0.42 beats after the last, 2.7 to come up) — held, and gone as
+ * the camera drops back into the cloud. Light on white cloud, not a colour of it (Clouds.tsx).
+ */
+const violet = numberTrack([
+  [T.acmCegIn - 0.3, 0],
+  [T.acmCegIn + 1.2, 0.18],
+  [T.acmCegIn + 2.7 + 6 * 0.42, 1],
+  [T.acmCegHold, 1],
+  [T.descend + 1, 0.55],
+  [T.cloudTop, 0],
+]);
+
 /** The cloud: how much of it is around the camera (0..1). (Also the sound's: SoundDirector.) */
 export const cloud = numberTrack([
   [T.cloudIn - 1, 0],
@@ -500,6 +515,8 @@ export const look = {
   practicals: 1,
   exposure: 1,
   cloud: 0,
+  /** The violet light ACM-CEG is revealed in (0..1). */
+  violet: 0,
   /** Lightning's light (0..~1.2) at this beat, and where in the sky it comes from (unit). */
   flash: 0,
   flashDir: new Vector3(0, 1, 0),
@@ -532,6 +549,7 @@ export function evaluateLook(t: number, reduced = false) {
   L.practicals = practicals(t);
   L.exposure = exposure(t);
   L.cloud = cloud(t);
+  L.violet = violet(t);
   L.dark = dark(t);
   L.tunnelAmbient = tunnelAmbient(t);
   const g = L.grade;

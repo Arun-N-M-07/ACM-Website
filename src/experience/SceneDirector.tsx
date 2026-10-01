@@ -1,7 +1,7 @@
 'use client';
 /**
  * Chapter residency. The chunks of the world — the campus, the opening, the
- * underground (the shaft, the lobby, the Events corridor) and the Teams
+ * underground (the shaft, the lobby, the Events hall) and the Teams
  * world — are built and compiled once, behind the loader and the threshold,
  * and then stay: nothing is built, drawn to a canvas or compiled while the
  * visitor scrolls.
@@ -25,7 +25,7 @@ import { introFrame } from '@/intro/state';
 import { T } from '@/intro/timeline';
 import { IntroWorld } from '@/intro/world/IntroWorld';
 import { CampusScene } from '@/scenes/campus/CampusScene';
-import { EventCorridor } from '@/scenes/events/EventCorridor';
+import { EventsHall } from '@/scenes/events/EventsHall';
 import { SafeBoundary } from '@/scenes/shared/SafeBoundary';
 import { SignalThread } from '@/scenes/shared/SignalThread';
 import { UndergroundKit } from '@/scenes/underground/kit';
@@ -110,7 +110,7 @@ export function SceneDirector() {
             {mounted.corridor && (
               <SafeBoundary name="corridor" fallback={null}>
                 <group ref={corridor}>
-                  <EventCorridor />
+                  <EventsHall />
                 </group>
               </SafeBoundary>
             )}

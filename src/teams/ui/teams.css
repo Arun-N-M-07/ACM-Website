@@ -14,9 +14,9 @@
   border: 0;
 }
 
-/* Inside the world, the domain index replaces the chapter rail. */
+/* Inside the world, the domain index replaces the chapter rail (and the Events' interface is out of the way). */
 html[data-teams='inside'] .rail,
-html[data-teams='inside'] .plates {
+html[data-teams='inside'] .evx {
   display: none;
 }
 

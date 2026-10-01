@@ -22,11 +22,11 @@ function shown(o: Object3D | null) {
 }
 
 /**
- * First draws of panels made once the journey is running — the Events' rooms, streamed in ahead of
- * the camera — are queued and done a few milliseconds' worth a frame, each with its texture's upload,
- * instead of all in the one commit that builds a room (the frame that dropped as the corridor was
- * walked). A queued panel is hidden until it is drawn, never shown blank; under a jump's fade (a room
- * built where the camera is about to be) everything queued is drawn at once. Panels made while the
+ * First draws of panels made once the journey is running — anything streamed in ahead of the camera
+ * — are queued and done a few milliseconds' worth a frame, each with its texture's upload, instead of
+ * all in the one commit that builds it (a frame dropped mid-scroll). A queued panel is hidden until it
+ * is drawn, never shown blank; under a jump's fade (built where the camera is about to be) everything
+ * queued is drawn at once. Panels made while the
  * world loads draw at once, as they always did, so the warm-up uploads them finished.
  */
 type FirstDraw = { run: () => void; cancelled: boolean };

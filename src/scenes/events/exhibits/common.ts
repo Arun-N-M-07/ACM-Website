@@ -8,7 +8,6 @@ import { type ComponentType, type MutableRefObject, useRef } from 'react';
 import { type PerspectiveCamera, Vector3 } from 'three';
 import type { EventRecord } from '@/content/events';
 import { PALETTE } from '@/config/palette';
-import { CORRIDOR } from '@/config/world';
 import { toNdc } from '@/systems/anchors/anchors';
 import { fitSize, text } from '@/systems/textures/typeset';
 import { readRoomClock, type RoomClock } from './roomClock';
@@ -114,30 +113,20 @@ export const hash = (n: number) => {
 };
 
 /**
- * The part of a back wall the room's reading card leaves open (and in view),
- * as fractions of its width. The card docks to the side of the screen away
- * from the wall's anchor — which side depends on the room's side of the
- * corridor — and covers more of a narrower screen; on phones it is a sheet
- * along the bottom and the view sees the middle of the wall.
+ * The part of a back wall that is in view from the room's threshold, as fractions of its width: all
+ * of it but its edges (the camera looks straight in, and nothing covers the room while it plays —
+ * its record comes after).
  */
-export function openSpan(index: number): [number, number] {
-  const w = typeof window === 'undefined' ? 1440 : window.innerWidth;
-  const right = CORRIDOR.rooms[index]?.side === -1;
-  if (w <= 760) return [0.3, 0.74];
-  if (w <= 1080) return right ? [0.2, 0.42] : [0.58, 0.8];
-  return right ? [0.05, 0.58] : [0.42, 0.95];
+export function openSpan(_index: number): [number, number] {
+  return [0.08, 0.92];
 }
 
 /**
- * Where a back wall's title begins, as a fraction of its width. Upright on a phone the view meets the
- * rooms on one side of the corridor from the side that loses the wall's left end (by up to a fifth of
- * it, in the widest room): there the title starts where the phone's view of the wall does (openSpan),
- * above the installation, instead of at the wall's edge, where the frame would cut it.
+ * Where a back wall's title begins, as a fraction of its width: seen from before the matrix, a room
+ * in its right-hand column has the near end of its back wall hidden by its own left wall, so its
+ * title starts clear of that; elsewhere, at the wall's edge as ever.
  */
-function titleFrom(index: number) {
-  const w = typeof window === 'undefined' ? 1440 : window.innerWidth;
-  return w <= 760 && CORRIDOR.rooms[index]?.side === -1 ? openSpan(index)[0] : 0.045;
-}
+const titleFrom = (index: number) => ((index % 3) === 2 ? 0.25 : 0.045);
 
 /** The exhibit's title, painted across the top of its back wall. Returns the y where the installation can start. */
 export function titleBand(ctx: CanvasRenderingContext2D, w: number, h: number, info: WallInfo, ink: string = BONE, dim: string = DIM) {

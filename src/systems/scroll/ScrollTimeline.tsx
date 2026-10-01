@@ -29,11 +29,22 @@ function scrollAt(p: number) {
   return p * Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
 }
 
-/** Smoothly scroll the journey to progress `p`. */
-export function scrollToProgress(p: number, duration = 2.4) {
+/** How far the page scrolls (px) for the whole journey — progress 0 → 1 — by the same measure. */
+export function scrollSpan() {
+  return scrollAt(1) - scrollAt(0);
+}
+
+/**
+ * Smoothly scroll the journey to progress `p` — the page's own scroll, moved (any input takes it
+ * back at once). `easing` shapes the move; `onComplete` runs if it arrives (not if input took over).
+ */
+export function scrollToProgress(p: number, duration = 2.4, opts: { easing?: (t: number) => number; onComplete?: () => void } = {}) {
   const y = scrollAt(p);
-  if (lenis) lenis.scrollTo(y, { duration, force: true, easing: (t: number) => 1 - Math.pow(1 - t, 3) });
-  else window.scrollTo({ top: y, behavior: 'auto' });
+  if (lenis) lenis.scrollTo(y, { duration, force: true, easing: opts.easing ?? ((t: number) => 1 - Math.pow(1 - t, 3)), onComplete: opts.onComplete ? () => opts.onComplete?.() : undefined });
+  else {
+    window.scrollTo({ top: y, behavior: 'auto' });
+    opts.onComplete?.();
+  }
 }
 
 /**

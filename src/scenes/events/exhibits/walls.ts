@@ -7,7 +7,7 @@
  * prizes) comes from the event record; everything else is illustration.
  */
 import { PRODIGY_PROGRAMME } from '@/content/prodigy';
-import { applyType, fitSize, paragraph, text } from '@/systems/textures/typeset';
+import { applyType, fitSize, paragraph, text, wrap, type TypeSpec } from '@/systems/textures/typeset';
 import { BONE, clamp01, DIM, hash, openSpan, pad2, ramp, roundRect, sstep, titleBand, typed, type WallDraw } from './common';
 
 const fact = (info: { ev: { facts: { label: string; value: string }[] } }, label: string, fallback = '') => info.ev.facts.find((f) => f.label === label)?.value ?? fallback;
@@ -215,7 +215,11 @@ const code: WallDraw = (ctx, w, h, wall, u, t, info) => {
     ctx.fillStyle = '#dcd9d0';
     ctx.fillRect(0, 0, w, h);
     titleBand(ctx, w, h, info, '#16181c', 'rgba(22,24,28,0.55)');
-    const bw = w * 0.13;
+    // Each box as wide as its label needs (and never narrower than the rest): the arrows run edge to
+    // edge between them, so none crosses a word.
+    const label: TypeSpec = { family: 'serif', italic: true, size: s * 4.4, color: '#16181c', align: 'center' };
+    applyType(ctx, label);
+    const bws = BOXES.map((b) => Math.max(w * 0.13, ctx.measureText(b.label).width + s * 5));
     const bh = h * 0.1;
     ctx.lineCap = 'round';
     ARROWS.forEach(([a, b, at]) => {
@@ -223,9 +227,9 @@ const code: WallDraw = (ctx, w, h, wall, u, t, info) => {
       if (k <= 0) return;
       const A = BOXES[a];
       const B = BOXES[b];
-      const x0 = w * A.x + bw / 2;
+      const x0 = w * A.x + bws[a] / 2;
       const y0 = h * A.y;
-      const x1 = w * B.x - bw / 2;
+      const x1 = w * B.x - bws[b] / 2;
       const y1 = h * B.y;
       ctx.strokeStyle = '#27415f';
       ctx.lineWidth = s * 0.6;
@@ -243,18 +247,19 @@ const code: WallDraw = (ctx, w, h, wall, u, t, info) => {
         ctx.stroke();
       }
     });
-    BOXES.forEach((b) => {
+    BOXES.forEach((b, i) => {
       const k = ramp(u, b.at, b.at + 0.05);
       if (k <= 0) return;
       ctx.globalAlpha = k;
       ctx.strokeStyle = '#16181c';
       ctx.lineWidth = s * 0.55;
-      roundRect(ctx, w * b.x - bw / 2, h * b.y - bh / 2, bw, bh, s * 1.5);
+      roundRect(ctx, w * b.x - bws[i] / 2, h * b.y - bh / 2, bws[i], bh, s * 1.5);
       ctx.stroke();
-      text(ctx, b.label, w * b.x, h * b.y + s * 1.6, { family: 'serif', italic: true, size: s * 4.4, color: '#16181c', align: 'center' });
+      text(ctx, b.label, w * b.x, h * b.y + s * 1.6, label);
       ctx.globalAlpha = 1;
     });
-    // The syllabus, as sticky notes.
+    // The syllabus, as sticky notes (each topic set to fit its note).
+    const noteW = w * 0.09;
     (fact(info, 'Covers', 'OS · DBMS · Networks · System Design').split('·').map((x) => x.trim())).forEach((topic, i) => {
       const k = ramp(u, 0.58 + i * 0.05, 0.64 + i * 0.05);
       if (k <= 0) return;
@@ -263,8 +268,13 @@ const code: WallDraw = (ctx, w, h, wall, u, t, info) => {
       ctx.translate(w * (0.88 + (i % 2) * 0.05), h * (0.34 + i * 0.13));
       ctx.rotate(((i % 3) - 1) * 0.05);
       ctx.fillStyle = ['#f3d86b', '#9ed5b0', '#f2a6a0', '#a9c8f0'][i % 4];
-      ctx.fillRect(-w * 0.045, -h * 0.05, w * 0.09, h * 0.1);
-      text(ctx, topic, 0, s * 1.4, { family: 'sans', weight: 700, size: s * 3.1, color: '#1b1b1d', align: 'center' });
+      ctx.fillRect(-noteW / 2, -h * 0.05, noteW, h * 0.1);
+      // (A topic longer than its note goes on two lines, rather than smaller.)
+      const note: TypeSpec = { family: 'sans', weight: 700, size: s * 3.1, color: '#1b1b1d', align: 'center' };
+      applyType(ctx, note);
+      const lines = ctx.measureText(topic).width > noteW * 0.84 ? wrap(ctx, topic, noteW * 0.84) : [topic];
+      const size = Math.min(...lines.map((l) => fitSize(ctx, l, noteW * 0.84, note, s * 3.1, s * 2.2)));
+      lines.forEach((l, j) => text(ctx, l, 0, s * 1.2 + (j - (lines.length - 1) / 2) * size * 1.15, { ...note, size }));
       ctx.restore();
     });
     if (u > 0.86) {
@@ -274,8 +284,11 @@ const code: WallDraw = (ctx, w, h, wall, u, t, info) => {
       ctx.strokeStyle = '#1f6f3f';
       ctx.lineWidth = s * 0.8;
       ctx.globalAlpha = sstep(u, 0.86, 0.92);
-      ctx.strokeRect(-w * 0.14, -s * 5, w * 0.28, s * 9);
-      text(ctx, 'INTERVIEW-READY', 0, s * 1.8, { family: 'sans', weight: 800, size: s * 5, color: '#1f6f3f', align: 'center', tracking: 0.08 });
+      const stamp: TypeSpec = { family: 'sans', weight: 800, size: s * 5, color: '#1f6f3f', align: 'center', tracking: 0.08 };
+      applyType(ctx, stamp);
+      const sw = Math.max(w * 0.28, ctx.measureText('INTERVIEW-READY').width + s * 6);
+      ctx.strokeRect(-sw / 2, -s * 5, sw, s * 9);
+      text(ctx, 'INTERVIEW-READY', 0, s * 1.8, stamp);
       ctx.restore();
     }
     return;

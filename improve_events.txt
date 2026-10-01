@@ -1,0 +1,1455 @@
+# ACM-CEG EVENTS — FINAL REFINED EDITORIAL + SCROLL EXPERIENCE
+# AUTHORITATIVE IMPLEMENTATION SPECIFICATION
+
+READ THIS ENTIRE FILE BEFORE MAKING ANY CHANGES.
+
+I will provide Basement Studio screenshots separately.
+
+Those screenshots are the PRIMARY VISUAL REFERENCE for the 2D
+editorial portion and for the relationship between the large visual
+experience and the editorial content.
+
+DO NOT copy Basement's:
+- source code
+- assets
+- logo
+- branding
+- exact text
+- proprietary implementation
+
+Instead reproduce the relevant DESIGN LANGUAGE and INTERACTION
+PRINCIPLES inside ACM-CEG's own identity.
+
+============================================================
+0. MOST IMPORTANT RULE — UNDERSTAND THE CURRENT IMPLEMENTATION
+============================================================
+
+The Events experience already contains substantial implementation work.
+
+DO NOT rebuild Events from scratch.
+
+Before changing anything:
+
+1. inspect the current repository;
+2. inspect the current Events architecture;
+3. inspect the current scroll/progress architecture;
+4. inspect the current 3D room experience;
+5. inspect the current editorial implementation;
+6. inspect any existing uncommitted work;
+7. render the current result;
+8. identify what is already correct;
+9. identify what is actually broken;
+10. fix only what is necessary.
+
+The CURRENT CODE + CURRENT RENDERED EXPERIENCE are the source of truth
+for what already exists.
+
+This specification describes the intended final behavior.
+
+Do not blindly reimplement functionality that already works.
+
+Preserve all good existing work.
+
+============================================================
+1. CORE EXPERIENCE
+============================================================
+
+The Events experience should feel like one continuous cinematic
+journey:
+
+3D EVENT EXPERIENCE
+        ↓
+continuous user-controlled scroll
+        ↓
+3D composition participates in the transition
+        ↓
+3D world moves upward through the viewport
+        ↓
+black editorial canvas enters
+        ↓
+event title / number / description appear
+        ↓
+3D world continues leaving the viewport
+        ↓
+editorial story becomes dominant
+        ↓
+Category / Context
+        ↓
+About
+        ↓
+Details
+        ↓
+Room Interpretation
+        ↓
+Next Event
+        ↓
+Crew continuation
+
+The user should feel that they are moving through ONE long-form
+interactive experience.
+
+It must NOT feel like:
+
+3D WEBSITE
+↓
+hard section boundary
+↓
+separate black HTML page
+
+The transition between the physical/3D experience and the editorial
+experience is one of the most important parts of this task.
+
+============================================================
+2. CURRENT PROBLEM
+============================================================
+
+The current Events experience has several related problems:
+
+1. The scroll does not feel fully controlled by the user's actual
+   scroll input.
+
+2. There is excessive empty space before the editorial content begins.
+
+3. The 3D → 2D transition currently feels too much like one experience
+   ending and another beginning.
+
+4. The event title does not begin early enough when the black editorial
+   canvas enters.
+
+5. The editorial content feels more vertically spaced than necessary.
+
+6. The right-side event rail is visually prominent relative to its
+   actual usefulness.
+
+7. The editorial typography and placement need to be refined using the
+   supplied Basement screenshots as the visual reference.
+
+These should be treated as connected problems rather than unrelated
+CSS tweaks.
+
+============================================================
+3. TASK — FIX THE SCROLL CONTROL
+============================================================
+
+The user's physical scroll must be the PRIMARY DRIVER of the Events
+experience.
+
+The user should feel:
+
+"I scroll → the experience responds directly."
+
+NOT:
+
+"I scroll → an invisible animation system decides where I should be."
+
+Audit the complete existing architecture:
+
+- Lenis
+- global scroll progress
+- Events progress mapping
+- room progress
+- editorial progress
+- camera progress
+- ScrollTrigger, if present
+- pinned sections
+- sticky sections
+- section heights
+- wrapper heights
+- min-height
+- viewport-height sections
+- spacer elements
+- transition ranges
+- camera/editorial handoff
+- any independently calculated progress values
+
+Find the ROOT CAUSE.
+
+Do NOT solve this by randomly changing:
+
+- CSS heights
+- margins
+- transforms
+- scroll multipliers
+- animation durations
+
+Do NOT use:
+
+- timers
+- setTimeout
+- setInterval
+- fake scroll positions
+- forced snapping
+- automatic advancement
+
+The user's scroll must directly control progression.
+
+============================================================
+4. SCROLL BEHAVIOR — REQUIRED
+============================================================
+
+If the user scrolls slowly:
+
+the experience progresses slowly.
+
+If the user scrolls normally:
+
+the experience progresses naturally.
+
+If the user scrolls quickly:
+
+the experience progresses more quickly without breaking.
+
+If the user stops:
+
+the composition should stop.
+
+If the user reverses:
+
+the experience must reverse naturally.
+
+There should be no feeling of the site fighting the user's input.
+
+Avoid:
+
+- excessive inertia
+- invisible progress ranges
+- giant dead travel
+- artificial pin durations
+- forced section jumps
+- scroll hijacking
+- automatic transitions
+
+============================================================
+5. CRITICAL — 3D → 2D MUST BE ONE CONTINUOUS PAGE
+============================================================
+
+This is the most important visual refinement.
+
+Study the supplied Basement screenshots carefully.
+
+One of the important details in the reference is that the large 3D
+visual does NOT simply disappear and then get replaced by a black
+2D section.
+
+Instead:
+
+THE 3D CONTENT ITSELF PARTICIPATES IN THE SCROLL.
+
+As the user scrolls:
+
+3D EVENT EXPERIENCE
+        ↓
+the 3D composition moves upward relative to the viewport
+        ↓
+black editorial canvas enters
+        ↓
+editorial typography begins entering
+        ↓
+3D content continues leaving the viewport
+        ↓
+editorial content becomes dominant
+
+This should feel like ONE CONTINUOUS SCROLLING PAGE.
+
+Not:
+
+3D
+↓
+fade
+↓
+black
+↓
+2D
+
+And not:
+
+3D
+↓
+hard boundary
+↓
+separate HTML section
+
+The transition should feel like the user is naturally scrolling
+through one continuous composition.
+
+============================================================
+6. DO NOT FAKE THE 3D → 2D TRANSITION
+============================================================
+
+Do NOT implement the transition as:
+
+3D
+→
+opacity fade
+→
+black
+→
+editorial
+
+Do NOT:
+
+- abruptly hide the 3D scene
+- abruptly reveal the editorial section
+- use a timer
+- use an automatic transition
+- use a hard cut
+- use a fake loading state
+- use a separate unrelated animation timeline
+
+The user's scroll must drive the transition.
+
+Use the existing Events scroll architecture.
+
+Prefer integrating the behavior into the existing:
+
+- camera progress
+- Events progress
+- editorial progress
+- section layout
+- scroll mapping
+
+Do not introduce a second:
+
+- Lenis
+- scroll system
+- camera
+- RAF loop
+- animation system
+
+unless there is an unavoidable architectural reason.
+
+============================================================
+7. PRESERVE THE PHYSICAL 3D EXPERIENCE
+============================================================
+
+The 3D experience the user just experienced must remain physically
+credible while it moves upward during the transition.
+
+Preserve:
+
+- scale
+- perspective
+- lighting
+- architectural identity
+- room identity
+- atmosphere
+- camera continuity
+- meaningful room composition
+
+Do NOT make the room:
+
+- shrink into a thumbnail
+- flatten into a card
+- suddenly change scale
+- suddenly change FOV
+- rotate unnecessarily
+- disappear abruptly
+
+The 3D world should feel like it is naturally leaving the viewport as
+the user continues scrolling.
+
+============================================================
+8. REQUIRED 3D → EDITORIAL SCROLL SEQUENCE
+============================================================
+
+The desired experience is:
+
+STATE 1
+-------
+The 3D event experience is still dominant.
+
+↓ user scrolls
+
+STATE 2
+-------
+The 3D composition begins moving upward.
+
+The black editorial canvas begins entering the viewport.
+
+↓ continued scroll
+
+STATE 3
+-------
+The 3D composition continues moving upward/out.
+
+The editorial title, event number, and description enter the viewport.
+
+↓ continued scroll
+
+STATE 4
+-------
+The 3D content is nearly gone.
+
+The editorial composition is now dominant.
+
+↓ continued scroll
+
+STATE 5
+-------
+Category / Context enters naturally.
+
+↓ continued scroll
+
+STATE 6
+-------
+About / supporting information.
+
+↓ continued scroll
+
+STATE 7
+-------
+Details.
+
+↓ continued scroll
+
+STATE 8
+-------
+Room interpretation / relationship.
+
+↓ continued scroll
+
+STATE 9
+-------
+Next Event / Crew continuation.
+
+There must be no giant dead black region between these states.
+
+============================================================
+9. REMOVE THE LARGE BLACK SPACE ABOVE THE TITLE
+============================================================
+
+This is a specific current problem.
+
+When the black editorial canvas begins, there is currently too much
+empty black space before the event title.
+
+That space should be significantly reduced.
+
+The title should begin close to the start of the editorial composition.
+
+The desired opening is:
+
+EVENT TITLE
++
+EVENT NUMBER
++
+DESCRIPTION
+
+not:
+
+BLACK SPACE
+↓
+BLACK SPACE
+↓
+BLACK SPACE
+↓
+EVENT TITLE
+
+Do NOT fix this with:
+
+- negative translateY
+- arbitrary absolute positioning
+- random negative margins
+- arbitrary transforms
+
+Find the underlying cause.
+
+Audit:
+
+- editorial section start
+- top padding
+- wrapper height
+- room/editorial handoff
+- pinned region
+- sticky region
+- spacer elements
+- viewport-height blocks
+- progress offsets
+- section start/end values
+
+Fix the actual layout/progress architecture.
+
+============================================================
+10. THE EVENT TITLE MUST APPEAR IMMEDIATELY
+============================================================
+
+As soon as the black editorial canvas meaningfully enters the
+viewport, the event itself should already be visible.
+
+Opening hierarchy:
+
+EVENT TITLE
+        ↓
+EVENT NUMBER
+        ↓
+DESCRIPTION
+
+For example:
+
+Tech Talks                         02
+
+Tech Talks is a series of sessions conducted
+by alumni, industry experts and researchers
+on varied topics in Computer Science.
+
+The exact composition must be refined using the Basement reference
+screenshots.
+
+The important requirement is:
+
+THE EVENT STORY STARTS IMMEDIATELY.
+
+Do not place:
+
+- giant empty space
+- navigation rail
+- decorative UI
+- unnecessary labels
+
+between the start of the editorial canvas and the event title.
+
+============================================================
+11. BASEMENT REFERENCE — TYPOGRAPHY
+============================================================
+
+The uploaded Basement screenshots are the PRIMARY visual reference
+for the editorial typography.
+
+Study:
+
+- font character
+- font weight
+- title scale
+- paragraph scale
+- line height
+- letter spacing
+- title placement
+- paragraph placement
+- event-number placement
+- column width
+- alignment
+- hierarchy
+- text density
+- spacing
+- negative space
+- relationship between large visual media and editorial content
+
+Do not simply make the page "Basement-inspired."
+
+Study the actual visual proportions and hierarchy shown in the
+reference.
+
+Reproduce the DESIGN LANGUAGE inside ACM-CEG.
+
+The final page should still feel like ACM-CEG.
+
+============================================================
+12. BASEMENT REFERENCE — COLOR
+============================================================
+
+Use the supplied Basement screenshots to calibrate the editorial
+typography colors.
+
+Primary editorial text should be:
+
+- warm
+- slightly softened
+- off-white
+
+rather than harsh pure white.
+
+Secondary information should use:
+
+- restrained muted gray
+
+The background should remain:
+
+- deep
+- neutral
+- pitch-black
+
+Normal editorial typography should NOT introduce:
+
+- bright blue
+- cyan
+- neon
+- RGB colors
+- purple
+- gold
+
+unless a color is explicitly part of the event content itself.
+
+The visual hierarchy should primarily come from:
+
+SIZE
++
+WEIGHT
++
+POSITION
++
+CONTRAST
++
+SPACING
+
+rather than colorful UI.
+
+============================================================
+13. TYPOGRAPHIC HIERARCHY
+============================================================
+
+The hierarchy should feel approximately like:
+
+EVENT TITLE
+→ largest / strongest / dominant
+
+EVENT NUMBER
+→ large but secondary
+
+DESCRIPTION
+→ large, readable supporting copy
+
+CATEGORY / CONTEXT
+→ smaller editorial information
+
+ABOUT / SUPPORTING CONTENT
+→ secondary but readable
+
+DETAILS
+→ supporting information
+
+NEXT EVENT
+→ narrative continuation
+
+Do not make every element equally large.
+
+Do not turn the page into a dashboard.
+
+============================================================
+14. REDUCE THE "TOO SPACEY" FEEL
+============================================================
+
+Do NOT eliminate negative space.
+
+Negative space is part of the editorial visual language.
+
+The problem is EXCESSIVE DEAD SPACE.
+
+The current experience can feel like:
+
+TITLE
+↓
+huge empty region
+↓
+CATEGORY
+↓
+huge empty region
+↓
+ABOUT
+
+That is too disconnected.
+
+The desired rhythm is closer to:
+
+TITLE
+NUMBER
+DESCRIPTION
+
+↓
+controlled breathing space
+
+CATEGORY / CONTEXT
+
+↓
+controlled editorial spacing
+
+ABOUT / SUPPORTING CONTENT
+
+↓
+DETAILS
+
+↓
+ROOM INTERPRETATION
+
+↓
+NEXT EVENT
+
+The page should feel like ONE CONTINUOUS EDITORIAL STORY.
+
+Not a stack of unrelated full-screen slides.
+
+============================================================
+15. DO NOT MAKE EVERYTHING 100VH
+============================================================
+
+Do not make every editorial section:
+
+height: 100vh
+
+just to create a cinematic feeling.
+
+Do not artificially stretch the page.
+
+Do not use giant viewport-based gaps between related content.
+
+Use CONTENT-DRIVEN spacing wherever possible.
+
+Negative space should feel intentional.
+
+The user should naturally reach useful information through their own
+scrolling.
+
+============================================================
+16. RIGHT-SIDE EVENT RAIL
+============================================================
+
+The current right-side event rail contains:
+
+01
+02
+03
+04
+05
+06
+07
+08
+
+along with:
+
+EVENTS
+
+and the progress percentage.
+
+It is currently visually prominent relative to its actual value.
+
+Most users are unlikely to immediately understand it as an important
+navigation mechanism.
+
+The main event story should remain the visual and navigational hero.
+
+============================================================
+17. REASSESS THE EVENT RAIL
+============================================================
+
+Do NOT blindly keep the rail simply because it already exists.
+
+Do NOT blindly delete it either.
+
+Audit whether it should be:
+
+A)
+removed from the main editorial composition,
+
+OR
+
+B)
+drastically reduced and made extremely subtle,
+
+OR
+
+C)
+retained only as a quiet editorial progress/index indicator.
+
+Base the decision on:
+
+- actual usability
+- visual hierarchy
+- supplied Basement reference
+- discoverability
+- whether it competes with the event content
+- whether it provides meaningful value
+
+The main event content must ALWAYS dominate.
+
+If the rail remains, it should be:
+
+- smaller
+- quieter
+- lower contrast
+- less visually intrusive
+- clearly secondary
+
+It should feel like an editorial index/progress marker.
+
+NOT:
+
+- a dashboard
+- a navigation sidebar
+- a large UI widget
+- the primary interaction
+
+============================================================
+18. THE RAIL MUST NOT CONTROL THE SCROLL
+============================================================
+
+If the event rail remains:
+
+the user must still feel that their own scroll controls the page.
+
+The relationship must be:
+
+USER SCROLL
+↓
+EDITORIAL PROGRESS
+↓
+RAIL REFLECTS PROGRESS
+
+NOT:
+
+USER SCROLL
+↓
+RAIL CONTROLS NAVIGATION
+↓
+PAGE JUMPS BETWEEN EVENTS
+
+Avoid:
+
+- snapping
+- forced event jumps
+- automatic event changes
+- timer-based progression
+- aggressive scroll hijacking
+
+The rail should reflect the experience.
+
+It should not fight the experience.
+
+============================================================
+19. EVENT NUMBER
+============================================================
+
+The event number should remain part of the editorial composition.
+
+For example:
+
+Tech Talks          02
+
+It should feel like typography/layout.
+
+It should NOT feel like a separate navigation widget.
+
+Use the Basement reference to determine:
+
+- relative scale
+- placement
+- color
+- weight
+- alignment
+- spacing
+
+The event number supports the title.
+
+It should not compete with it.
+
+============================================================
+20. BACK TO FULL VIEW
+============================================================
+
+Preserve:
+
+← Back to full view
+
+if it remains part of the current Events navigation.
+
+However:
+
+it should remain secondary.
+
+It should NOT dominate the opening viewport.
+
+It should NOT become another large layout block.
+
+It should sit quietly within the editorial composition.
+
+Use the Basement reference for the treatment of secondary controls.
+
+============================================================
+21. CATEGORY / CONTEXT
+============================================================
+
+Keep the actual event data.
+
+Category/context should appear naturally after:
+
+TITLE
++
+NUMBER
++
+DESCRIPTION
+
+For example:
+
+Category
+
+Training · Beginner Series
+
+or the appropriate actual event information.
+
+Do not create huge dead space between description and Category.
+
+Do not make Category look like a separate dashboard module.
+
+It should feel like part of the same editorial story.
+
+============================================================
+22. ABOUT
+============================================================
+
+The About section should arrive naturally after Category/context.
+
+Avoid:
+
+- huge vertical gaps
+- artificial full-screen sections
+- unnecessary repetition
+
+Keep meaningful negative space.
+
+But keep the content connected.
+
+The user should feel like they are reading one continuous story.
+
+============================================================
+23. DETAILS
+============================================================
+
+Details can appear later.
+
+Do NOT place a large details table immediately after the title.
+
+Do NOT turn the editorial experience into a dashboard.
+
+Details are supporting information after the event has already been
+introduced.
+
+============================================================
+24. ROOM INTERPRETATION
+============================================================
+
+Preserve:
+
+"How the room reads it"
+
+or its current equivalent only where it genuinely contributes.
+
+Do not repeat information already communicated elsewhere.
+
+Keep the editorial story concise and meaningful.
+
+============================================================
+25. NEXT EVENT
+============================================================
+
+The user should naturally reach the next event after finishing the
+current event story.
+
+The transition must not require:
+
+- giant dead scroll space
+- forced snapping
+- timers
+- automatic advancement
+
+The user controls the progression.
+
+============================================================
+26. MOBILE
+============================================================
+
+Read the current `mobile.txt` before making mobile-related changes.
+
+The final editorial changes must remain correct on:
+
+- portrait
+- tall portrait
+- short portrait
+- landscape
+- short landscape
+- dynamic viewport changes
+- orientation changes
+- touch scrolling
+
+Verify:
+
+- title wrapping
+- event number
+- description
+- Category
+- About
+- Details
+- Back to full view
+- Next Event
+- Crew CTA
+- 3D → editorial transition
+
+Do not simply shrink the desktop design.
+
+Preserve the same editorial hierarchy.
+
+============================================================
+27. DESKTOP REGRESSION
+============================================================
+
+After meaningful changes, test desktop.
+
+Verify:
+
+- Events entry
+- current 3D experience
+- 3D → editorial transition
+- title
+- description
+- Category
+- About
+- Details
+- Next Event
+- Crew CTA
+- camera
+- scroll
+- audio
+- layout
+
+No:
+
+- camera regression
+- scroll regression
+- audio regression
+- layout regression
+- visual distortion
+
+============================================================
+28. ROOT-CAUSE ENGINEERING
+============================================================
+
+For every issue:
+
+REPRODUCE
+↓
+TRACE
+↓
+IDENTIFY ROOT CAUSE
+↓
+MAKE MINIMAL CORRECT FIX
+↓
+RENDER
+↓
+RETEST
+↓
+DESKTOP REGRESSION
+
+Do NOT patch screenshots.
+
+Do NOT use:
+
+- negative-margin hacks
+- arbitrary transforms
+- random padding
+- arbitrary scroll multipliers
+- browser-specific hacks
+- timers
+- fake progress
+- forced snapping
+
+If the title is too low:
+
+find out WHY.
+
+If the black section begins too early:
+
+find out WHY.
+
+If the scroll feels disconnected:
+
+find out WHY.
+
+If the rail is too prominent:
+
+fix its hierarchy, not just its opacity.
+
+If the 3D → editorial transition feels like a page change:
+
+fix the actual relationship between the 3D scene, scroll progress, and
+editorial layout.
+
+============================================================
+29. ARCHITECTURE PROTECTION
+============================================================
+
+Do not introduce unnecessary parallel systems.
+
+Do NOT create:
+
+- second camera
+- second Lenis
+- second scroll system
+- second RAF
+- second AudioContext
+- duplicate progress state
+- duplicate animation loops
+
+Reuse the existing architecture.
+
+The solution should integrate with the current Events system.
+
+============================================================
+30. PRESERVE THE CURRENT EVENTS EXPERIENCE
+============================================================
+
+Do not rebuild:
+
+- existing event rooms
+- room identity
+- room architecture
+- event data
+- current camera system
+- existing audio system
+- existing global scroll system
+
+unless the investigation proves that a change is required.
+
+The 3D event experience is the foundation.
+
+The editorial layer should enhance it, not replace it.
+
+============================================================
+31. VISUAL QA CHECKPOINTS
+============================================================
+
+Render and inspect the following states.
+
+CHECKPOINT 1
+------------
+3D event experience still dominant.
+
+Expected:
+The event world remains visually strong.
+
+CHECKPOINT 2
+------------
+3D composition has begun moving upward.
+
+Expected:
+Black editorial canvas has started entering.
+
+There must be no abrupt section swap.
+
+CHECKPOINT 3
+------------
+3D is moving upward/out.
+
+Expected:
+Event title + number + description are already clearly visible.
+
+There must NOT be a giant black region above them.
+
+CHECKPOINT 4
+------------
+3D is almost completely gone.
+
+Expected:
+Editorial content is now dominant.
+
+CHECKPOINT 5
+------------
+Category / About content.
+
+Expected:
+Natural spacing.
+No giant dead gap.
+
+CHECKPOINT 6
+------------
+Details / supporting information.
+
+Expected:
+Still part of the same editorial story.
+
+CHECKPOINT 7
+------------
+Next Event / Crew continuation.
+
+Expected:
+Natural continuation.
+No forced advancement.
+
+============================================================
+32. FINAL SCROLL QA
+============================================================
+
+Test:
+
+- very slow scroll
+- normal scroll
+- fast scroll
+- reverse scroll
+- stop halfway
+- resume forward
+- resume backward
+
+During the 3D → editorial transition specifically verify:
+
+slow scroll
+→ slow visual movement
+
+fast scroll
+→ faster visual movement
+
+stop
+→ composition stops
+
+reverse
+→ transition reverses
+
+There must be no hidden automatic progression.
+
+============================================================
+33. FINAL VISUAL TARGET
+============================================================
+
+The final Events experience should feel like:
+
+PHYSICAL / 3D EVENT WORLD
+        ↓
+CONTINUOUS USER-CONTROLLED SCROLL
+        ↓
+3D WORLD MOVES UP
+        ↓
+BLACK EDITORIAL CANVAS ENTERS
+        ↓
+EVENT TITLE + NUMBER + DESCRIPTION
+        ↓
+3D WORLD CONTINUES LEAVING VIEWPORT
+        ↓
+EDITORIAL CONTENT BECOMES DOMINANT
+        ↓
+CATEGORY
+        ↓
+ABOUT
+        ↓
+DETAILS
+        ↓
+ROOM INTERPRETATION
+        ↓
+NEXT EVENT
+        ↓
+CREW
+
+The user should feel:
+
+"I am continuously moving through the same experience."
+
+Not:
+
+"I left the 3D website and entered another page."
+
+============================================================
+34. FINAL BASEMENT VISUAL TARGET
+============================================================
+
+Use the supplied Basement screenshots as the reference for:
+
+- typography
+- font weight
+- font color
+- title scale
+- paragraph scale
+- placement
+- alignment
+- column structure
+- spacing
+- hierarchy
+- negative space
+- editorial rhythm
+- relationship between visual media and typography
+- subtle navigation
+
+The ACM-CEG implementation should achieve the SAME LEVEL OF
+EDITORIAL CONFIDENCE while remaining distinctly ACM-CEG.
+
+Do not copy Basement.
+
+Reproduce the design language.
+
+============================================================
+35. FINAL ACCEPTANCE CRITERIA
+============================================================
+
+The Events refinement is complete only when:
+
+✓ The user's scroll feels directly controlled by their input.
+
+✓ No unnecessary invisible scroll range exists.
+
+✓ No excessive dead travel exists.
+
+✓ The 3D experience remains physically meaningful.
+
+✓ The 3D experience participates in the 3D → editorial transition.
+
+✓ The 3D scene moves upward naturally as the user scrolls.
+
+✓ The editorial canvas enters as part of the same continuous page.
+
+✓ There is no hard 3D → black-page boundary.
+
+✓ There is no fade-to-black replacement transition.
+
+✓ There is no large black dead space above the event title.
+
+✓ Event title appears immediately.
+
+✓ Event number appears immediately.
+
+✓ Description appears immediately.
+
+✓ Typography follows the supplied Basement reference.
+
+✓ Typography uses the correct warm/off-white hierarchy.
+
+✓ Secondary typography is appropriately muted.
+
+✓ Editorial spacing is premium but not excessively empty.
+
+✓ Sections are not artificially stretched to 100vh.
+
+✓ Category follows naturally.
+
+✓ About follows naturally.
+
+✓ Details appear later.
+
+✓ Room interpretation remains meaningful.
+
+✓ Next Event is reachable naturally.
+
+✓ The right-side rail no longer competes with the main content.
+
+✓ If retained, the rail is clearly secondary.
+
+✓ The rail does not control the scroll.
+
+✓ The user remains in control throughout.
+
+✓ Reverse scrolling works.
+
+✓ Mobile remains coherent.
+
+✓ Desktop remains coherent.
+
+✓ No camera regression.
+
+✓ No scroll regression.
+
+✓ No audio regression.
+
+✓ No visual distortion.
+
+✓ No arbitrary hacks were introduced.
+
+============================================================
+36. VALIDATION COMMANDS
+============================================================
+
+After implementation, run:
+
+npm run typecheck
+
+npm run build
+
+git diff --check
+
+Run relevant existing Events QA scripts.
+
+Do not claim success unless tests were actually performed.
+
+Then render and visually inspect the Events experience.
+
+============================================================
+37. GIT SAFETY
+============================================================
+
+DO NOT:
+
+- reset
+- revert
+- stash
+- clean
+- overwrite unrelated work
+- delete unrelated files
+- commit
+- push
+
+unless explicitly requested.
+
+Preserve existing work.
+
+============================================================
+38. FINAL REPORT
+============================================================
+
+Only report completion after the implementation has been rendered and
+visually inspected.
+
+Report:
+
+1. What was already working.
+2. What was actually broken.
+3. Root causes found.
+4. Scroll fixes.
+5. 3D → editorial transition fixes.
+6. Editorial layout fixes.
+7. Basement-reference typography/color refinements.
+8. Event-rail decision and reasoning.
+9. Mobile validation.
+10. Desktop regression.
+11. QA/build/typecheck results.
+12. Any remaining limitations.
+
+Do not claim a test was performed if it was not performed.
+
+============================================================
+FINAL PRINCIPLE
+============================================================
+
+DO NOT THINK OF EVENTS AS:
+
+3D EXPERIENCE
++
+2D PAGE
+
+Think of it as:
+
+ONE CONTINUOUS DIGITAL EXPERIENCE
+
+where:
+
+THE 3D WORLD
+explains WHERE the event exists,
+
+and:
+
+THE EDITORIAL WORLD
+explains WHAT the event is.
+
+The scroll is the bridge between them.
+
+The user's scroll controls that bridge.
+
+The 3D scene moves with the scroll.
+
+The editorial typography enters naturally.
+
+The visual language follows the supplied Basement reference.
+
+The result should feel:
+
+CINEMATIC
++
+PHYSICAL
++
+EDITORIAL
++
+INTENTIONAL
++
+CONTROLLED
+
+and never like a collection of disconnected sections.

@@ -1,1779 +1,2017 @@
-============================================================
-ACM-CEG EVENTS — COMPLETE EXPERIENCE REDESIGN
-============================================================
+# ACM-CEG EVENTS — COMPLETE ARCHITECTURAL EXPERIENCE REDESIGN
 
-IMPORTANT:
-THIS DOCUMENT IS THE AUTHORITATIVE SPECIFICATION.
+## IMPORTANT — READ THIS FIRST
 
-Read this ENTIRE FILE before implementing anything.
+This file is the COMPLETE and AUTHORITATIVE specification for the Events redesign.
 
-Do not skim it.
+The goal is to redesign the way the existing ACM-CEG event rooms are discovered, selected, entered and presented.
 
-Do not summarize it and stop.
+The existing event rooms are valuable 3D experiences and MUST be reused.
 
-Do not simply propose a design.
+The new design introduces a premium architectural 3×3 presentation structure around those rooms.
 
-Actually inspect the current ACM-CEG repository, inspect the
-referenced website, understand the interaction being described,
-and IMPLEMENT the experience.
+Do NOT interpret the Events experience as:
 
-============================================================
-REFERENCE WEBSITE — VERY IMPORTANT
-============================================================
+- a 3×3 grid of cards
+- nine poster thumbnails
+- nine flat image tiles
+- a generic website gallery
+- nine rectangular buttons
+- a simple CSS grid
+- nine screenshots
+- nine floating UI panels
+- a portfolio card layout
+- a dashboard
+- a collection of mini website pages
 
-REFERENCE:
+THAT IS NOT THE DESIGN.
 
-https://basement.studio/
+The intended experience is:
 
-You MUST actually open and EXPERIENCE the website before
-implementing this.
+A LARGE, PREMIUM, PHYSICAL 3×3 ARCHITECTURAL STRUCTURE THAT HOLDS AND PRESENTS THE ACTUAL EXISTING 3D EVENT ROOMS.
 
-Do not rely only on the text of this specification.
+Each of the nine compartments contains a real existing ACM-CEG event room.
 
-Use the browser / available browser tooling to inspect the
-real website.
+The matrix is NOT the content.
 
-I am specifically referring to the way the Basement website
-presents its visual showcase/work archive and how the user
-interacts with individual items.
+The rooms ARE the content.
 
-I want you to understand the interaction by actually using it.
+The matrix is the architectural/exhibition structure that frames, holds and presents those rooms.
 
-Do not just search the HTML and assume you understand it.
+The user should feel as though they are looking into nine miniature living environments inside one monumental ACM-CEG installation.
 
-Experience:
+The overall experience should feel closer to:
 
-- the initial showcase/archive presentation
-- the large visual objects/items
-- how an item reacts when hovered
-- how the contextual label/action appears
-- how the selected item is communicated
-- what happens when an item is clicked
-- how the camera/view transitions
-- how the selected project becomes the focus
-- how the detailed content is presented after entering
-- how scrolling reveals the information
-- how the typography and spacing are arranged
-- how the page returns from the detailed view
-- how ESC/back navigation behaves if present
-- how the overall interaction feels
+- a cinematic digital exhibition
+- a premium architectural installation
+- a museum/gallery display
+- an experimental interactive showcase
+- a high-end digital studio experience
 
-The ACM-CEG implementation should use this interaction model
-as the primary reference for the new Events experience.
+rather than a normal website UI.
 
-============================================================
-IMPORTANT DISTINCTION
-============================================================
-
-For this task:
-
-The 2D EVENT INFORMATION EXPERIENCE should follow the
-Basement reference VERY CLOSELY.
-
-I do NOT mean:
-
-"make it vaguely inspired by Basement."
-
-I mean:
-
-Study the actual interaction and presentation closely and
-reproduce the same type of user experience and information
-architecture for ACM-CEG Events.
-
-The goal is that someone familiar with the Basement interaction
-would immediately recognize the interaction pattern.
-
-However:
-
-DO NOT copy Basement's source code.
-
-DO NOT copy proprietary assets.
-
-DO NOT copy their images.
-
-DO NOT copy their branding.
-
-DO NOT copy their logos.
-
-DO NOT copy their exact text.
-
-DO NOT copy their project content.
-
-DO NOT copy their proprietary implementation.
-
-Use ACM-CEG's own:
+Use the interaction language and editorial confidence of premium studio websites such as Basement Studio as inspiration for:
 
 - typography
-- event data
-- imagery
-- colors/materials
-- 3D environment
-- architecture
+- whitespace
+- hierarchy
+- hover choreography
+- directional motion
+- editorial information presentation
+- transitions
+- visual confidence
+- restraint
+
+BUT DO NOT COPY Basement's:
+
+- source code
+- assets
 - branding
-- portal
-- camera system.
+- exact layouts
+- exact typography
+- exact animations
+- project content
+- visual identity
 
-The interaction/presentation model should closely reproduce
-the reference experience.
+The final experience must clearly belong to ACM-CEG.
 
+---
 
-============================================================
-THE CORE IDEA
-============================================================
+# 1. CURRENT REPOSITORY / IMPLEMENTATION BASELINE
 
-The new Events experience is:
+The repository has already been rolled back to the known-good Events baseline before the incorrect Events experiment.
 
-                EVENTS ENTRY
-                     ↓
-            LARGE 3 × 3 ARCHIVE
-                     ↓
-          HOVER / FOCUS AN EVENT
-                     ↓
-      contextual action appears
-                     ↓
-          CLICK EVENT
-                     ↓
-       SMOOTH CAMERA TRANSITION
-                     ↓
-          SELECTED EVENT VIEW
-                     ↓
-           SCROLL THROUGH
-          EVENT INFORMATION
-                     ↓
-       DESCRIPTION / DETAILS
-                     ↓
-      REGISTRATION IF AVAILABLE
-                     ↓
-                ESC / BACK
-                     ↓
-          RETURN TO FULL SHELF
-                     ↓
-        USER CAN CHOOSE ANOTHER
-                     ↓
-             OR CONTINUE SCROLL
-                     ↓
-       ALL EVENTS' INFORMATION
-        IS PRESENTED SEQUENTIALLY
-                     ↓
-          FINAL EVENT CONTENT
-                     ↓
-          SHELF APPEARS AGAIN
-                     ↓
-             CONTINUE SCROLL
-                     ↓
-          SHELF SPLITS IN HALF
-                     ↓
-               PORTAL
-                     ↓
-             THE CREW
+Current known baseline:
 
+BRANCH:
+checkpoint/before-optimization
 
-This is the new Events information architecture.
+HEAD:
+9c2cecb — The EVENTS redesign brief
 
+The previous incorrect Events implementation has already been removed.
 
-============================================================
-1. NO MORE FORCED EVENT ROOM TOUR
-============================================================
+Therefore:
 
-The existing concept of physically touring individual
-event rooms should no longer be the default Events experience.
+DO NOT perform another rollback.
 
-The user should NOT have to:
+DO NOT reset the repository.
 
-enter Event 01 room
-→ walk through it
-→ Event 02 room
-→ walk through it
-→ Event 03 room
-→ etc.
+DO NOT restore unrelated files.
 
-Instead, Events becomes an ARCHIVE.
+DO NOT stash unrelated work.
 
-The user first encounters one large physical archive.
+DO NOT modify:
 
-The archive contains all Events.
+- acm photos/
+- browser.txt
 
-The user chooses what they want to inspect.
+Do not create a commit.
 
+Do not push.
 
-============================================================
-2. THE LARGE 3 × 3 ARCHIVE
-============================================================
+Start the new Events implementation from the current repository state.
 
-After entering the Events environment, the user should see
-a large, monumental 3 × 3 event archive.
+The only intended implementation changes should be Events-related.
 
-3 columns.
+---
 
-3 rows.
+# 2. AUDIT THE EXISTING EVENT ROOMS BEFORE BUILDING
 
-9 event positions.
+Before changing the architecture, inspect the existing Events implementation completely.
 
-The archive should feel like a physical installation.
+Identify every existing event room.
 
-It should NOT feel like:
+The existing rooms are valuable existing 3D work.
 
-- HTML cards
-- a CSS grid
-- a dashboard
-- a website gallery
-- nine floating rectangles
-- a generic bookshelf
-- nine unrelated 3D boxes
+DO NOT THROW THEM AWAY.
 
-It should feel like a real architectural object.
+For every event room determine:
+
+- existing geometry
+- materials
+- props
+- environment
+- lighting
+- animation
+- camera behavior
+- atmospheric effects
+- event-specific details
+- existing data
+- existing transitions
+- registration information
+- existing interactive elements
+- room entry/exit behavior
+
+Understand how each room currently works before modifying it.
+
+The existing rooms remain the source material for the new experience.
+
+The redesign changes:
+
+HOW THE USER DISCOVERS AND ENTERS THE ROOMS.
+
+It does NOT replace the rooms with cards.
+
+---
+
+# 3. THE CORE VISUAL CONCEPT
+
+The Events section begins with a large physical architectural structure.
+
+Imagine the user standing in a dark cinematic exhibition environment.
+
+In front of them is a monumental 3×3 structure:
+
+                  ┌─────────┬─────────┬─────────┐
+                  │ ROOM 01 │ ROOM 02 │ ROOM 03 │
+                  ├─────────┼─────────┼─────────┤
+                  │ ROOM 04 │ ROOM 05 │ ROOM 06 │
+                  ├─────────┼─────────┼─────────┤
+                  │ ROOM 07 │ ROOM 08 │ ROOM 09 │
+                  └─────────┴─────────┴─────────┘
+
+This diagram describes the INFORMATIONAL STRUCTURE only.
+
+The final result must NOT look like a literal flat grid.
+
+It must be a physical three-dimensional architectural object.
+
+The nine compartments should feel like nine exhibition bays/windows/chambers.
+
+Each bay contains an actual existing event room.
+
+The user sees all nine rooms as part of one coherent installation.
+
+---
+
+# 4. THE 3×3 MATRIX — PREMIUM ARCHITECTURAL HOLDING STRUCTURE
+
+THIS IS THE MOST IMPORTANT VISUAL REFINEMENT.
+
+The matrix should NOT be a collection of random "creative" graphics.
+
+Do NOT invent a complicated conceptual gimmick.
+
+Do NOT turn it into:
+
+- a hacker interface
+- a network motherboard
+- a cyberpunk control panel
+- a futuristic computer terminal
+- a sci-fi machine
+- a random technical diagram
+- a neon system
+- an over-decorated ACM graphic installation
+
+Instead:
+
+Design ONE beautiful, premium architectural structure whose primary purpose is to HOLD, FRAME and PRESENT the nine rooms.
 
 Think:
 
-museum archive
-exhibition wall
-institutional showcase
-architectural display
-physical event archive
-curated collection
+LUXURY EXHIBITION WALL
 
+or:
 
-============================================================
-3. THE ARCHIVE ENVIRONMENT
-============================================================
+ARCHITECTURAL GALLERY INSTALLATION
 
-The shelf must NOT float in empty space.
+or:
 
-Create a convincing architectural environment around it.
+PREMIUM MUSEUM DISPLAY STRUCTURE
 
-Possible elements:
+or:
 
-- structural side walls
-- vertical columns
-- recessed compartments
-- floor
-- ceiling
-- framing
-- practical lights
-- shadows
+MONUMENTAL ARCHIVE WALL
+
+The creativity should come from:
+
+- scale
+- proportion
 - depth
-- atmospheric haze
-- architectural materials
-- subtle reflections
-- controlled highlights
-
-The exact architecture should be consistent with the existing
-ACM-CEG Events environment.
-
-Do not create a completely unrelated visual world.
-
-
-============================================================
-4. LARGE EVENTS TITLE
-============================================================
-
-A large 3D / environmental:
-
-EVENTS
-
-title should be integrated above or around the archive.
-
-It should feel like part of the physical installation.
-
-It should NOT look like:
-
-<h1>EVENTS</h1>
-
-placed over a WebGL object.
-
-Use the existing ACM-CEG typography language.
-
-
-============================================================
-5. EVENT POSITIONS
-============================================================
-
-Each of the 9 positions corresponds to a real event from the
-existing event dataset.
-
-Do not invent events.
-
-Do not invent event information.
-
-Do not fabricate:
-
-- titles
-- descriptions
-- dates
-- registration URLs
-- organizers
-- prizes
-- statistics
-- winners
-- categories.
-
-
-============================================================
-6. THE INITIAL SHELF IS AN INTERACTIVE INDEX
-============================================================
-
-The initial shelf is NOT merely decorative.
-
-It is the primary Events navigation surface.
-
-The user should be able to inspect the events directly.
-
-When the pointer moves over an event:
-
-the event becomes visually selected.
-
-The selected event should feel like a physical object being
-focused.
-
-
-============================================================
-7. HOVER BEHAVIOUR — BASEMENT INTERACTION REFERENCE
-============================================================
-
-This is one of the most important parts of this document.
-
-Study the actual Basement website interaction.
-
-When an item is hovered/focused there is a clear contextual
-response.
-
-ACM-CEG should implement the equivalent interaction.
-
-For example, conceptually:
-
-          EVENT OBJECT
-
-             ↓ hover
-
-     selected / emphasized
-
-             ↓
-
-      contextual action
-
-        "VISIT CODHER"
-
-or:
-
-        "EXPLORE CODHER"
-
-or:
-
-        "VISIT [EVENT NAME]"
-
-
-The exact wording can be determined from the ACM-CEG
-event name and design language.
-
-The important part is:
-
-The user should immediately understand:
-
-"I am currently focusing this event."
-
-The contextual action should belong visually to that event.
-
-
-============================================================
-8. HOVER VISUAL RESPONSE
-============================================================
-
-The selected event can respond through:
-
-- subtle depth movement
-- local illumination
-- material response
-- contrast
-- scale
-- edge highlight
-- contextual typography
-- surrounding event dimming
-
-Do NOT make this a generic CSS hover effect.
-
-It should feel like a physical archive object reacting.
-
-
-============================================================
-9. ONLY ONE EVENT SHOULD FEEL SELECTED
-============================================================
-
-When Event A is hovered:
-
-Event A = dominant.
-
-Other events = secondary.
-
-Do not make all nine objects equally bright.
-
-The selected item should establish hierarchy.
-
-
-============================================================
-10. CONTEXTUAL ACTION
-============================================================
-
-The selected event should reveal an action similar in spirit
-to the Basement interaction.
-
-For example:
-
-[ VISIT CODHER ]
-
-or:
-
-[ EXPLORE CODHER ]
-
-or:
-
-[ VIEW EVENT ]
-
-Use the actual event name.
-
-The action should be aesthetically integrated.
-
-Do NOT make a giant generic rounded CTA.
-
-Do NOT make it look like a SaaS dashboard.
-
-
-============================================================
-11. CLICKING AN EVENT
-============================================================
-
-When the user clicks the selected event:
-
-DO NOT instantly teleport.
-
-The camera should transition VERY SMOOTHLY toward that
-specific event.
-
-This is one of the highest-priority requirements.
-
-The camera movement should feel:
-
-- cinematic
-- physical
-- deliberate
-- extremely smooth
-- spatially coherent
-- premium
-
-The selected event should become the destination.
-
-The movement should feel like:
-
-"I'm approaching this particular archive item."
-
-NOT:
-
-"The webpage switched sections."
-
-
-============================================================
-12. CAMERA TRANSITION
-============================================================
-
-The camera should:
-
-1. recognize the selected event
-2. begin moving toward it
-3. maintain smooth interpolation
-4. preserve orientation continuity
-5. preserve appropriate FOV
-6. approach the selected event naturally
-7. settle into a dedicated event viewing composition
-
-No:
-
-- teleport
-- hard cut
-- snap
-- sudden FOV jump
-- second camera
-- arbitrary timeout
-- fake loading state
-
-
-============================================================
-13. EVENT DETAIL VIEW
-============================================================
-
-Once the camera has arrived at the selected event:
-
-the user should see the event as the primary subject.
-
-The event should have a dedicated visual composition.
-
-This is where the experience transitions from:
-
-3D ARCHIVE
-
-into:
-
-EVENT INFORMATION EXPERIENCE.
-
-
-============================================================
-14. THE 2D EVENT INFORMATION UI
-============================================================
-
-THIS IS THE MOST IMPORTANT REFERENCE REQUIREMENT.
-
-The detailed event information presentation should closely
-follow the Basement website's showcase/project presentation
-model.
-
-Again:
-
-Actually EXPERIENCE the reference website before implementing.
-
-Do not invent an unrelated editorial layout.
-
-Observe:
-
-- how the selected item becomes the main focus
-- how the title is presented
-- where metadata appears
-- how description content is positioned
-- how spacing is handled
-- how content enters
-- how the user scrolls through it
-- how secondary information is presented
-- how actions/links are presented
-- how the page maintains visual identity
-- how the experience feels like a showcase rather than a
-  conventional webpage.
-
-
-============================================================
-15. EVENT DETAIL STRUCTURE
-============================================================
-
-For each event, the detailed view should conceptually contain:
-
-EVENT TITLE
-
-EVENT METADATA
-
-DATE
-CATEGORY
-OTHER EXISTING INFORMATION
-
-LARGE EVENT DESCRIPTION
-
-ADDITIONAL INFORMATION
-
-REGISTRATION ACTION
-ONLY IF A VALID REGISTRATION LINK EXISTS
-
-
-The exact visual arrangement should be determined after
-studying the Basement reference.
-
-Do not turn this into a generic centered card.
-
-
-============================================================
-16. LARGE TYPOGRAPHY
-============================================================
-
-The event title should have strong visual presence.
-
-Use large editorial typography.
-
-The composition should have:
-
-- scale
+- framing
+- recesses
+- layered construction
+- material contrast
+- lighting
+- shadows
 - negative space
-- hierarchy
-- controlled alignment
-- deliberate spacing
+- structural thickness
+- perspective
+- elegant detailing
 
-Do not cram everything into a small panel.
+NOT from random decoration.
 
+If there is any uncertainty about a visual decision:
 
-============================================================
-17. EVENT DESCRIPTION
-============================================================
+CHOOSE THE MORE RESTRAINED, ARCHITECTURAL AND PREMIUM OPTION.
 
-The event explanation should be genuinely readable.
+---
 
-The user should be able to understand:
+# 5. MATRIX ARCHITECTURE
 
-What is this event?
+The matrix should feel like one physically constructed object.
 
-What does it involve?
+Do NOT simply create:
 
-What is the purpose?
+nine cubes + nine openings.
 
-What information does ACM-CEG currently provide about it?
+Instead, consider:
 
-Use the actual existing description.
+- substantial outer framing
+- deep recessed compartments
+- layered inner frames
+- physical wall thickness
+- elegant bevels
+- inset surfaces
+- different depth planes
+- structural separators
+- subtle material transitions
+- side structures
+- top/bottom framing
+- floor relationship
+- ceiling relationship
+- believable shadow casting
+- restrained integrated lighting
+- subtle atmospheric depth
 
-Do not fabricate missing content.
+The structure should feel manufactured and physically believable.
 
+It should have:
 
-============================================================
-18. REGISTRATION
-============================================================
+WEIGHT.
 
-If an event has a real registration link:
+DEPTH.
 
-show it.
+MATERIALITY.
 
-For example:
+LIGHT RESPONSE.
 
-REGISTER
+SHADOW.
 
-or the appropriate ACM-CEG wording.
+SCALE.
 
-The registration action should visually belong to the event
-presentation.
+The viewer should believe they are approaching an actual architectural installation.
 
-If no registration link exists:
+---
 
-DO NOT show a fake registration button.
+# 6. DO NOT OVER-DESIGN THE MATRIX
 
-Simply present the event information that exists.
+The structure must have detail, but detail should be controlled.
 
+Do NOT add every possible architectural element.
 
-============================================================
-19. SCROLL INSIDE THE EVENT
-============================================================
+Do NOT add random:
 
-After clicking an event and arriving at its dedicated view:
+- cables
+- pipes
+- floating objects
+- technical labels
+- circuitry
+- screens
+- symbols
+- particles
+- decorative geometry
 
-scrolling should reveal the event's information.
+unless they are genuinely necessary to the architecture.
 
-The experience should not immediately dump all text on screen.
+The structure should remain visually legible.
 
-Use the same general interaction philosophy as the Basement
-reference:
+The nine rooms are the hero.
 
-large visual hierarchy
-→ information
-→ description
-→ details
-→ action.
+The architecture supports them.
 
+The frame should NEVER compete with the rooms.
 
-============================================================
-20. SCROLL SHOULD FEEL LIKE EXPLORING THE EVENT
-============================================================
+---
 
-The scroll should not feel like:
+# 7. SUBTLE ACM-CEG IDENTITY
 
-"scrolling down a normal webpage."
+The matrix should feel like it belongs to ACM-CEG without becoming a literal branding installation.
 
-It should feel like:
+Use the existing visual language of the website.
 
-"I am exploring the selected event."
+If subtle ACM-CEG-inspired detailing is appropriate, keep it restrained.
 
+Possible examples:
 
-============================================================
-21. ESCAPE / BACK TO SHELF
-============================================================
+- subtle geometry
+- refined numbering
+- minimal typographic markings
+- carefully placed insignia
+- understated structural motifs
 
-This is CRITICAL.
+These should be secondary.
 
-After entering an event:
+Do not turn the matrix into a branded billboard.
 
-the user should be able to press:
+The identity should come from the overall design language, not excessive logos.
 
-ESC
+---
 
-and return to the full 3 × 3 shelf view.
+# 8. EACH COMPARTMENT CONTAINS A REAL EVENT ROOM
 
-The return must be smooth.
+THIS IS CRITICAL.
 
-Do NOT reload.
-
-Do NOT recreate the entire Events scene.
-
-Do NOT teleport.
-
-Do NOT reset the website.
-
-The camera should smoothly return to the archive composition.
-
-The shelf should once again be visible as a whole.
-
-
-============================================================
-22. ESC RETURN BEHAVIOUR
-============================================================
-
-Conceptually:
-
-FULL SHELF
-    ↓
-hover Event X
-    ↓
-click Event X
-    ↓
-camera smoothly approaches Event X
-    ↓
-Event X detail experience
-    ↓
-ESC
-    ↓
-camera smoothly returns
-    ↓
-FULL SHELF
-
-
-The transition should feel like leaving an exhibit and
-returning to the exhibition hall.
-
-
-============================================================
-23. IMPORTANT: ESC MUST NOT BREAK SCROLL STATE
-============================================================
-
-If the user presses ESC:
-
-the selected event state should be cleared correctly.
-
-No stale selected event.
-
-No stale contextual overlay.
-
-No stale camera target.
-
-No stale animation.
-
-No stale audio.
-
-The shelf should return to a clean interactive state.
-
-
-============================================================
-24. MULTIPLE EVENT EXPLORATION
-============================================================
-
-The user should be able to:
-
-open Event A
-→ ESC
-→ open Event B
-→ ESC
-→ open Event C
-
-without the system degrading.
-
-Each event should use the same architecture.
-
-No duplicated scene systems.
-
-
-============================================================
-25. THE OTHER IMPORTANT PATH
-============================================================
-
-The user may never click an event.
-
-They may simply scroll.
-
-In that case, the Events section should become a sequential
-editorial archive.
-
-
-============================================================
-26. SCROLLING THROUGH ALL EVENTS
-============================================================
-
-When the user is in the overall Events experience and simply
-scrolls without selecting a specific event:
-
-the event information should appear ONE EVENT AT A TIME.
-
-Conceptually:
-
-SHELF
-
-↓
-
-EVENT 01 INFORMATION
-
-↓
-
-EVENT 02 INFORMATION
-
-↓
-
-EVENT 03 INFORMATION
-
-↓
-
-EVENT 04 INFORMATION
-
-↓
-
-EVENT 05 INFORMATION
-
-↓
-
-EVENT 06 INFORMATION
-
-↓
-
-EVENT 07 INFORMATION
-
-↓
-
-EVENT 08 INFORMATION
-
-↓
-
-EVENT 09 INFORMATION
-
-↓
-
-SHELF AGAIN
-
-
-============================================================
-27. THE EDITORIAL ARRANGEMENT MUST FOLLOW THE REFERENCE
-============================================================
-
-This is another very important requirement.
-
-The overall event-information presentation should closely
-follow the arrangement philosophy of the Basement showcase.
-
-Do not create:
-
-Event 01
----------
-centered card
-
-Event 02
----------
-centered card
-
-Event 03
----------
-centered card
-
-
-Instead, reproduce the same type of:
-
-- large visual hierarchy
-- spacing
-- title treatment
-- metadata positioning
-- description placement
-- action placement
-- visual rhythm
-- section composition
-- scroll storytelling
-
-that you observe when actually using Basement.
-
-ACM-CEG content replaces Basement's project content.
-
-ACM-CEG branding replaces Basement branding.
-
-But the information presentation model should remain
-recognizably close.
-
-
-============================================================
-28. EVENT SECTIONS SHOULD FEEL LIKE SHOWCASE ENTRIES
-============================================================
-
-Each event should feel like its own showcase entry.
-
-Not a card.
-
-Not a blog article.
-
-Not a university event announcement.
-
-A showcase entry.
-
-
-============================================================
-29. EVENT MEDIA
-============================================================
-
-If the ACM-CEG repository already contains imagery/media for
-an event:
-
-use it where appropriate.
-
-If it doesn't:
-
-do not fabricate media.
-
-The layout must still look complete through typography,
-spacing, composition and existing visual assets.
-
-
-============================================================
-30. EVENT ORDER
-============================================================
-
-Use the existing event ordering/data source.
-
-Do not randomly reorder events.
-
-The 3×3 shelf order and sequential editorial order should
-be intentional and consistent.
-
-If the repository already defines an event order, preserve it
-unless the current Events architecture explicitly requires
-another order.
-
-
-============================================================
-31. INITIAL SHELF → EDITORIAL EXPERIENCE
-============================================================
-
-The initial shelf remains visible first.
-
-If the user simply scrolls:
-
-the shelf transitions into the first event's editorial
-presentation.
-
-This should feel like entering the archive's content layer.
-
-
-============================================================
-32. INITIAL SHELF → SELECTED EVENT
-============================================================
-
-If the user instead hovers and clicks:
-
-the selected event becomes the destination.
-
-The camera approaches that event.
-
-The event detail presentation appears.
-
-The user can scroll through its information.
-
-ESC returns to the shelf.
-
-
-============================================================
-33. THESE TWO MODES MUST COEXIST
-============================================================
-
-MODE A:
-
-DIRECT EVENT EXPLORATION
-
-Shelf
-→ hover event
-→ contextual Visit Event
-→ click
-→ camera approaches event
-→ event information
-→ ESC
-→ shelf
-
-
-MODE B:
-
-SEQUENTIAL ARCHIVE READING
-
-Shelf
-→ scroll
-→ Event 01
-→ Event 02
-→ Event 03
-→ ...
-→ Event 09
-→ shelf
-
-
-Both must feel like the same system.
-
-
-============================================================
-34. THE VISIT THE CREW ACTION
-============================================================
-
-The initial shelf should also have:
-
-VISIT THE CREW
-
-This is independent from event selection.
-
-If the user activates it:
-
-the shelf physically splits.
-
-It should NOT jump directly to Crew.
-
-
-============================================================
-35. SHELF SPLIT
-============================================================
-
-The shelf splits into two physical halves.
-
-LEFT HALF
-moves left.
-
-RIGHT HALF
-moves right.
-
-CENTER
-opens.
-
-A portal / spatial passage becomes visible.
-
-The effect must feel physical.
+Each compartment must contain the ACTUAL EXISTING 3D EVENT ROOM.
 
 Not:
 
-fade out
-scale down
-random glitch
-dissolve.
+- a poster
+- a card
+- a screenshot
+- a texture
+- a title on a plane
+- a generic miniature cube
+- a rendered image
+- a flat preview
 
+The user should be able to look into a compartment and recognize the actual event environment.
 
-============================================================
-36. PORTAL
-============================================================
+For example:
 
-The portal should feel like a hidden architectural passage.
+"That is the CodHer room."
 
-It should belong to the ACM-CEG world.
+"That is the Prodigy room."
 
-Avoid generic:
+"That is the Open Source Mentorship room."
 
-- magic portal
-- sci-fi ring
-- neon portal
-- gaming portal
+etc.
 
-It should feel like the archive itself was concealing
-the next world.
+Use the actual event data and actual room implementations in the repository.
 
+Do not fabricate event identities.
 
-============================================================
-37. CAMERA TO PORTAL
-============================================================
+---
 
-After the split:
+# 9. THE ROOMS SHOULD REMAIN VISUALLY INTERESTING
 
-continued scrolling moves the camera toward the portal.
+Every event room should feel like a miniature designed environment.
 
-Do not automatically teleport.
+Preserve the existing room's strongest visual storytelling elements.
 
-The camera journey remains scroll-driven.
+Where an existing room already contains strong design:
 
+KEEP IT.
 
-============================================================
-38. THE CREW
-============================================================
+Where the room needs reframing to work inside the matrix:
 
-After the portal:
+adjust only what is necessary:
 
-continue into the EXISTING THE CREW experience.
+- preview camera
+- scale
+- position
+- framing
+- lighting balance
+- visibility
+- depth
 
-Preserve:
+Do NOT redesign the event's identity merely to make the matrix easier to implement.
 
-- existing Crew entrance
-- touch-and-hold
-- domain experience
-- member experience
-- existing camera choreography
-- existing visual identity.
+The user should be able to discover interesting visual details before entering.
 
+Examples of existing room details that should remain visible where possible:
 
-============================================================
-39. END OF ALL EVENT CONTENT
-============================================================
+- distinctive props
+- trophies
+- workstations
+- event-specific structures
+- screens
+- walls
+- diagrams
+- installations
+- architectural elements
+- event-specific lighting
+- environmental details
 
-When the user reaches the end of Event 09 in the sequential
-editorial path:
+The rooms should feel like miniature exhibitions.
 
-the shelf must return.
+---
+
+# 10. ROOM PREVIEW COMPOSITION
+
+The matrix preview does not need to show every tiny object inside a room.
+
+Instead, intelligently compose each room so that its most important visual elements remain readable.
+
+Each compartment should have its own visual composition.
+
+Some rooms may naturally appear:
+
+- brighter
+- darker
+- more open
+- more dense
+- more colorful
+- more architectural
+
+That variation is desirable.
+
+Do not force all nine rooms to look identical.
+
+The commonality comes from the architectural frame.
+
+The individuality comes from the rooms.
+
+---
+
+# 11. MATRIX ARRIVAL
+
+When the user enters Events:
+
+Do NOT immediately display a generic grid.
+
+Create a cinematic arrival toward the architectural structure.
+
+The camera should naturally reveal:
+
+1. the environment
+2. the structure
+3. its scale
+4. the depth of the compartments
+5. the nine event worlds
 
 The user should feel:
 
-"I have completed the event archive."
+"I have arrived at the ACM-CEG Events exhibition."
 
+NOT:
 
-============================================================
-40. FINAL SHELF
-============================================================
+"I have reached a webpage containing nine cards."
 
-After the final event:
+The arrival should be smooth and integrated with the existing Events transition architecture.
 
-the physical 3×3 archive returns.
+---
 
-Then:
+# 12. HOVER INTERACTION — THE PRIMARY MATRIX INTERACTION
 
-continue scrolling
-↓
-shelf splits
-↓
-portal
-↓
-camera approaches
-↓
-THE CREW
+Hovering a compartment should feel like activating a physical exhibition piece.
 
+This should be one of the most visually polished interactions in the Events experience.
 
-============================================================
-41. SAME TRANSITION
-============================================================
+When the pointer enters a compartment:
 
-This transition MUST be shared.
+The selected room becomes visually dominant.
 
-The initial:
+The other eight rooms remain visible.
 
-VISIT THE CREW
+Do NOT black out the rest of the matrix.
 
-and the final:
+Do NOT make the selected room explode in brightness.
 
-EVENTS END → SHELF → CONTINUE
+Instead create controlled visual hierarchy.
 
-must enter the same:
+The selected compartment may receive:
 
-SHELF_SPLIT → PORTAL → CREW
+- slightly stronger illumination
+- improved clarity
+- subtle contrast enhancement
+- restrained depth emphasis
+- controlled local lighting
+- subtle atmospheric separation
+- slight depth/scale response where appropriate
 
-implementation.
+The rest of the matrix should become quieter without disappearing.
 
-One camera path.
+Target approximately:
 
-One transition.
+70–85% visual presence for the unselected environment,
 
-One portal.
+depending on the scene.
 
-One Crew handoff.
+The transition must interpolate smoothly.
 
+No sudden opacity jumps.
 
-============================================================
-42. CAMERA ARCHITECTURE
-============================================================
+No cheap glow.
 
-Preserve the existing camera architecture.
+No generic CSS hover.
 
-Do NOT introduce a second camera.
+No excessive bloom.
 
-Do NOT create a hidden event camera.
+---
 
-Use the existing camera controller/path architecture.
+# 13. HOVER ANIMATION — DIAGONAL ARCHITECTURAL TRACING
 
-Event selection should modify the existing camera path
-appropriately.
+This is where the matrix becomes expressive.
 
-Everything must remain reversible.
+When a compartment is hovered/focused:
 
+Create a sophisticated animated line-tracing response.
 
-============================================================
-43. SCROLL ARCHITECTURE
-============================================================
+The lines should:
 
-Use the existing authoritative Lenis/progress architecture.
+- originate from the left side
+- travel toward the right
+- include elegant diagonal trajectories
+- vary subtly in length
+- move at slightly different speeds
+- pass across the selected compartment
+- interact with the architectural frame
+- visually guide attention toward the selected room
+- resolve naturally
 
-Do NOT create a second scrolling system.
+The visual language should feel like:
+
+ARCHITECTURAL DRAWING
++
+EDITORIAL MOTION GRAPHICS
++
+LIGHT TRACING
++
+PREMIUM PRODUCT REVEAL
+
+The lines must NOT look like:
+
+- lasers
+- hacker graphics
+- rainbow RGB
+- cyberpunk
+- random particle streams
+- gaming HUD
+- cheap glitch
+- fireworks
+
+The tracing should feel sophisticated and intentional.
+
+Use enough lines to make the hover feel rich.
+
+Do not use so many that it becomes noisy.
+
+The user should immediately understand:
+
+"This compartment has been activated."
+
+---
+
+# 14. HOVER STATE MUST BE RESPONSIVE
+
+Hover should respond quickly.
+
+The activation should not require the user to wait.
+
+The visual response can have a short elegant entrance.
+
+When leaving the compartment:
+
+the selected state should gracefully resolve.
+
+Do not abruptly reset everything.
+
+Do not leave stale lines behind.
+
+Do not leave stale event labels.
+
+Do not allow multiple hover animations to accumulate.
+
+Only one compartment should be the active hover target at a time.
+
+---
+
+# 15. EVENT NAME / CONTEXTUAL ACTION
+
+When a compartment is focused:
+
+Reveal the actual event name.
+
+Then reveal a contextual action.
+
+Examples:
+
+[ VISIT CODHER ]
+
+[ VISIT PRODIGY ]
+
+[ VISIT OPEN SOURCE MENTORSHIP ]
+
+Use the actual event name from the repository.
+
+Never fabricate event names.
+
+The action should feel integrated into the architectural presentation.
+
+It should NOT look like a generic rounded SaaS button.
+
+Prefer something like:
+
+VISIT CODHER
+→
+
+or:
+
+[ VISIT CODHER ]
+
+with:
+
+- refined typography
+- subtle tracking
+- thin structural line
+- restrained border
+- small directional indicator
+- elegant entrance animation
+
+For example:
+
+architectural line traces in
+→
+event name resolves
+→
+directional indicator activates
+
+Keep it premium.
+
+---
+
+# 16. CLICKING VISIT EVENT — PHYSICAL ROOM ENTRY
+
+When the user activates:
+
+VISIT [EVENT]
+
+the camera must physically travel from the matrix into the selected actual event room.
+
+This is one of the most important transitions.
+
+Think:
+
+EXHIBITION VIEW
+→
+APPROACH EXHIBIT
+→
+PASS THROUGH FRAME
+→
+ENTER WORLD
+→
+FULL EVENT ENVIRONMENT
+
+The selected room should naturally grow from miniature scale to full environment scale.
+
+The architectural frame may pass around the camera as it enters.
+
+The transition must feel like entering the physical room.
+
+It must be:
+
+- extremely smooth
+- continuous
+- cinematic
+- spatially coherent
+- physically believable
+- scroll-driven
+- reversible
+
+DO NOT:
+
+- teleport
+- hard cut
+- spawn a second camera
+- switch cameras
+- jump FOV
+- snap orientation
+- reload the scene
+- replace the environment with another page
+- create a fake transition overlay
+
+There must be no obvious seam.
+
+---
+
+# 17. CAMERA CONTINUITY
+
+The matrix and room entry must use the existing camera architecture.
+
+The camera should have a believable spatial relationship between:
+
+matrix position
+→
+selected compartment
+→
+room interior
+
+Avoid:
+
+- sudden FOV changes
+- abrupt rotations
+- impossible camera paths
+- orientation flips
+- camera snaps
+- sudden acceleration
+
+The user should feel as though the camera physically moved through space.
+
+---
+
+# 18. PRESERVE EXISTING ROOM ANIMATIONS
+
+When entering a room:
+
+The existing room animation/choreography must remain.
+
+Do NOT remove existing animations simply because the room is now being entered from the matrix.
+
+However:
+
+SLOW THE EXISTING ANIMATION PACING.
+
+The room should NOT:
+
+appear
+→
+animate
+→
+finish
+
+in one or two seconds.
+
+The meaningful existing animation sequence should generally have approximately:
+
+5–7 seconds
+
+of cinematic breathing room where appropriate.
+
+This means:
+
+- preserve the choreography
+- preserve the animation logic
+- slow its pacing
+- give the user time to see it
+- let the room breathe
+- synchronize it naturally with the camera arrival
+
+Do NOT invent a completely new animation just to satisfy this requirement.
+
+Do NOT use arbitrary timers.
+
+The existing scroll/progress architecture must remain authoritative.
+
+---
+
+# 19. ROOM EXPERIENCE
+
+Once inside the event room:
+
+LET THE ROOM BREATHE.
+
+The room itself is the hero.
+
+Do not immediately cover it with UI.
+
+Allow the user to experience:
+
+- architecture
+- props
+- lighting
+- event-specific objects
+- animation
+- atmosphere
+- spatial depth
+
+The camera should settle naturally into the existing room composition.
+
+The event room should feel like a real place, not a 3D modal.
+
+---
+
+# 20. SCROLLING FROM ROOM INTO INFORMATION
+
+After the user has experienced the room, continued scrolling should transition from:
+
+3D EVENT ENVIRONMENT
+
+into:
+
+2D EDITORIAL EVENT INFORMATION.
+
+This is an intentional transition.
+
+It should feel as though the 3D experience has unfolded into an editorial project presentation.
+
+It should NOT feel like:
+
+- a modal opening
+- a floating information box
+- a centered white card
+- a dashboard
+- a generic event form
+
+---
+
+# 21. BASEMENT-INSPIRED EDITORIAL EXPERIENCE
+
+Study the current Basement Studio website/showcase before implementing the editorial section.
+
+Use Basement as inspiration for:
+
+- large-scale typography
+- visual hierarchy
+- whitespace
+- negative space
+- editorial composition
+- project information
+- metadata
+- action placement
+- progressive reveals
+- confident visual presentation
+- restrained interaction
+
+The goal is NOT to recreate Basement.
+
+The goal is to understand why its presentation feels like a premium digital studio/editorial experience.
+
+Translate those principles into ACM-CEG.
+
+The final result should feel like:
+
+AN ACM-CEG EDITORIAL EVENT DOSSIER.
+
+---
+
+# 22. EDITORIAL LAYOUT
+
+The information presentation should use:
+
+- large event title
+- event category
+- description
+- metadata
+- date
+- venue where available
+- relevant event details
+- registration/action where a real URL exists
+
+Use strong hierarchy.
+
+Do not put everything into a single centered container.
+
+Allow:
+
+- asymmetric composition
+- large negative space
+- large typographic regions
+- carefully placed metadata
+- visual balance
+- editorial pacing
+
+The exact layout should respond to the content.
+
+Do not force every event into a generic card.
+
+---
+
+# 23. EDITORIAL TYPOGRAPHY
+
+Typography should feel:
+
+- large
+- confident
+- premium
+- editorial
+- highly readable
+- spacious
+
+Use the project's intended typography system.
+
+Maintain clear hierarchy:
+
+EVENT CATEGORY
+
+EVENT TITLE
+
+DESCRIPTION
+
+METADATA
+
+ACTION
+
+Do not make everything equally large.
+
+Do not turn the information into a dashboard.
+
+Typography should be part of the cinematic composition.
+
+---
+
+# 24. EDITORIAL COLOR LANGUAGE
+
+The information experience should belong to the same visual world as the 3D room.
+
+Use:
+
+- existing ACM-CEG visual language
+- sophisticated dark/light relationships
+- strong contrast
+- restrained accent colors
+- sophisticated whites/greys
+- controlled metallic/accent details where appropriate
+
+Do NOT introduce an unrelated generic design system.
+
+Avoid:
+
+- generic white SaaS cards
+- random purple gradients
+- neon gaming UI
+- unrelated color palettes
+- generic corporate dashboard styling
+
+The editorial section should feel like the 2D counterpart of the 3D world.
+
+---
+
+# 25. EDITORIAL SCROLL REVEALS
+
+As the user scrolls through the event information:
+
+Reveal content progressively.
+
+Possible behavior:
+
+- title resolves
+- typography settles into position
+- description reveals
+- metadata appears
+- supporting visuals transition
+- subtle architectural lines activate
+- accent details move gently
+
+Motion should remain elegant.
 
 Do NOT use:
 
-setTimeout
-setInterval
-arbitrary delays
-fake progress
-scroll snapping
-teleportation.
+- excessive parallax
+- gimmicky text effects
+- aggressive scaling
+- scroll-jacking
+- timers
+- arbitrary delays
 
+The scroll itself controls the progression.
 
-============================================================
-44. EVENT SELECTION STATE
-============================================================
+---
 
-Selection should be deterministic.
+# 26. REAL EVENT DATA ONLY
 
-Potential conceptual states:
+Use ONLY actual event data already present in the repository.
 
-NO_SELECTION
-EVENT_SELECTED
-EVENT_DETAIL
-ARCHIVE_READING
-ARCHIVE_END
-CREW_TRANSITION
+Possible information:
 
-
-But first inspect the existing state architecture.
-
-Do not duplicate Zustand state unnecessarily.
-
-
-============================================================
-45. REVERSIBILITY
-============================================================
-
-Everything must work backward.
-
-Forward:
-
-Shelf
-→ Event
-→ information
-→ next event
-→ shelf
-→ split
-→ portal
-→ Crew
-
-Backward:
-
-Crew
-→ portal
-→ split
-→ shelf
-→ Event 09
-→ Event 08
-→ ...
-→ Event 01
-→ shelf
-
-
-No broken reverse state.
-
-
-============================================================
-46. MID-ANIMATION REVERSAL
-============================================================
-
-Test:
-
-click Event
-
-camera halfway toward event
-
-reverse/ESC
-
-camera should return smoothly.
-
-Test:
-
-shelf halfway split
-
-reverse
-
-shelf should close.
-
-Test:
-
-camera halfway toward portal
-
-reverse
-
-camera should move back.
-
-No snap.
-
-
-============================================================
-47. VISUAL QUALITY
-============================================================
-
-The Events experience should feel:
-
-premium
-editorial
-architectural
-cinematic
-minimal
-intentional
-institutional
-interactive
-
-The user should feel that Events is a major part of the
-ACM-CEG world.
-
-
-============================================================
-48. MOBILE
-============================================================
-
-Mobile must retain the same conceptual interaction.
-
-3×3 shelf.
-
-Touch event.
-
-Selected event.
-
-Event detail.
-
-Back/close.
-
-Sequential editorial content.
-
-Final shelf.
-
-Split.
-
-Portal.
-
-Crew.
-
-
-============================================================
-49. MOBILE EVENT SELECTION
-============================================================
-
-Because mobile has no hover:
-
-tap an event
-
-→ focus/select it
-
-→ show contextual action
-
-→ second tap / explicit action
-
-→ enter event.
-
-
-Do not require tiny targets.
-
-
-============================================================
-50. MOBILE EVENT INFORMATION
-============================================================
-
-The 2D information must be comfortably readable.
-
-Do not shrink desktop typography until it becomes unreadable.
-
-Adapt:
-
-- margins
-- title scale
-- spacing
-- media
+- event name
+- description
+- category
+- date
+- venue
 - metadata
-- registration CTA
-- section height.
+- registration information
+- existing event fields
 
+DO NOT fabricate:
 
-============================================================
-51. ACCESSIBILITY
-============================================================
+- dates
+- speakers
+- statistics
+- sponsors
+- prizes
+- descriptions
+- registration links
+- event outcomes
+- testimonials
+- attendance numbers
 
-Event titles/descriptions/registration links must remain
-accessible through DOM.
+If a real registration URL exists:
 
-Do not put essential event information exclusively into WebGL.
+show an appropriate registration/action CTA.
 
-Keyboard navigation must work.
+If no real URL exists:
 
-ESC must work.
+DO NOT invent one.
 
-Reduced motion must remain coherent.
+---
 
+# 27. IMPORTANT — DO NOT AUTOMATICALLY MOVE TO THE NEXT EVENT
 
-============================================================
-52. AUDIO
-============================================================
+At the bottom of the editorial information:
+
+DO NOT automatically transition to another event.
+
+DO NOT allow continued scrolling to unexpectedly open another event.
+
+DO NOT force the user into a linear slideshow.
+
+DO NOT make the next event appear simply because the user scrolled past the end.
+
+The user should reach a deliberate decision point.
+
+---
+
+# 28. TWO EXPLICIT NAVIGATION CHOICES
+
+At the bottom of the event information provide TWO clear choices.
+
+OPTION A:
+
+[ BACK TO FULL VIEW ]
+
+This returns to the complete 3×3 architectural matrix.
+
+OPTION B:
+
+[ VISIT NEXT EVENT → ]
+
+Prefer using the actual next event name where appropriate:
+
+[ VISIT PRODIGY → ]
+
+The exact next event must come from the actual event ordering/data.
+
+The user makes the decision.
+
+Do not make the decision for them.
+
+---
+
+# 29. BACK TO FULL VIEW
+
+BACK TO FULL VIEW must return to the same architectural Events matrix.
+
+The matrix remains the central home of the Events experience.
+
+The user should be able to repeatedly navigate:
+
+MATRIX
+→
+EVENT A
+→
+BACK TO FULL VIEW
+→
+EVENT B
+→
+BACK TO FULL VIEW
+→
+EVENT C
+→
+BACK TO FULL VIEW
+
+No state corruption.
+
+No duplicated rooms.
+
+No stale selected event.
+
+No camera snap.
+
+No broken scroll position.
+
+No unexpected animation restart.
+
+---
+
+# 30. VISIT NEXT EVENT
+
+VISIT NEXT EVENT should transition directly into the next actual event room.
+
+It should feel spatially coherent.
+
+Do not reload the page.
+
+Do not hard cut.
+
+Do not teleport.
+
+The selected next event should become the active room naturally.
+
+The existing room-entry architecture should be reused wherever possible.
+
+---
+
+# 31. VISIT THE CREW
+
+The Events matrix must clearly communicate that Events is not the end of the website.
+
+Provide:
+
+VISIT THE CREW
+
+as a clearly discoverable action integrated into the architectural composition.
+
+It should NOT look like a random floating button.
+
+The user should understand:
+
+EVENTS
+↓
+NEXT CHAPTER
+↓
+THE CREW
+
+---
+
+# 32. MATRIX → THE CREW PHYSICAL SPLIT
+
+When VISIT THE CREW is activated:
+
+The architectural matrix physically separates.
+
+LEFT HALF:
+→ moves left
+
+RIGHT HALF:
+→ moves right
+
+CENTER:
+→ opens
+
+The movement should feel:
+
+- heavy
+- deliberate
+- mechanical
+- architectural
+- physically believable
+
+Add restrained structural impact.
+
+Use appropriate mechanical/architectural sound.
+
+Do NOT use:
+
+- explosions
+- cheap glitch
+- RGB split
+- chaotic camera shake
+- neon energy
+- sci-fi cliché effects
+
+The matrix should feel like a physical structure opening.
+
+---
+
+# 33. PORTAL BEHIND THE MATRIX
+
+Behind the opened matrix:
+
+Reveal the existing transition toward THE CREW.
+
+The portal/threshold should feel:
+
+- architectural
+- mysterious
+- premium
+- cinematic
+- ACM-CEG-specific
+- physically integrated into the environment
+
+Do NOT make it:
+
+- a generic fantasy magic ring
+- a generic glowing sci-fi portal
+- a random neon circle
+
+It should feel like another physical layer of the same ACM-CEG world.
+
+The transition should be:
+
+MATRIX
+→
+STRUCTURAL SPLIT
+→
+PORTAL/THRESHOLD REVEAL
+→
+PORTAL APPROACH
+→
+EXISTING THE CREW EXPERIENCE
+
+Do NOT redesign THE CREW itself.
+
+---
+
+# 34. ONE COHERENT SCROLL SYSTEM
+
+There must remain ONE coherent scroll/progress system.
+
+Use the existing global scroll architecture and Lenis implementation.
+
+Do NOT create:
+
+- a second scroll engine
+- nested scroll hijacking
+- competing scroll listeners
+- duplicate progress systems
+- fake progress
+- hard-coded delays
+- timer-based choreography
+- camera teleport states
+
+Everything must remain deterministic.
+
+The experience must work under:
+
+FORWARD
+REVERSE
+SLOW
+NORMAL
+FAST
+STOP
+SCRUB
+RELOAD
+
+---
+
+# 35. REVERSIBILITY
+
+Every major transition must work in reverse.
+
+Examples:
+
+MATRIX
+→
+ROOM
+
+must reverse:
+
+ROOM
+→
+MATRIX
+
+Likewise:
+
+MATRIX
+→
+SPLIT
+→
+PORTAL
+→
+CREW
+
+must reverse naturally.
+
+Test reversal during:
+
+- room entry
+- room animation
+- room → editorial transition
+- editorial information
+- matrix return
+- matrix split
+- portal reveal
+- portal approach
+
+When reversing:
+
+- camera reverses naturally
+- architecture returns naturally
+- animation rewinds correctly
+- opacity interpolates correctly
+- hover state resolves correctly
+- audio fades appropriately
+- no teleport
+- no snap
+- no state reset
+
+Do not assume users only scroll forward.
+
+---
+
+# 36. HOVER STATE MANAGEMENT
+
+Hover must remain responsive and clean.
+
+Only one compartment should be actively focused at a time.
+
+When changing from one compartment to another:
+
+- previous hover resolves
+- new hover activates
+- no animation stacks
+- no stale labels
+- no stale tracing lines
+- no stale lighting states
+
+Do not create/destroy expensive resources on every hover.
+
+Reuse existing resources.
+
+---
+
+# 37. PERFORMANCE OF THE 3×3
+
+Nine actual rooms can be expensive.
+
+Do NOT simply render nine complete event worlds at maximum quality simultaneously.
+
+Use the existing optimization architecture.
+
+Possible techniques:
+
+- shared geometry
+- shared materials
+- shared textures
+- bounded visibility
+- reduced matrix-preview effects
+- simplified secondary effects
+- controlled animation rates
+- preview-specific quality
+- quality tiers
+
+The matrix preview may use a lighter rendering/animation state than the fully entered room.
+
+BUT:
+
+The rooms must remain recognizably the actual rooms.
+
+Performance optimization must NOT turn them into cards.
+
+---
+
+# 38. MATRIX QUALITY TIERS
+
+Desktop:
+
+Preserve full architectural detail.
+
+Mobile:
+
+Preserve:
+
+- 3×3 structure
+- nine room identities
+- selected-room clarity
+- architectural depth
+- essential interaction
+
+Reduce where necessary:
+
+- particle count
+- secondary effects
+- expensive lighting
+- shadow complexity
+- postprocessing
+- unnecessary animation
+
+Do not destroy the visual composition on mobile.
+
+---
+
+# 39. MOBILE / TOUCH EXPERIENCE
+
+The matrix must work on:
+
+- narrow phones
+- standard phones
+- large phones
+- portrait
+- landscape
+
+On touch devices:
+
+HOVER becomes TAP/FOCUS.
+
+Tap a compartment:
+
+→ focus room
+
+→ activate selected visual state
+
+→ reveal event name
+
+→ reveal VISIT [EVENT]
+
+Tap Visit:
+
+→ smoothly enter room
+
+The selected state must remain obvious.
+
+The other eight rooms must remain understandable.
+
+Do not use tiny controls.
+
+---
+
+# 40. ACCESSIBILITY
+
+Important event information must exist in accessible DOM/UI.
+
+Provide:
+
+- meaningful accessible event names
+- keyboard focus
+- keyboard activation
+- ESC/back where appropriate
+- accessible navigation labels
+- reduced-motion behavior
+- readable event information outside the 3D-only layer
+
+The 3D experience should enhance the information.
+
+It must not be the only way to access the information.
+
+---
+
+# 41. AUDIO
 
 Use the existing audio architecture.
 
-Potential:
+If appropriate, add restrained:
 
-event focus
-event entry
-event return
-shelf split
-portal reveal
+- hover tracing sound
+- room-entry transition sound
+- matrix split mechanical sound
+- portal transition sound
 
-Avoid excessive UI sounds.
+Audio must be:
 
-No stale audio after ESC.
+- subtle
+- premium
+- synchronized with scroll/progress
+- reversible/fade-aware
+- lifecycle-safe
 
-No stale audio after reverse.
+Do NOT add loud cinematic hits to every interaction.
 
+Audio should support the architecture, not dominate it.
 
-============================================================
-53. PERFORMANCE
-============================================================
+---
 
-Do not regress the existing optimization work.
+# 42. WHAT THE USER SHOULD FEEL
 
-The 3×3 shelf should be lightweight.
+The experience should emotionally read as:
 
-Event editorial content should primarily use efficient DOM/UI
-where appropriate.
+ENTER EVENTS
 
-Do not create nine complete 3D environments.
+↓
 
-Do not duplicate renderers.
+The camera approaches a monumental architectural structure.
 
-Do not duplicate cameras.
+↓
 
-Do not create hundreds of objects unnecessarily.
+The structure resolves into nine physical exhibition compartments.
 
+↓
 
-============================================================
-54. RESOURCE STABILITY
-============================================================
+Nine real ACM-CEG event worlds are visible inside.
 
-Repeated:
+↓
 
-Shelf
-→ Event
-→ ESC
-→ Event
-→ ESC
+The user explores the rooms.
 
-and:
+↓
 
-Events
-→ Crew
-→ Intro
-→ Events
+Hovering one compartment activates it.
 
-must not leak:
+↓
 
-- geometry
-- materials
-- textures
-- render targets
-- listeners
-- RAF callbacks
-- audio
-- DOM nodes
-- subscriptions.
+The surrounding environment becomes quieter.
 
+↓
 
-============================================================
-55. BROWSER / REAL EXPERIENCE TEST
-============================================================
+Elegant diagonal lines trace across the selected compartment.
 
-Actually test the interaction.
+↓
 
-Do not assume it works because the code compiles.
+The event name resolves.
+
+↓
+
+VISIT EVENT appears.
+
+↓
+
+The user clicks.
+
+↓
+
+The camera physically enters the selected world.
+
+↓
+
+The room grows from miniature scale into a full environment.
+
+↓
+
+The existing room animation unfolds slowly.
+
+↓
+
+The user experiences the environment.
+
+↓
+
+The user continues scrolling.
+
+↓
+
+The 3D world transitions into a premium editorial event dossier.
+
+↓
+
+The user reads the event information.
+
+↓
+
+At the bottom:
+
+[ BACK TO FULL VIEW ]
+
+or
+
+[ VISIT NEXT EVENT → ]
+
+↓
+
+The user chooses.
+
+↓
+
+Eventually the user returns to the matrix.
+
+↓
+
+VISIT THE CREW is clearly available.
+
+↓
+
+The architectural matrix physically splits.
+
+↓
+
+The next architectural threshold is revealed.
+
+↓
+
+The user continues forward.
+
+↓
+
+THE CREW begins.
+
+This must feel like ONE CONTINUOUS EXPERIENCE.
+
+---
+
+# 43. VISUAL QUALITY BAR
+
+The final experience should feel:
+
+- cinematic
+- architectural
+- editorial
+- premium
+- sophisticated
+- mysterious
+- restrained
+- intentional
+- physically believable
+- visually rich
+- ACM-CEG-specific
+
+The matrix should feel:
+
+EXPENSIVE WITHOUT BEING OVERDESIGNED.
+
+The rooms should feel:
+
+INTERESTING WITHOUT BEING REBUILT.
+
+The interactions should feel:
+
+CINEMATIC WITHOUT BEING GIMMICKY.
+
+The editorial section should feel:
+
+PREMIUM WITHOUT BECOMING A GENERIC WEBSITE.
+
+It should NOT feel:
+
+- like a dashboard
+- like a card gallery
+- like a portfolio template
+- like a SaaS website
+- like a simple CSS grid
+- like a game menu
+- like nine posters on a wall
+- like a generic Three.js demo
+- like a cyberpunk interface
+- like a random sci-fi installation
+
+---
+
+# 44. BASEMENT REFERENCE RULE
+
+Study the current Basement Studio website/showcase thoroughly before finalizing the editorial information experience.
+
+Use Basement to understand:
+
+- strong visual hierarchy
+- large typography
+- whitespace
+- editorial information
+- project/category relationships
+- hover interaction
+- motion language
+- progressive presentation
+- confident but restrained design
+
+Use these PRINCIPLES.
+
+Do NOT reproduce Basement.
+
+Do NOT copy:
+
+- exact layouts
+- exact typography
+- exact animation
+- exact source code
+- exact graphics
+- branding
+- assets
+- project content
+
+The final design must clearly be ACM-CEG.
+
+---
+
+# 45. DO NOT BREAK EXISTING WORK
+
+Preserve:
+
+- Intro
+- gas typography
+- ACM stone sequence
+- lightning
+- drone
+- red building
+- cloud sequence
+- ACM-CEG ASCENT
+- existing global camera architecture
+- Lenis
+- Zustand state architecture
+- audio system
+- mobile optimizations
+- quality tiers
+- accessibility
+- existing performance improvements
+- THE CREW
+- Crew entrance
+- Crew domains
+- Crew member cards
+
+Only redesign what is necessary for Events.
+
+Do not modify unrelated experiences to make Events easier to implement.
+
+---
+
+# 46. ROOT-CAUSE ENGINEERING
+
+Do not patch symptoms.
+
+If something breaks:
+
+find the architectural/root cause.
+
+Pay particular attention to:
+
+- camera transitions
+- global progress
+- scroll state
+- selected event state
+- matrix focus state
+- event-room lifecycle
+- room animation progress
+- editorial state
+- return-to-matrix state
+- mobile viewport
+- resource lifecycle
+- audio lifecycle
+- reverse traversal
+
+Avoid:
+
+- arbitrary offsets
+- unexplained magic numbers
+- timeout chains
+- duplicate state machines
+- second cameras
+- second scroll systems
+- browser-specific hacks
+
+---
+
+# 47. VALIDATION — MATRIX
+
+After implementation test:
+
+- matrix arrival
+- physical scale
+- architectural composition
+- depth
+- lighting
+- shadows
+- all nine rooms visible
+- room identity
+- room composition
+- hover
+- selected-room emphasis
+- surrounding-room dimming
+- diagonal tracing animation
+- event label
+- Visit action
+- hover switching
+- hover exit
+
+The matrix must feel like one physical object.
+
+---
+
+# 48. VALIDATION — ROOM ENTRY
+
+Test EVERY event room.
+
+Check:
+
+- smooth camera transition
+- no teleport
+- no hard cut
+- no FOV jump
+- no orientation flip
+- no camera snap
+- actual room is entered
+- existing room design remains intact
+- existing animation remains intact
+- animation pacing is slower
+- meaningful sequence has approximately 5–7 seconds where appropriate
+- room has enough time to breathe
+
+---
+
+# 49. VALIDATION — EDITORIAL EXPERIENCE
+
+Check:
+
+- title
+- typography
+- hierarchy
+- whitespace
+- composition
+- metadata
+- colors
+- real event data
+- progressive scroll reveal
+- registration CTA only when a real URL exists
+- no generic modal
+- no generic card
+- no dashboard appearance
+- deliberate bottom decision point
+
+---
+
+# 50. VALIDATION — NAVIGATION
 
 Test:
 
-Chrome
-Safari
-Firefox
+- Matrix → Room
+- Room → Matrix
+- Matrix → Room A → Matrix → Room B
+- Room → Visit Next Event
+- Room → Back to Full View
+- repeated navigation
+- Visit The Crew
+
+Ensure no:
+
+- stale selected event
+- duplicated room
+- scroll corruption
+- camera snap
+- unexpected transition
+- automatic next-event navigation
+
+---
+
+# 51. VALIDATION — CREW TRANSITION
 
 Test:
 
-desktop
-mobile
+- Visit The Crew
+- matrix split
+- left half movement
+- right half movement
+- center opening
+- restrained structural impact
+- portal/threshold reveal
+- portal approach
+- handoff into THE CREW
+
+Ensure the existing Crew experience remains intact.
+
+---
+
+# 52. VALIDATION — REVERSE
 
 Test:
 
-mouse
-touch
-keyboard.
-
-
-============================================================
-56. BASEMENT REFERENCE VALIDATION
-============================================================
-
-Before finalizing the implementation:
-
-open the actual Basement website again.
-
-Compare the ACM-CEG Events experience against the reference
-interaction.
-
-Specifically compare:
-
-1. Initial archive/shelf presentation.
-2. Hover response.
-3. Contextual event action.
-4. Click interaction.
-5. Camera movement.
-6. Selected-item focus.
-7. Detailed information presentation.
-8. Typography scale.
-9. Metadata placement.
-10. Description layout.
-11. Registration/action placement.
-12. Scroll progression.
-13. Return/back interaction.
-14. Overall visual rhythm.
-
-If the implementation merely "looks nice" but does not capture
-the interaction model of the reference, continue refining it.
-
-
-============================================================
-57. IMPORTANT: DO NOT COPY THE WRONG THING
-============================================================
-
-We are NOT asking for:
-
-"Make ACM-CEG look like Basement Studio."
-
-We ARE asking for:
-
-"Use the actual Basement showcase interaction and information
-presentation as the direct UX reference for how ACM-CEG Events
-should behave."
-
-ACM-CEG remains visually distinct.
-
-
-============================================================
-58. DATA INTEGRITY
-============================================================
-
-All event content must come from the existing ACM-CEG event
-data.
-
-If a description is absent:
-
-do not invent one.
-
-If registration is absent:
-
-do not fabricate a link.
-
-If media is absent:
-
-do not fabricate media.
-
-
-============================================================
-59. NO FAKE LOADING STATES
-============================================================
-
-Do not add artificial:
-
-"Loading event..."
-
-states merely to create drama.
-
-The experience should feel immediate.
-
-
-============================================================
-60. NO ARBITRARY ANIMATION TIMERS
-============================================================
-
-Do not solve transitions using:
-
-setTimeout()
-setInterval()
-delayed state changes
-random delays.
-
-Use the existing scroll/progress architecture.
-
-
-============================================================
-61. NO SECOND INTRO
-============================================================
-
-The portal should lead into the existing Crew experience.
-
-Do not reload.
-
-Do not reconstruct the entire world.
-
-Do not create a second Intro.
-
-
-============================================================
-62. FINAL JOURNEY
-============================================================
-
-The ideal final experience is:
-
-EVENTS DOOR
-     ↓
-ARCHITECTURAL 3×3 SHELF
-     ↓
-     ├─────────────────────────────┐
-     │                             │
-     │ hover                       │
-     ↓                             ↓
-EVENT FOCUS                  VISIT THE CREW
-     ↓                             ↓
-contextual action             SHELF SPLITS
-     ↓                             ↓
-click                          PORTAL
-     ↓                             ↓
-camera moves                  CAMERA MOVES
-     ↓                             ↓
-EVENT DETAIL                    CREW
-     ↓
-scroll information
-     ↓
-registration if available
-     ↓
-ESC
-     ↓
-FULL SHELF
-     ↓
-choose another event
-     OR
-continue scrolling
-     ↓
-EVENT 01
-     ↓
-EVENT 02
-     ↓
-EVENT 03
-     ↓
-...
-     ↓
-EVENT 09
-     ↓
-SHELF RETURNS
-     ↓
-SHELF SPLITS
-     ↓
-PORTAL
-     ↓
-THE CREW
-
-
-============================================================
-63. FINAL CREATIVE INTENT
-============================================================
-
-The Events section should no longer feel like:
-
-"Here are nine rooms."
-
-It should feel like:
-
-"Here is the ACM-CEG event archive."
-
-The user sees everything first.
-
-They can choose.
-
-They can inspect a specific event.
-
-They can read the event.
-
-They can register.
-
-They can return.
-
-They can continue through the archive.
-
-And when the archive is complete:
-
-the archive itself opens.
-
-Behind it is THE CREW.
-
-
-============================================================
-64. FINAL ACCEPTANCE CRITERIA
-============================================================
-
-[ ] Claude actually inspected basement.studio.
-
-[ ] Claude actually experienced the relevant interaction.
-
-[ ] The 3×3 ACM-CEG event archive exists.
-
-[ ] The archive feels physical and architectural.
-
-[ ] Hover/focus behaves like the reference interaction.
-
-[ ] A contextual "Visit/Explore [Event]" action appears.
-
-[ ] Clicking an event produces an extremely smooth camera
-    transition toward that event.
-
-[ ] No teleportation.
-
-[ ] Event detail view exists.
-
-[ ] Event information follows the reference's editorial
-    presentation model closely.
-
-[ ] Event description is readable.
-
-[ ] Metadata is present where available.
-
-[ ] Registration is shown when a real link exists.
-
-[ ] No fake registration links.
-
-[ ] ESC returns to the complete shelf.
-
-[ ] Multiple events can be opened sequentially.
-
-[ ] Scrolling without selecting an event presents all events
-    sequentially.
-
-[ ] Event 01 → Event 02 → ... → Event 09 works.
-
-[ ] The editorial arrangement remains consistent with the
-    Basement reference.
-
-[ ] Final event returns to the physical shelf.
-
-[ ] VISIT THE CREW exists.
-
-[ ] VISIT THE CREW triggers the same shelf split transition.
-
-[ ] Final shelf also triggers the same shelf split transition.
-
-[ ] Shelf physically separates.
-
-[ ] Portal is revealed.
-
-[ ] Camera approaches portal through scroll.
-
-[ ] Existing THE CREW experience begins.
-
-[ ] Both routes use the same transition implementation.
-
-[ ] Reverse scrolling works.
-
-[ ] ESC works.
-
-[ ] Mobile works.
-
-[ ] Touch works.
-
-[ ] Accessibility works.
-
-[ ] Reduced motion works.
-
-[ ] Performance does not regress.
-
-[ ] Repeated loops do not leak.
-
-[ ] Existing Intro remains intact.
-
-[ ] Existing Crew remains intact.
-
-[ ] Existing camera architecture remains intact.
-
-[ ] Existing Lenis/progress architecture remains intact.
-
-[ ] Typecheck passes.
-
-[ ] Production build passes.
-
-[ ] git diff --check passes.
-
-[ ] Relevant QA passes.
-
-[ ] Full forward journey passes.
-
-[ ] Full reverse journey passes.
-
-[ ] Both Events → Crew paths pass.
-
-
-============================================================
-END
-============================================================
+- slow reverse
+- normal reverse
+- fast reverse
+- reverse during room entry
+- reverse during room animation
+- reverse during editorial transition
+- reverse during editorial information
+- reverse during return-to-matrix
+- reverse during matrix split
+- reverse during portal reveal
+- reverse mid-portal approach
+
+No:
+
+- snap
+- teleport
+- reset
+- wrong camera orientation
+- stale state
+- animation discontinuity
+
+---
+
+# 53. VALIDATION — MOBILE
+
+Test:
+
+- narrow portrait
+- standard portrait
+- large portrait
+- landscape
+- touch focus
+- touch Visit
+- room entry
+- editorial information
+- Back to Full View
+- Visit Next Event
+- Visit The Crew
+- matrix split
+- Crew handoff
+
+Ensure the 3×3 remains understandable.
+
+---
+
+# 54. VALIDATION — PERFORMANCE
+
+Check:
+
+- frame time
+- draw calls
+- GPU load
+- memory
+- texture usage
+- geometry count
+- material count
+- animation cost
+- DOM growth
+- event listener growth
+- resource lifecycle
+- audio lifecycle
+
+Repeatedly test:
+
+MATRIX
+→ EVENT
+→ BACK
+→ ANOTHER EVENT
+→ BACK
+→ ANOTHER EVENT
+
+multiple times.
+
+There must be no progressive resource growth.
+
+---
+
+# 55. FINAL ACCEPTANCE CRITERIA
+
+The implementation is NOT complete unless all of the following are true:
+
+1. The Events landing experience is a large premium architectural 3×3 structure.
+2. The structure is NOT a simple CSS/card grid.
+3. The structure feels physically constructed.
+4. The matrix has substantial depth and believable architectural framing.
+5. The architecture is detailed but restrained.
+6. The matrix does not become a hacker/cyberpunk/network gimmick.
+7. The nine compartments contain the actual existing 3D event rooms.
+8. The rooms remain recognizable.
+9. Each room retains its visual identity.
+10. The rooms remain visually interesting.
+11. The matrix frames the rooms without competing with them.
+12. The matrix arrival feels cinematic.
+13. Hovering a compartment creates strong visual focus.
+14. Other rooms remain visible but become quieter.
+15. Hover activation is smooth.
+16. Elegant diagonal tracing lines activate on hover.
+17. The tracing animation is premium and restrained.
+18. The selected event name appears naturally.
+19. VISIT [EVENT] appears naturally.
+20. Clicking Visit physically enters the actual event room.
+21. There is no teleport.
+22. There is no hard cut.
+23. There is no second camera.
+24. There is no FOV jump.
+25. Existing room animations are preserved.
+26. Existing room animations are paced more slowly where appropriate.
+27. Meaningful room animation has approximately 5–7 seconds of cinematic breathing room where appropriate.
+28. The room remains the visual hero.
+29. Scrolling transitions into a 2D editorial event-information experience.
+30. The editorial experience uses strong typography.
+31. The editorial experience uses generous whitespace.
+32. The editorial experience has clear hierarchy.
+33. The editorial experience feels like a premium editorial dossier.
+34. Basement is used only as inspiration, not copied.
+35. Only real event data is used.
+36. Registration is shown only when a real URL exists.
+37. The user is NOT automatically moved to the next event.
+38. The bottom provides BACK TO FULL VIEW.
+39. The bottom provides VISIT NEXT EVENT.
+40. Back to Full View returns to the complete matrix.
+41. Visit Next Event enters the next actual event room.
+42. Repeated Matrix → Room → Matrix navigation works.
+43. VISIT THE CREW is clearly available.
+44. The matrix physically splits to reveal the next transition.
+45. The split feels architectural and physical.
+46. The Crew portal/threshold feels integrated into the same world.
+47. Existing THE CREW remains intact.
+48. The entire experience uses the existing scroll architecture.
+49. The entire experience is reversible.
+50. No timer/setTimeout choreography is used.
+51. No second scroll system is introduced.
+52. No second camera is introduced.
+53. Mobile remains visually coherent.
+54. Touch interaction works.
+55. Accessibility is preserved.
+56. Existing unrelated work remains untouched.
+57. Typecheck passes.
+58. Production build passes.
+59. Existing QA passes.
+60. Browser console is clean except for known/intentional warnings.
+61. Repeated navigation does not leak resources.
+62. Git diff contains only intentional Events changes.
+
+DO NOT declare success merely because the page renders.
+
+Actually experience the interaction.
+
+The final question is:
+
+DOES THIS FEEL LIKE A PREMIUM ARCHITECTURAL EXHIBITION CONTAINING NINE LIVING ACM-CEG EVENT WORLDS?
+
+If YES:
+continue testing and polish.
+
+If NO:
+continue implementing.
+
+If it looks like "nine cards in a grid", the implementation is WRONG.
+
+If it looks like a generic cyberpunk/sci-fi installation, the implementation is ALSO WRONG.
+
+The target is:
+
+A BEAUTIFUL, RESTRAINED, MONUMENTAL ARCHITECTURAL STRUCTURE HOLDING NINE REAL EVENT WORLDS, WITH EXCEPTIONAL HOVER INTERACTION, PHYSICAL ROOM ENTRY, AND A PREMIUM EDITORIAL INFORMATION EXPERIENCE.

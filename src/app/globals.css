@@ -764,213 +764,6 @@ html[data-mist='deep'] .intro-layer {
   }
 }
 
-/* ── Plates: content attached to the world ─────────────────────────────── */
-.plates {
-  position: fixed;
-  inset: 0;
-  z-index: 20;
-  pointer-events: none;
-}
-.plates[data-phase='travel'] {
-  display: none;
-}
-.plate {
-  --v: 0;
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  visibility: hidden;
-}
-/* A soft pool of shade on the card's side so text reads over any scene. */
-.plate-scrim {
-  position: absolute;
-  inset: 0;
-  opacity: calc(var(--v) * 0.9);
-  background: linear-gradient(90deg, rgba(8, 8, 10, 0.72) 0%, rgba(8, 8, 10, 0.4) 30%, rgba(8, 8, 10, 0) 52%);
-}
-.plate[data-side='right'] .plate-scrim {
-  background: linear-gradient(270deg, rgba(8, 8, 10, 0.72) 0%, rgba(8, 8, 10, 0.4) 30%, rgba(8, 8, 10, 0) 52%);
-}
-.plate-leader {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-}
-.plate-leader path {
-  fill: none;
-  stroke: rgba(239, 233, 223, 0.8);
-  stroke-width: 1.25;
-  opacity: 0;
-}
-.plate-dot {
-  fill: var(--accent);
-  opacity: 0;
-}
-.plate-ring {
-  fill: none;
-  stroke: var(--accent);
-  stroke-width: 1.25;
-  opacity: 0;
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: pin-pulse 2.4s var(--ease) infinite;
-}
-/* (A hidden plate's pin — every room's but the one on screen — doesn't pulse.) */
-.plate[aria-hidden='true'] .plate-ring {
-  animation-play-state: paused;
-}
-.plate-pin {
-  font-family: var(--mono);
-  font-weight: var(--w-meta);
-  font-size: 10px;
-  letter-spacing: var(--t-label);
-  fill: var(--bone);
-  paint-order: stroke;
-  stroke: rgba(8, 8, 10, 0.55);
-  stroke-width: 2.5px;
-  stroke-linejoin: round;
-  opacity: 0;
-}
-@keyframes pin-pulse {
-  0% {
-    transform: scale(0.6);
-    stroke-opacity: 1;
-  }
-  100% {
-    transform: scale(1.8);
-    stroke-opacity: 0;
-  }
-}
-.plate-card {
-  position: absolute;
-  top: clamp(88px, 16vh, 170px);
-  width: min(440px, calc(100vw - 2 * var(--gutter)));
-  max-height: min(68vh, 600px);
-  overflow-y: auto;
-  padding: 28px 30px 26px;
-  background: rgba(239, 233, 223, 0.97);
-  color: var(--paper-ink);
-  border: 1px solid rgba(239, 233, 223, 0.5);
-  border-top: 3px solid var(--accent);
-  box-shadow: 0 20px 70px rgba(0, 0, 0, 0.25);
-  opacity: var(--v);
-  pointer-events: auto;
-  will-change: transform, opacity;
-  scrollbar-width: thin;
-}
-.plate[data-side='left'] .plate-card {
-  left: var(--gutter);
-}
-.plate[data-side='right'] .plate-card {
-  /* Clear of the chapter rail — its figures, ticks and the active chapter's name, always shown. */
-  right: calc(var(--gutter) + 136px);
-}
-/* (Tablets: a little narrower, so the card's left edge — and the room it leaves open — stays put.) */
-@media (max-width: 1080px) {
-  .plate-card {
-    width: min(384px, calc(100vw - 2 * var(--gutter)));
-  }
-}
-.plate-kicker {
-  font-family: var(--mono);
-  font-weight: var(--w-label);
-  font-size: 9px;
-  line-height: 1.8;
-  letter-spacing: var(--t-ui);
-  text-transform: uppercase;
-  color: var(--paper-dim);
-  margin: 0 0 14px;
-}
-.plate-title {
-  font-family: var(--serif);
-  font-weight: var(--w-title);
-  font-size: clamp(30px, 2.9vw, 44px);
-  line-height: 1.04;
-  letter-spacing: var(--t-title);
-  margin: 0 0 14px;
-  color: var(--paper-ink);
-}
-.plate-body {
-  font-size: 15px;
-  line-height: 1.62;
-  color: #44413c;
-  margin: 0 0 16px;
-}
-.plate-quote {
-  font-family: var(--serif);
-  letter-spacing: var(--t-sub);
-  font-weight: var(--w-quote);
-  font-style: italic;
-  font-size: clamp(22px, 2.1vw, 30px);
-  line-height: 1.3;
-  margin: 0;
-  color: var(--paper-ink);
-}
-.plate-facts {
-  margin: 4px 0 18px;
-  padding: 0;
-  display: grid;
-  gap: 0;
-}
-.plate-facts > div {
-  display: grid;
-  grid-template-columns: minmax(96px, 34%) 1fr;
-  gap: 14px;
-  padding: 10px 0;
-  border-top: 1px solid var(--paper-line);
-}
-.plate-facts dt {
-  font-family: var(--mono);
-  font-weight: var(--w-label);
-  font-size: 10.5px;
-  letter-spacing: var(--t-ui);
-  text-transform: uppercase;
-  color: var(--paper-dim);
-  padding-top: 3px;
-}
-.plate-facts dd {
-  margin: 0;
-  font-size: 15px;
-  line-height: 1.45;
-  color: var(--paper-ink);
-}
-.plate-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-.plate-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 12px 16px;
-  min-height: 44px;
-  font-family: var(--mono);
-  font-weight: var(--w-label);
-  font-size: 11.5px;
-  letter-spacing: var(--t-ui);
-  text-transform: uppercase;
-  text-decoration: none;
-  color: var(--bone);
-  background: var(--ink);
-  border: 1px solid var(--ink);
-  transition: background 0.2s var(--ease);
-}
-.plate-btn:hover {
-  background: #33302b;
-}
-.plate-btn.ghost {
-  color: var(--paper-ink);
-  background: transparent;
-  border-color: var(--paper-line);
-}
-.plate-btn.ghost:hover {
-  border-color: var(--paper-ink);
-  background: rgba(21, 21, 23, 0.06);
-}
-
 .dossier-backdrop {
   position: fixed;
   inset: 0;
@@ -1507,8 +1300,7 @@ html[data-mist='deep'] .intro-layer {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .ctl-music .note,
-  .plate-ring {
+  .ctl-music .note {
     animation: none;
   }
 }
@@ -2279,43 +2071,6 @@ html[data-fallback='true'] .archive-controls {
   .body {
     font-size: 14px;
   }
-  /* Plates become a bottom sheet; the leader rises from its top edge. */
-  .plate-card,
-  .plate[data-side='left'] .plate-card,
-  .plate[data-side='right'] .plate-card {
-    left: 12px;
-    right: 12px;
-    top: auto;
-    bottom: calc(12px + env(safe-area-inset-bottom));
-    margin-top: 0;
-    width: auto;
-    max-height: 46vh;
-    padding: 18px 18px 16px;
-  }
-  .plate-scrim,
-  .plate[data-side='right'] .plate-scrim {
-    background: linear-gradient(0deg, rgba(8, 8, 10, 0.78) 0%, rgba(8, 8, 10, 0.3) 45%, rgba(8, 8, 10, 0) 60%);
-  }
-  .plate-title {
-    font-size: 26px;
-  }
-  .plate-body {
-    font-size: 15px;
-    line-height: 1.55;
-  }
-  .plate-facts dd {
-    font-size: 14px;
-  }
-  /* Room plates stay short on phones — the installation needs the screen; the dossier has the facts. */
-  .plate[data-plate^='room-'] .plate-facts {
-    display: none;
-  }
-  .plate[data-plate^='room-'] .plate-body {
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
   .descent-meter {
     top: auto;
     bottom: 16vh;
@@ -2335,9 +2090,7 @@ html[data-fallback='true'] .archive-controls {
 
 /* A phone on its side. The bar is compact — on a short screen it would otherwise cover the top of
    the picture, where the rooms' titles and the portal's sign are — and, as upright, the motion
-   switch is left to the index. A plate is a compact card on its own side (not the upright bottom
-   sheet, which would cover half a short screen), clear of the bar and the rail: the room needs the
-   screen. (As upright, a room's facts are in its dossier.) */
+   switch is left to the index. */
 @media (orientation: landscape) and (max-height: 520px) {
   .topbar {
     padding-top: calc(8px + env(safe-area-inset-top));
@@ -2348,59 +2101,6 @@ html[data-fallback='true'] .archive-controls {
   }
   .index-symbol {
     line-height: 1;
-  }
-  .plate-card,
-  .plate[data-side='left'] .plate-card,
-  .plate[data-side='right'] .plate-card {
-    top: calc(62px + env(safe-area-inset-top));
-    bottom: auto;
-    width: min(290px, 36vw);
-    max-height: calc(100svh - 78px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
-    padding: 16px 18px 14px;
-  }
-  .plate[data-side='left'] .plate-card {
-    left: var(--gutter);
-    right: auto;
-  }
-  .plate[data-side='right'] .plate-card {
-    left: auto;
-    right: calc(var(--gutter) + 136px);
-  }
-  .plate-scrim {
-    background: linear-gradient(90deg, rgba(8, 8, 10, 0.72) 0%, rgba(8, 8, 10, 0.4) 30%, rgba(8, 8, 10, 0) 52%);
-  }
-  .plate[data-side='right'] .plate-scrim {
-    background: linear-gradient(270deg, rgba(8, 8, 10, 0.72) 0%, rgba(8, 8, 10, 0.4) 30%, rgba(8, 8, 10, 0) 52%);
-  }
-  .plate-kicker {
-    margin-bottom: 8px;
-  }
-  .plate-title {
-    font-size: 22px;
-    margin-bottom: 8px;
-  }
-  .plate-body {
-    font-size: 13.5px;
-    line-height: 1.5;
-    margin-bottom: 12px;
-  }
-  .plate[data-plate^='room-'] .plate-facts {
-    display: none;
-  }
-  .plate[data-plate^='room-'] .plate-body {
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-  .plate-btn {
-    padding: 10px 14px;
-  }
-}
-/* (…and on a small one the rail is hidden, so the card needs no room beside it.) */
-@media (orientation: landscape) and (max-height: 520px) and (max-width: 760px) {
-  .plate[data-side='right'] .plate-card {
-    right: var(--gutter);
   }
 }
 

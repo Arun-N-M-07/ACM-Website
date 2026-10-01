@@ -5,6 +5,3 @@ out
 next-env.d.ts
 .DS_Store
 .env*.local
-
-# The soundtrack is supplied locally and never committed (see docs/ASSETS.md).
-public/audio/

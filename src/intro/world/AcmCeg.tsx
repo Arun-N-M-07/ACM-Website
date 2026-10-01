@@ -9,8 +9,9 @@
  *
  * It is set as a title (acmWordmark.ts): Montserrat SemiBold, the site's own typeface, tracked wide,
  * the hyphen drawn as the E's middle arm and spaced as a stroke of the word, so it belongs to the mark.
- * It is cast as a gold piece. The letters are deep, their edges rounded into a broad polished bevel
- * that stays inside the letterform (the silhouette is the type's own), their faces dead flat. The
+ * It is cast as a gold piece. The letters are deep and heavy — cast a little past the type's outline,
+ * so the strokes stand thicker than the SemiBold they come from — their edges rounded into a broad
+ * polished bevel, their faces flat. The
  * metal is fully metallic gold, its polish varying a little over the piece as a hand-finished one's
  * does. It is lit as a jeweller lights gold, by a studio whose lights are brighter than white
  * (goldStudio.ts): the faces luminous champagne at their tops, running down through gold to deep
@@ -32,7 +33,7 @@
  */
 import { useFrame, useThree } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
-import { BufferAttribute, type BufferGeometry, Color, ExtrudeGeometry, type Group, type Mesh, MeshPhysicalMaterial, Path, type PerspectiveCamera, Shape, Vector2 } from 'three';
+import { AdditiveBlending, BufferAttribute, BufferGeometry, Color, ExtrudeGeometry, type Group, type Mesh, MeshPhysicalMaterial, Path, type PerspectiveCamera, type Points, ShaderMaterial, Shape, Vector2 } from 'three';
 import { toCreasedNormals } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { CHAPTERS } from '@/config/timeline';
 import { useDisposable } from '@/systems/performance/useDisposable';
@@ -46,12 +47,18 @@ import { goldStudio } from './goldStudio';
 
 /** Cap height (m), and the depth the letters are cast to. */
 const CAP = 56;
-const DEPTH = 0.2 * CAP;
+const DEPTH = 0.34 * CAP;
 /**
  * The polished edge: how far it rounds over and how deep, in how many steps (smooth-shaded: see
  * letterGeometry). It is cut inside the letterform, so the silhouette stays the type's own weight.
  */
-const BEVEL = { thickness: 2.8, size: 2.3, segments: 8 };
+const BEVEL = { thickness: 3.8, size: 2.9, segments: 10 };
+/**
+ * How far the cast stands out past the type's own outline (m, at its base): the strokes thickened by
+ * this on every side (counters closing as much), so the name has a monument's weight — the type's
+ * silhouette, cast heavier — and its bevel rolls over that.
+ */
+const SWELL = 1.25;
 
 /** How far from ACM-CEG the camera holds it (the end of the hold, where it is nearest). */
 const HOLD_DISTANCE = (() => {
@@ -124,7 +131,7 @@ function letterGeometry(glyph: WordmarkGlyph, x: number, y: number) {
     bevelEnabled: true,
     bevelThickness: BEVEL.thickness,
     bevelSize: BEVEL.size,
-    bevelOffset: -BEVEL.size,
+    bevelOffset: SWELL - BEVEL.size,
     bevelSegments: BEVEL.segments,
     curveSegments: 1,
   });
@@ -159,11 +166,12 @@ function castLetters(portrait: boolean) {
 }
 
 const GOLD_PARS = /* glsl */ `
-uniform float uSweep, uSweepAmt, uGlow, uHaze, uRoughVar, uEdgeGain, uTopGain, uKeyLow, uKeyHigh, uVeilY, uVeilBand, uVeilMax;
-uniform vec3 uGlowColor, uHazeColor, uSweepColor, uVeilColor;
+uniform float uSweep, uSweepAmt, uSweepW, uSweepY, uGlow, uHaze, uRoughVar, uRoughFace, uRoughEdge, uFaceWarp, uEdgeGain, uTopGain, uKeyLow, uKeyHigh, uVeilY, uVeilBand, uVeilMax, uBounceAmt;
+uniform vec3 uGlowColor, uHazeColor, uSweepColor, uVeilColor, uBounce;
 varying vec3 vAcmW;
 varying vec3 vAcmL;
 varying float vCapY;
+varying float vAcmFace;
 float acmHash(vec3 p) { p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
 float acmNoise(vec3 x) {
   vec3 i = floor(x);
@@ -174,6 +182,73 @@ float acmNoise(vec3 x) {
 }
 `;
 
+/** The stroke of light across the whole word: after its last letter has settled (and held a breath). */
+const SHIMMER: [number, number] = [T.acmCegIn + 2.7 + 6 * 0.42 + 0.6, T.acmCegHold - 1.2];
+
+// ─── The air round it, at the end: a few points of light ────────────────────
+
+/** How many points of light, and over which beats they come (once the last letter has settled) and go. */
+const SPARKS = 64;
+const SPARK_IN: [number, number] = [T.acmCeg - 0.2, T.acmCeg + 1.6];
+const SPARK_OUT: [number, number] = [T.acmCegHold - 0.5, T.descend + 0.5];
+const sparkHash = (i: number, k: number) => {
+  const x = Math.sin(i * 127.1 + k * 311.7) * 43758.5453;
+  return x - Math.floor(x);
+};
+
+/**
+ * Small white points in the air about the name, catching the light — only as the reveal ends: none
+ * while the letters come up, then a few, each at its own beat, brightening and fading as the scroll
+ * goes through the hold (a function of the beat: still when the scroll is). Sparse, and fine: the
+ * name is the light; these are the air's.
+ */
+function sparkResources(width: number, foot: number) {
+  const pos = new Float32Array(SPARKS * 3);
+  const seed = new Float32Array(SPARKS * 3);
+  for (let i = 0; i < SPARKS; i++) {
+    pos[i * 3] = (sparkHash(i, 1) * 2 - 1) * width * 1.15;
+    // (Most above the name, against the sky; a few low, against the cloud's shade.)
+    pos[i * 3 + 1] = (sparkHash(i, 2) < 0.7 ? 0.9 + sparkHash(i, 7) * 1.6 : foot - 0.6 + sparkHash(i, 7) * 0.7) * CAP;
+    pos[i * 3 + 2] = (sparkHash(i, 3) * 6 - 1.5) * CAP;
+    // (Its beat, its size, how long it holds the light.)
+    seed[i * 3] = SPARK_IN[0] + 0.3 + sparkHash(i, 4) * (SPARK_OUT[0] - SPARK_IN[0]);
+    seed[i * 3 + 1] = 3 + Math.pow(sparkHash(i, 5), 2.2) * 4;
+    seed[i * 3 + 2] = 0.6 + sparkHash(i, 6) * 1.4;
+  }
+  const geo = new BufferGeometry();
+  geo.setAttribute('position', new BufferAttribute(pos, 3));
+  geo.setAttribute('aSpark', new BufferAttribute(seed, 3));
+  const mat = new ShaderMaterial({
+    uniforms: { uT: { value: 0 }, uAmt: { value: 0 }, uPx: { value: 1 } },
+    vertexShader: /* glsl */ `
+      attribute vec3 aSpark;
+      uniform float uT, uAmt, uPx;
+      varying float vA;
+      void main() {
+        // Each point: a faint presence through the climax, brightest about its own beat.
+        float d = (uT - aSpark.x) / aSpark.z;
+        vA = uAmt * (0.12 + 0.88 * exp(-d * d));
+        gl_PointSize = aSpark.y * uPx * (0.7 + 0.3 * vA);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }`,
+    fragmentShader: /* glsl */ `
+      varying float vA;
+      void main() {
+        // A crisp core in a small soft halo: a point catching the light, not a blur.
+        float r = length(gl_PointCoord - 0.5) * 2.0;
+        float a = vA * (smoothstep(0.42, 0.0, r) + 0.35 * pow(max(0.0, 1.0 - r), 3.0));
+        if (a < 0.003) discard;
+        // (Brighter than white, as a glint is: the frame's own bloom gives it its little halo.)
+        gl_FragColor = vec4(vec3(3.2 * a), 1.0);
+      }`,
+    transparent: true,
+    depthWrite: false,
+    blending: AdditiveBlending,
+    fog: false,
+  });
+  return { geo, mat };
+}
+
 export function AcmCeg() {
   const gl = useThree((s) => s.gl);
   const portrait = useThree((s) => s.size.width / Math.max(1, s.size.height) < 0.9);
@@ -181,6 +256,7 @@ export function AcmCeg() {
   const rail = useRef({ share: Infinity, w: 0, h: 0 });
   const group = useRef<Group>(null);
   const letters = useRef<(Mesh | null)[]>([]);
+  const sparkPoints = useRef<Points>(null);
   // (Shared, and kept for the renderer's life: goldStudio.ts.)
   const studio = useMemo(() => goldStudio(gl), [gl]);
 
@@ -190,14 +266,21 @@ export function AcmCeg() {
     const uniforms = {
       uSweep: { value: -1e4 },
       uSweepAmt: { value: 0 },
+      uSweepW: { value: 4 },
+      uSweepY: { value: ACM_CEG.y },
       uSweepColor: { value: new Color('#ffe2b0') },
       uGlow: { value: 0 },
       uGlowColor: { value: new Color('#8a5a1c') },
       uHaze: { value: 0.03 },
       uHazeColor: { value: new Color() },
-      uRoughVar: { value: 0.04 },
-      uEdgeGain: { value: 0.6 },
-      uTopGain: { value: 1.2 },
+      uRoughVar: { value: 0.06 },
+      uRoughFace: { value: 0.15 },
+      uRoughEdge: { value: 0.06 },
+      uFaceWarp: { value: 0.1 },
+      uEdgeGain: { value: 0.95 },
+      uTopGain: { value: 1.45 },
+      uBounce: { value: new Color(0.86, 0.74, 1.08) },
+      uBounceAmt: { value: 0 },
       uKeyLow: { value: 0.42 },
       uKeyHigh: { value: 1.18 },
       uVeilY: { value: CLOUD_TOP },
@@ -208,24 +291,38 @@ export function AcmCeg() {
     // Polished gold: fully metallic, its colour the metal's own (no lacquer over it: a clear coat's
     // white reflection is what makes metal read as paint).
     const mat = new MeshPhysicalMaterial({
-      color: new Color('#f1c97c'),
+      color: new Color('#f3c76c'),
       metalness: 1,
-      roughness: 0.09,
+      roughness: 0.1,
       envMap: studio.texture,
       envMapIntensity: 1,
     });
     mat.onBeforeCompile = (shader) => {
       Object.assign(shader.uniforms, uniforms);
       shader.vertexShader = shader.vertexShader
-        .replace('#include <common>', '#include <common>\nattribute float aCapY;\nvarying vec3 vAcmW;\nvarying vec3 vAcmL;\nvarying float vCapY;')
-        .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvAcmW = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvAcmL = transformed;\nvCapY = aCapY;');
+        .replace('#include <common>', '#include <common>\nattribute float aCapY;\nvarying vec3 vAcmW;\nvarying vec3 vAcmL;\nvarying float vCapY;\nvarying float vAcmFace;')
+        .replace('#include <worldpos_vertex>', '#include <worldpos_vertex>\nvAcmW = (modelMatrix * vec4(transformed, 1.0)).xyz;\nvAcmL = transformed;\nvCapY = aCapY;\nvAcmFace = abs(objectNormal.z);');
       shader.fragmentShader = shader.fragmentShader
         .replace('#include <common>', `#include <common>\n${GOLD_PARS}`)
         .replace(
           '#include <roughnessmap_fragment>',
           `#include <roughnessmap_fragment>
-          // Hand-finished: the polish varies a little over the piece (fixed to the letter, never swimming).
-          roughnessFactor = clamp(roughnessFactor + uRoughVar * (acmNoise(vAcmL * 0.045) - 0.5), 0.05, 1.0);`,
+          // Hand-finished: the faces a fine satin, the rolled edges mirror-polished (so the edges carry
+          // the light and the faces the colour), the polish varying a little over the piece (fixed to the
+          // letter, never swimming).
+          roughnessFactor = clamp(mix(uRoughEdge, uRoughFace, smoothstep(0.86, 0.99, vAcmFace)) + uRoughVar * (acmNoise(vAcmL * 0.045) - 0.5), 0.04, 1.0);`,
+        )
+        .replace(
+          '#include <normal_fragment_maps>',
+          `#include <normal_fragment_maps>
+          {
+            // A cast face is flat to the eye, not to the light: a very slight, broad undulation (a
+            // few degrees, fixed to the letter) moves the studio's windows across it, so no face is
+            // one tone.
+            float face = smoothstep(0.9, 0.995, vAcmFace);
+            vec2 w = vec2(acmNoise(vAcmL * 0.018), acmNoise(vAcmL * 0.018 + 7.3)) - 0.5;
+            normal = normalize(normal + vec3(w * uFaceWarp * face, 0.0));
+          }`,
         )
         .replace(
           '#include <dithering_fragment>',
@@ -261,14 +358,22 @@ export function AcmCeg() {
             lift *= 1.0 + uTopGain * smoothstep(0.35, 0.95, wn.y);
             reflectedLight.indirectSpecular *= lift * mix(uKeyLow, uKeyHigh, smoothstep(0.0, 1.0, vCapY));
             reflectedLight.directSpecular *= lift;
-            // One light running across the letters while the camera holds. On polished gold it is
-            // the metal's own reflection that brightens as the light passes, most on the rolled
-            // edges (where the surface turns from the eye), with a fine warm sparkle along them.
-            float bx = (vAcmW.x - uSweep) / 22.0;
-            float band = exp(-bx * bx) * uSweepAmt;
-            reflectedLight.indirectSpecular *= 1.0 + band * (0.7 + 1.8 * edge);
-            reflectedLight.directSpecular *= 1.0 + band * (0.7 + 1.8 * edge);
-            totalEmissiveRadiance += uSweepColor * band * 0.35 * edge * edge;
+            // What looks down sees the cloud below — lit, as the name comes up, by the violet light
+            // (look.violet): the undersides of the letters take a little of it.
+            reflectedLight.indirectSpecular *= mix(vec3(1.0), uBounce, uBounceAmt * smoothstep(0.05, 0.75, -wn.y));
+            // Once the whole word stands: one stroke of light across it, left to right — a thin
+            // slanted line (leaning as a reflection on a slanted window does), the metal's own
+            // reflection brightening as it passes over each face and running bright along the rolled
+            // edges, with a softer glow either side of it.
+            float bx = (vAcmW.x + (vAcmW.y - uSweepY) * 0.42 - uSweep) / uSweepW;
+            float core = exp(-bx * bx);
+            float glow = exp(-bx * bx * 0.06);
+            float band = (core + 0.18 * glow) * uSweepAmt;
+            reflectedLight.indirectSpecular *= 1.0 + band * (2.6 + 2.4 * edge);
+            reflectedLight.directSpecular *= 1.0 + band * (2.6 + 2.4 * edge);
+            // (The stroke itself: the light's reflection, warm white, on the faces and brightest on
+            // the rolled edges.)
+            reflectedLight.directSpecular += uSweepColor * core * uSweepAmt * (0.55 + 1.1 * edge);
           }`,
         );
     };
@@ -280,7 +385,9 @@ export function AcmCeg() {
     const lo = Math.min(...placed.map((p) => p.x + inkX(p.glyph)[0]));
     const hi = Math.max(...placed.map((p) => p.x + inkX(p.glyph)[1]));
     const foot = Math.min(...placed.map((p) => p.y));
-    return { placed, geos, mat, uniforms, width: Math.max(Math.abs(lo), Math.abs(hi)) * CAP, span: (hi - lo) * CAP, foot };
+    const width = Math.max(Math.abs(lo), Math.abs(hi)) * CAP;
+    const sparks = sparkResources(width, foot);
+    return { placed, geos, mat, uniforms, width, span: (hi - lo) * CAP, foot, sparks };
   }, [portrait, studio]);
 
   useFrame(({ camera, size }) => {
@@ -303,7 +410,7 @@ export function AcmCeg() {
     }
     const cam = camera as PerspectiveCamera;
     const tanH = Math.tan((cam.fov * Math.PI) / 360) * cam.aspect;
-    const share = Math.min(portrait ? 0.84 : 0.73, R.share);
+    const share = Math.min(portrait ? 0.86 : 0.78, R.share);
     const scale = Math.min(1, (share * 2 * HOLD_DISTANCE * tanH) / res.span);
     g.scale.setScalar(scale);
     res.placed.forEach((_, i) => {
@@ -326,11 +433,22 @@ export function AcmCeg() {
     // resting foot and the name at rest stands clear of it.
     const restFoot = ACM_CEG.y + scale * res.foot * CAP;
     u.uVeilY.value = Math.min(CLOUD_TOP + 14, restFoot - 1.25 * u.uVeilBand.value);
-    (u.uVeilColor.value as Color).copy(look.fogColor).lerp(VEIL_LIGHT, 0.3);
-    // The light across it: once, left to right, while the camera holds.
-    const s = ease(t, T.acmCeg + 0.5, T.acmCegHold - 0.5);
-    u.uSweep.value = ACM_CEG.x - res.width * 1.2 + s * res.width * 2.4;
-    u.uSweepAmt.value = Math.sin(Math.PI * s) * 0.55;
+    (u.uVeilColor.value as Color).copy(look.fogColor).lerp(VEIL_LIGHT, 0.3).lerp(VEIL_VIOLET, 0.22 * look.violet);
+    u.uBounceAmt.value = look.violet;
+    // The stroke of light across it: once the last letter (G) has settled and the gold has held a
+    // moment, from beyond the A to beyond the G — once, with the scroll (back with it, as it came).
+    const s = ease(t, SHIMMER[0], SHIMMER[1]);
+    const reach = res.width * scale * 1.15;
+    u.uSweep.value = ACM_CEG.x - reach + s * reach * 2;
+    u.uSweepW.value = res.width * scale * 0.03;
+    u.uSweepY.value = ACM_CEG.y;
+    u.uSweepAmt.value = Math.pow(Math.sin(Math.PI * s), 0.6) * 0.8;
+    // The points of light in the air, at the end of the reveal.
+    const su = res.sparks.mat.uniforms;
+    su.uT.value = t;
+    su.uAmt.value = ease(t, SPARK_IN[0], SPARK_IN[1]) * (1 - ease(t, SPARK_OUT[0], SPARK_OUT[1]));
+    su.uPx.value = (size.height / 900) * gl.getPixelRatio();
+    if (sparkPoints.current) sparkPoints.current.visible = su.uAmt.value > 0.001;
   });
 
   return (
@@ -338,9 +456,12 @@ export function AcmCeg() {
       {res.geos.map((geo, i) => (
         <mesh key={i} ref={(el) => void (letters.current[i] = el)} geometry={geo} material={res.mat} />
       ))}
+      <points ref={sparkPoints} geometry={res.sparks.geo} material={res.sparks.mat} frustumCulled={false} renderOrder={8} visible={false} />
     </group>
   );
 }
 
-/** The light in the cloud's top, that the veil takes from it (warm white, over the fog's colour). */
+/** The light in the cloud's top, that the veil takes from it (warm white, over the fog's colour)… */
 const VEIL_LIGHT = new Color('#f4f1ea');
+/** …and, as the name comes up, the violet light in it (look.violet). */
+const VEIL_VIOLET = new Color('#d2c2f2');

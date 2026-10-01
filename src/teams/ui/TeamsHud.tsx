@@ -57,7 +57,7 @@ export function TeamsHud() {
     if (orbiting) setTypeKey((k) => k + 1);
   }, [orbiting]);
 
-  // Let global chrome know (the chapter rail and plates step aside inside).
+  // Let global chrome know (the chapter rail and the Events' interface step aside inside).
   useEffect(() => {
     document.documentElement.dataset.teams = live || state === 'teamsEntering' ? 'inside' : 'outside';
   }, [live, state]);

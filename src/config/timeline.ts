@@ -12,18 +12,39 @@
  * scene streaming, overlay copy — derives from these numbers.
  */
 import { INTRO_CHAPTERS, INTRO_VH_PER_BEAT, type IntroChapterId } from '@/intro/timeline';
-import { CORRIDOR } from './world';
 
 export type SegmentId = IntroChapterId | 'events' | 'portal' | 'teams' | 'return';
 
-const EVENT_VH = { regular: 85, flagship: 125 };
-const eventsVh = CORRIDOR.rooms.reduce((sum, r) => sum + (r.event.flagship ? EVENT_VH.flagship : EVENT_VH.regular), 0);
+/**
+ * The Events (scenes/events). In order along the track:
+ *
+ *   arrival   from the lobby's door across the hall to stand before the matrix
+ *   hub       the whole matrix: an event is chosen here (Visit), or the scroll
+ *             goes on — to the Crew
+ *   the room  one stretch of track for whichever event was chosen: into its
+ *             bay and its room (enter), a short way on inside it (room — the
+ *             camera's slow step in; the room's installation plays on its own
+ *             clock once the camera is there, never at the scroll's pace:
+ *             scenes/events/controller), then its record: a page the
+ *             scroll moves px for px, its edge rising over the room for a screen
+ *             (unfold), read on up the screen after that (read — room enough for
+ *             the longest record on a phone; a record's own end walls the scroll
+ *             where its foot meets the screen's: scenes/events/controller), and
+ *             the part's last hair (decide) — nothing goes on to another event
+ *             unasked
+ *   rejoin    the whole matrix again: where the scroll from the hub continues
+ *             (scenes/events/controller joins the hub's end to this, the
+ *             picture the same at both), on into the portal segment
+ */
+export const EVENTS_VH = { arrival: 44, hub: 60, enter: 16, room: 24, unfold: 100, read: 760, decide: 20, rejoin: 60 } as const;
+const eventsVh = Object.values(EVENTS_VH).reduce((a, b) => a + b, 0);
 
 /**
- * The portal: the walk from the last event room to stand before it, then a
- * dwell where scrolling is walled until the visitor touches and holds.
+ * The portal: the matrix opening onto it — its outer columns into the wall, the middle one into the
+ * floor (PORTAL_SPLIT) — the walk down the passage to stand before it, then a dwell where scrolling
+ * is walled until the visitor touches and holds.
  */
-const PORTAL_VH = 150;
+const PORTAL_VH = 210;
 /**
  * The Teams world: one continuous orbit of the spine — an establishing view,
  * the six domain cards, and the pull-back that closes the journey.
@@ -41,7 +62,7 @@ const RETURN_VH = 300;
 const SEGMENT_WEIGHTS: { id: SegmentId; vh: number }[] = [
   // The opening: each chapter's beats, at a fixed scroll length per beat.
   ...INTRO_CHAPTERS.map((c) => ({ id: c.id as SegmentId, vh: (c.to - c.from) * INTRO_VH_PER_BEAT })),
-  { id: 'events', vh: eventsVh + 40 },
+  { id: 'events', vh: eventsVh },
   { id: 'portal', vh: PORTAL_VH },
   { id: 'teams', vh: TEAMS_VH },
   { id: 'return', vh: RETURN_VH },
@@ -69,11 +90,29 @@ export const SEGMENTS: Record<SegmentId, Segment> = (() => {
 /** Where the opening ends and the Events begin (progress). */
 export const INTRO_PROGRESS_END = SEGMENTS.events.start;
 
-/** Per-room progress weights inside the events segment (flagship rooms linger longer). */
-export const EVENT_STATION_WEIGHTS = [
-  40 / (eventsVh + 40),
-  ...CORRIDOR.rooms.map((r) => (r.event.flagship ? EVENT_VH.flagship : EVENT_VH.regular) / (eventsVh + 40)),
-];
+/** Where each part of the Events begins and ends (progress). */
+export const EVENTS_TRACK = (() => {
+  const s = SEGMENTS.events;
+  const k = (s.end - s.start) / eventsVh;
+  let acc = s.start;
+  const next = (vh: number) => (acc += vh * k);
+  const arrival = { start: acc, end: next(EVENTS_VH.arrival) };
+  const hub = { start: acc, end: next(EVENTS_VH.hub) };
+  const enter = { start: acc, end: next(EVENTS_VH.enter) };
+  const room = { start: acc, end: next(EVENTS_VH.room) };
+  const unfold = { start: acc, end: next(EVENTS_VH.unfold) };
+  const read = { start: acc, end: next(EVENTS_VH.read) };
+  const decide = { start: acc, end: next(EVENTS_VH.decide) };
+  const rejoin = { start: acc, end: s.end };
+  return { arrival, hub, enter, room, unfold, read, decide, rejoin, branch: { start: enter.start, end: decide.end } };
+})();
+export type EventsPart = Exclude<keyof typeof EVENTS_TRACK, 'branch'>;
+
+/** Progress `t` of the way through a part of the Events. */
+export const eventsAt = (part: EventsPart, t: number) => {
+  const r = EVENTS_TRACK[part];
+  return r.start + (r.end - r.start) * t;
+};
 
 /** Local 0..1 progress within a segment (clamped). */
 export function segmentProgress(p: number, id: SegmentId) {
@@ -88,6 +127,8 @@ export function segmentAt(p: number): SegmentId {
 
 /** Fraction of the portal segment at which the visitor is standing before it (the hold zone begins). */
 export const PORTAL_DWELL = 0.7;
+/** Fraction of the portal segment by which the matrix has opened (its columns home in the wall and the floor). */
+export const PORTAL_SPLIT = 0.32;
 /**
  * The wall: until the portal has been entered, scroll progress can't pass
  * this point. It is also where the Teams world's own progress begins.
@@ -117,7 +158,7 @@ const introAt = (beat: number) => {
 
 export const CHAPTERS: ChapterDef[] = [
   ...INTRO_CHAPTERS.map((c) => ({ id: c.id, number: c.number, label: c.label, jumpTo: introAt(c.enterAt), segments: [c.id] as SegmentId[], intro: true })),
-  { id: 'events', number: '06', label: 'Events', jumpTo: SEGMENTS.events.start + 0.002, segments: ['events'] },
+  { id: 'events', number: '06', label: 'Events', jumpTo: eventsAt('hub', 0.35), segments: ['events'] },
   { id: 'portal', number: '07', label: 'The Portal', jumpTo: SEGMENTS.portal.start + (SEGMENTS.portal.end - SEGMENTS.portal.start) * (PORTAL_DWELL + 0.08), segments: ['portal'] },
   // Entered through the portal (navigation plays the travel), never jumped into. (Its return — into
   // the mist, and round to the beginning — belongs to it.)
@@ -130,13 +171,3 @@ export function chapterForSegment(seg: SegmentId): ChapterId {
 
 /** Is this one of the opening's chapters? */
 export const isIntroChapter = (id: ChapterId) => !!CHAPTERS.find((c) => c.id === id)?.intro;
-
-/** Progress of the dwell point for a given room (used by "jump to event"). */
-export function progressForRoom(index: number) {
-  const w = EVENT_STATION_WEIGHTS;
-  let acc = 0;
-  for (let i = 0; i <= index; i++) acc += w[i];
-  acc += w[index + 1] * 0.72;
-  const s = SEGMENTS.events;
-  return s.start + (s.end - s.start) * acc;
-}

@@ -1,8 +1,9 @@
 'use client';
 /**
- * PortalEntry — the gateway at the end of the events corridor.
+ * PortalEntry — the gateway at the end of the passage behind the Events
+ * matrix (the matrix opens onto it: scenes/events).
  *
- * The vestibule's end wall is cut with a round opening. In it: a dark
+ * The passage's end wall is cut with a round opening. In it: a dark
  * brushed-steel ring, a sleeve through the wall, a membrane that recedes like
  * a well, a thin channel of light that fills as you hold, and dust in front
  * that the hold draws in. The blue signal thread that has run the length of
@@ -45,8 +46,11 @@ import { rng } from '@/lib/random';
 import { teamsFrame } from '../state';
 import { CHANNEL_FRAG, CHANNEL_VERT, MEMBRANE_FRAG, MEMBRANE_VERT, MOTES_FRAG, MOTES_VERT } from './shaders';
 
-const hw = UNDERGROUND.corridor.halfWidth;
-const WALL_H = 9;
+/** The passage it closes (as wide and high as the matrix's opening). */
+const hw = DOOR.halfWidth;
+const WALL_H = DOOR.height + 0.8;
+/** The lintel's sign: the width it has always had (its type is sized to it). */
+const LINTEL_W = 2 * UNDERGROUND.corridor.halfWidth - 0.6;
 const WALL_T = 0.8;
 const R = PORTAL.radius;
 const CY = PORTAL.y - FLOOR_Y;
@@ -190,7 +194,7 @@ export function Portal() {
       <points geometry={geo.motes} material={mats.motes} position={[0, PORTAL.y, PORTAL.z]} renderOrder={4} frustumCulled={false} />
       <mesh geometry={geo.pool} material={mats.pool} position={[0, FLOOR_Y + 0.02, PORTAL.z + 3.2]} renderOrder={2} />
       <CanvasPanel
-        width={2 * hw - 0.6}
+        width={LINTEL_W}
         height={1.1}
         pxPerMeter={240}
         position={[0, PORTAL.y + R + 1.05, DOOR.z + 0.02]}

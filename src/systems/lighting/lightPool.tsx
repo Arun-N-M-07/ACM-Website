@@ -19,6 +19,11 @@ export interface LightAnchor {
   distance: number;
   /** Optional multiplier updated by the owner (e.g. a room fading in). */
   gain?: number;
+  /**
+   * Optional: how much nearer than it is the anchor counts when the pool chooses (1, as it is). An
+   * owner can ask for a light it needs — a room the visitor is pointing at, across a hall.
+   */
+  priority?: number;
 }
 
 const anchors = new Set<LightAnchor>();
@@ -73,11 +78,13 @@ export function LightPool({ maxDistance = 48 }: { maxDistance?: number }) {
   const current = useRef<(LightAnchor | null)[]>([]);
 
   useFrame(({ camera }, dt) => {
-    // The nearest `count` anchors in reach, nearest first (equal distances in registration order).
+    // The nearest `count` anchors in reach, nearest first (equal distances in registration order;
+    // an anchor with a priority counts as that much nearer).
     let m = 0;
     for (const a of anchors) {
-      const d = a.position.distanceTo(camera.position);
-      if (!(d < maxDistance)) continue;
+      const real = a.position.distanceTo(camera.position);
+      if (!(real < maxDistance)) continue;
+      const d = real / (a.priority ?? 1);
       let j = m;
       while (j > 0 && _nearD[j - 1] > d) j--;
       if (j >= count) continue;

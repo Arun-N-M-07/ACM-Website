@@ -6,7 +6,7 @@
  *
  * Every frame:
  *   1. damp raw scroll progress → progress.value, publish to overlays
- *   2. derive segment / chapter / active room → store (on change); hand the
+ *   2. derive segment / chapter / the event visited → store (on change); hand the
  *      progress to the opening (src/intro: its beat is progress, rescaled);
  *      run the Teams controller (portal hold, walls, hover)
  *   3. evaluate the shot: within the opening, its camera at that beat; after
@@ -29,15 +29,18 @@ import { progress } from '@/systems/scroll/progress';
 import { applyPortalHold } from '@/teams/camera';
 import { evaluateTeamsShot, teamsCameraActive, updateTeams } from '@/teams/controller';
 import { teamsFrame } from '@/teams/state';
+import { stepEventsTrack, updateEvents } from '@/scenes/events/controller';
+import { eventsFrame } from '@/scenes/events/state';
 import { fx } from './effects';
 import { copyPose, emptyPose } from './pose';
-import { eventStationAt, evaluateCinematic, nearestStop } from './shots';
+import { cinematic, evaluateCinematic, nearestStop } from './shots';
 
 /** The opening's fastest follow rate, in progress units per second. */
 const INTRO_MAX_RATE = (INTRO_MAX_BEATS_PER_SECOND / INTRO_SPAN) * INTRO_PROGRESS_END;
 
 export function CameraRig() {
   const camera = useThree((s) => s.camera) as PerspectiveCamera;
+  const size = useThree((s) => s.size);
   const pose = useRef(emptyPose());
   const shot = useRef(emptyPose());
   const lastStop = useRef(-1);
@@ -57,6 +60,8 @@ export function CameraRig() {
     const dt = Math.min(rawDt, 0.1);
     const st = experience();
     const time = clock.elapsedTime;
+    // (The Events' walls, and their join at the matrix — before the scroll is followed: controller.ts.)
+    stepEventsTrack(dt);
 
     // 1 ─ progress
     progress.cut = false;
@@ -135,19 +140,23 @@ export function CameraRig() {
     const inIntro = introFrame.active;
     const seg = segmentAt(progress.value);
     if (seg !== st.segment) st.set({ segment: seg, chapter: chapterForSegment(seg) });
-    const station = eventStationAt(progress.value);
-    const active = seg === 'events' && station.index >= 0 && (station.dwell > 0 || station.travel > 0.8) ? station.index : -1;
+    const shown = eventsFrame.view;
+    const active = seg === 'events' && shown.index >= 0 && shown.enter > 0.5 ? shown.index : -1;
     if (active !== st.activeRoom) st.set({ activeRoom: active });
     updateTeams(dt, camera);
 
     // 3 ─ shot
     const inTeams = teamsCameraActive();
+    const cinematicShot = !inIntro && !inTeams;
     if (inIntro) evaluateIntroShot(time, camera.aspect, shot.current, st.reducedMotion);
     else if (inTeams) evaluateTeamsShot(dt, time, camera.aspect, shot.current, shot.current, st.reducedMotion);
-    else {
-      evaluateCinematic(progress.value, shot.current);
-      applyPortalHold(shot.current, teamsFrame.hold, time, st.reducedMotion);
-    }
+    else evaluateCinematic(progress.value, shot.current, camera.aspect);
+    // (The Events: what the hall and its interface show, and the matrix's lean with the pointer.)
+    updateEvents(dt, shot.current, cinematicShot, st.reducedMotion);
+    if (cinematicShot) applyPortalHold(shot.current, teamsFrame.hold, time, st.reducedMotion);
+    // The space the camera is in: inside an event's room, the room's own scale (its small motions with it).
+    const space = cinematicShot ? cinematic.scale : 1;
+    const composed = cinematicShot ? cinematic.composed : 0;
     fx.blur = 0;
     fx.vignette = !inTeams && world.underground > 0.02 && world.underground < 0.98 ? 0.25 : 0;
 
@@ -160,26 +169,27 @@ export function CameraRig() {
       const d = (teamsFrame.inside ? 0.35 : 1) * driftIn.current * driftIn.current;
       p.yaw += Math.sin(time * 0.31) * CAMERA_RESPONSE.driftAngle * d;
       p.pitch += Math.sin(time * 0.23 + 1.3) * CAMERA_RESPONSE.driftAngle * 0.7 * d;
-      p.y += Math.sin(time * 0.41 + 0.4) * CAMERA_RESPONSE.driftPosition * d;
+      p.y += Math.sin(time * 0.41 + 0.4) * CAMERA_RESPONSE.driftPosition * d * space;
     }
 
     // Portrait phones: interiors are staged wide (the departures board, room
     // walls, the portal), so below ground the lens opens to keep roughly the
     // horizontal coverage a landscape screen would have. The Teams world is
-    // composed for portrait itself (teams/layout), so it is left alone.
+    // composed for portrait itself (teams/layout), and so are the Events'
+    // matrix and bays (scenes/events/track: `composed`), so they are left alone.
     let fov = p.fov;
-    if (camera.aspect < 1 && world.underground > 0.5 && !teamsFrame.inside && !inIntro) {
-      const widen = Math.min(2.1, 1 + (1 / camera.aspect - 1) * 0.9);
+    if (camera.aspect < 1 && world.underground > 0.5 && !teamsFrame.inside && !inIntro && composed < 1) {
+      const widen = 1 + (Math.min(2.1, 1 + (1 / camera.aspect - 1) * 0.9) - 1) * (1 - composed);
       fov = Math.min(110, (2 * Math.atan(Math.tan((p.fov * Math.PI) / 360) * widen) * 180) / Math.PI);
-      // …and steps back a little (every interior shot has room behind it).
-      const back = Math.min(2, (1 / camera.aspect - 1) * 1.6) * (1 - teamsFrame.hold);
+      // …and steps back a little (every interior shot has room behind it — at its own scale).
+      const back = Math.min(2, (1 / camera.aspect - 1) * 1.6) * (1 - teamsFrame.hold) * (1 - composed) * space;
       p.x += Math.sin(p.yaw) * back;
       p.z += Math.cos(p.yaw) * back;
     }
     // Depth precision: the near plane scales with altitude above ground so the
     // campus's flat layers (lawns, paving, roads) never z-fight from the drone,
     // and stays close for the interiors.
-    const near = world.underground < 0.5 && p.y > 0.4 ? Math.min(3, Math.max(0.25, p.y * 0.12)) : CAMERA_RESPONSE.near;
+    const near = world.underground < 0.5 && p.y > 0.4 ? Math.min(3, Math.max(0.25, p.y * 0.12)) : CAMERA_RESPONSE.near * space;
     camera.position.set(p.x, p.y, p.z);
     camera.rotation.set(p.pitch, p.yaw, p.roll, 'YXZ');
     if (Math.abs(camera.fov - fov) > 0.001 || Math.abs(camera.near - near) > near * 0.02) {
@@ -187,6 +197,15 @@ export function CameraRig() {
       camera.near = near;
       camera.updateProjectionMatrix();
     }
+    // An event's record: the room's picture goes up the screen with the page as the record's black
+    // canvas comes up under it — the same lens, the same room, scrolled (its foot is the canvas's
+    // top edge: scenes/events/controller, view.unfold — how much of the screen the canvas has).
+    const lift = st.phase === 'cinematic' && !st.reducedMotion && !inTeams && !inIntro ? eventsFrame.view.unfold : 0;
+    const vo = camera.view;
+    if (lift > 0) {
+      const y = lift * size.height;
+      if (!vo || !vo.enabled || vo.fullWidth !== size.width || vo.fullHeight !== size.height || Math.abs(vo.offsetY - y) > 0.05) camera.setViewOffset(size.width, size.height, 0, y, size.width, size.height);
+    } else if (vo && vo.enabled) camera.clearViewOffset();
     camera.updateMatrixWorld();
 
     // Camera speed for audio / effects.

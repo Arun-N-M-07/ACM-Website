@@ -8,7 +8,7 @@
 //   enter / enter:quiet  cross the threshold (with sound if the score exists / without)
 //   at:<beat>            cut the scroll to that beat of the opening
 //   scroll:<beat>:<s>    scroll smoothly to that beat over s seconds
-//   room:<i>:<visit>     cut to event room i, `visit` (0..1) through its dwell
+//   room:<i>:<visit>     cut to event room i, `visit` (0..1) through its installation
 //   settle               wait until the camera has caught up with the scroll (and a cut's fade has cleared)
 //   wheel:<dy>           one wheel event at the centre (px; + = forward)
 //   wheels:<dy>:<n>:<ms> n wheel events, ms apart

@@ -5,7 +5,7 @@
  */
 import { useEffect, useRef } from 'react';
 import { CHAPTERS } from '@/config/timeline';
-import { CORRIDOR } from '@/config/world';
+import { EVENT_ROOMS } from '@/config/world';
 import { CHAPTER } from '@/content/chapter';
 import { TEAM_DOMAINS } from '@/content/teams';
 import { useExperience } from '@/store/experience';
@@ -58,7 +58,7 @@ export function IndexMenu() {
         <nav aria-label="Event rooms">
           <p className="kicker">Event rooms</p>
           <ol className="index-rooms">
-            {CORRIDOR.rooms.map((r) => (
+            {EVENT_ROOMS.map((r) => (
               <li key={r.event.slug}>
                 <button onClick={() => goToRoom(r.index)}>
                   <i style={{ background: r.event.accent }} aria-hidden="true" />

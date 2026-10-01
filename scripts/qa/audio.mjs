@@ -76,8 +76,8 @@ await at(118); await sleep(1500);
 await window_('rise into cloud and out (118→140)', () => scroll(140, 7), 7600);
 await window_('ACM-CEG hold, descend through cloud (140→168)', () => scroll(168, 7), 11000);
 await window_('shaft → lobby → door → Events (170→201)', () => scroll(201, 9), 10000);
-await window_('Events corridor, standing (room 3)', () => ev(() => window.__acm.jump(window.__acm.roomProgress(3, 0.5))), 5000);
-const PRODIGY = 6; // (the Prodigy room's index in the corridor)
+await window_('Events, standing in room 4', () => ev(() => window.__acm.jump(window.__acm.roomProgress(3, 0.5))), 5000);
+const PRODIGY = 6; // (the Prodigy room's index in the lineup)
 await ev((i) => window.__acm.jump(window.__acm.roomProgress(i, 0)), PRODIGY); await sleep(1800);
 await window_('Prodigy room visit (scroll through its dwell)', () => ev((i) => window.__acm.scroll(window.__acm.roomProgress(i, 0.97), 6), PRODIGY), 7500);
 await window_('Prodigy scrolled back (should be silent)', () => ev((i) => window.__acm.scroll(window.__acm.roomProgress(i, 0.05), 4), PRODIGY), 5000);

@@ -5,11 +5,12 @@
  *
  *   y = 0      campus ground. The red building sits north of the lawn.
  *   y = -60    underground facility floor. A glass light-well in the lawn
- *              drops straight into the facility hall; the events corridor runs
- *              north (−z) underneath the building, ending at the portal.
+ *              drops straight into the facility hall; beyond its door, north
+ *              (−z) under the building, the Events hall and its matrix, and
+ *              behind them the passage to the portal.
  *
- * Layouts that depend on content (event rooms) are computed from the content
- * arrays, so adding an event re-flows the world.
+ * Layouts that depend on content (the events' rooms) are computed from the
+ * content arrays, so adding an event re-flows the world.
  */
 import { EVENTS, type EventRecord } from '@/content/events';
 
@@ -52,100 +53,126 @@ export const hallZ = (z: number) => z + (WELL_Z - 18);
 export const FLOOR_Y = UNDERGROUND.floorY;
 export const EYE_Y = FLOOR_Y + EYE_HEIGHT;
 
-// ─── Events corridor ──────────────────────────────────────────────────────────
+// ─── The Events: a hall, and in it the matrix of their rooms ─────────────────
 
+/**
+ * Beyond the lobby's door the Events are one dark hall, and at its far end one
+ * object: the matrix — a monumental case of nine bays, three by three, set in a
+ * niche in the end wall. Each bay holds an event's room: the room itself
+ * (scenes/events/EventRoom), whole, built at full size and set into the bay at
+ * the scale that fits it (a flagship's wider room smaller, under a lintel). The
+ * lineup reads row by row from the top left.
+ *
+ * The matrix is built as three columns standing side by side — the seams run
+ * down the middle of its two mullions. When it opens onto the Crew, the outer
+ * two slide into the wall either side and the middle one sinks until its top
+ * is the floor; behind them a passage runs to the portal.
+ */
+export const MATRIX = (() => {
+  const cols = 3;
+  const rows = Math.ceil(EVENTS.length / cols);
+  /** A bay's opening. */
+  const bay = { w: 4.2, h: 2.15 };
+  /** The frame between bays (width of a mullion, height of a transom), and round the whole. */
+  const mullion = 0.5;
+  const transom = 0.5;
+  const pier = 1.1;
+  const crown = 1.25;
+  const base = 1.0;
+  const width = cols * bay.w + (cols - 1) * mullion + 2 * pier;
+  const height = base + rows * bay.h + (rows - 1) * transom + crown;
+  /**
+   * Its front face (z) — near the door: the whole matrix is framed a few steps into the hall from the
+   * lobby's passage (scenes/events/track: hubPose), so the door opens onto the gallery itself — and
+   * how deep it is.
+   */
+  const face = UNDERGROUND.hall.north - 23;
+  const depth = 4.6;
+  /** How far behind the face a room's opening stands: the bay's layered reveal. */
+  const reveal = 0.45;
+  /** The seams between its three columns (x, either side of the middle one). */
+  const seam = bay.w / 2 + mullion / 2;
+  /** How far the outer columns slide into the wall when it opens. */
+  const slide = 3;
+  return { cols, rows, bay, mullion, transom, pier, crown, base, width, height, face, depth, back: face - depth, reveal, seam, slide };
+})();
+
+/** The hall: from the lobby passage's mouth north to the end wall, whose niche holds the matrix. */
+export const EVENTS_HALL = (() => {
+  const nicheMargin = 0.6;
+  return {
+    south: UNDERGROUND.hall.north,
+    halfWidth: 16,
+    height: 15,
+    /** The end wall's face (the niche opens in it, the matrix standing back inside). */
+    wall: MATRIX.face + 1.2,
+    niche: { halfWidth: MATRIX.width / 2 + nicheMargin, height: MATRIX.height + nicheMargin, back: MATRIX.back - 0.4 },
+  };
+})();
+
+/** Behind the matrix, once it has opened: the passage to the portal. */
+export const EVENTS_PASSAGE = (() => {
+  const halfWidth = MATRIX.seam + MATRIX.slide;
+  const z0 = EVENTS_HALL.niche.back;
+  const length = 16;
+  return { halfWidth, height: MATRIX.height, z0, z1: z0 - length };
+})();
+
+/** One event's room, and where it stands in the matrix. */
 export interface RoomLayout {
   index: number;
   event: EventRecord;
-  /** -1 = left (−x), +1 = right (+x). */
-  side: -1 | 1;
-  /** Room centre on the corridor axis (z). */
-  z: number;
-  /** Extent along z. */
+  /** The room's own size as built (m, full scale): along its opening (x), in from it (z), up. */
   length: number;
-  /** Extent away from the corridor (x). */
   depth: number;
   height: number;
-  /** Room centre in world space. */
-  center: Vec3;
-  /** Height of the corridor's ceiling over the room's opening (raised in the transept). */
+  /** Height of the space over its opening (= height: a bay has no header). */
   ceiling: number;
-  /** Where the camera stands to look into the room. */
-  viewpoint: Vec3;
-  /** What the camera looks at while in the room. */
-  focus: Vec3;
+  /** Its bay: column and row (0 at the top left), the opening's centre (x) and sill (y above the floor). */
+  col: number;
+  row: number;
+  bayX: number;
+  baySill: number;
+  /** The scale it stands at in its bay, and where its floor's centre is (world). */
+  scale: number;
+  center: Vec3;
 }
 
-const REGULAR = { length: 11, depth: 10, height: 5.6, firstOffset: 8 };
-/** Flagship rooms are larger and taller, with a little more corridor around them. */
-const FLAGSHIP = { length: 18, depth: 14, height: 7.2, margin: 3 };
-/** Solid wall kept between two rooms on the same side of the corridor. */
-const ROOM_GAP = 0.8;
-const DOOR_GAP = 14;
+const ROOM_SIZE = { regular: { length: 11, depth: 10, height: 5.6 }, flagship: { length: 18, depth: 14, height: 7.2 } };
 
-export function buildCorridorLayout(events: EventRecord[] = EVENTS) {
-  const start = UNDERGROUND.hall.north;
-  const hw = UNDERGROUND.corridor.halfWidth;
-  const rooms: RoomLayout[] = [];
-  // Rooms follow the lineup's order exactly, alternating sides. Each stands a
-  // half-room on from the one before (the regular pitch, generalised to any
-  // mix of sizes), a flagship with a little more room around it, and no room
-  // overlaps the last one on its own side of the corridor.
-  const edge: Record<string, number> = { '-1': Infinity, '1': Infinity };
-  let prev: RoomLayout | null = null;
-  events.forEach((event, i) => {
-    const size = event.flagship ? FLAGSHIP : REGULAR;
-    const side: -1 | 1 = i % 2 === 0 ? -1 : 1;
-    let z = prev ? prev.z - ((prev.length + size.length) / 4 + 1) : start - REGULAR.firstOffset;
-    if (prev && (event.flagship || prev.event.flagship)) z -= FLAGSHIP.margin;
-    z = Math.min(z, edge[side] - ROOM_GAP - size.length / 2);
-    edge[side] = z - size.length / 2;
-    const cx = side * (hw + size.depth / 2);
-    const room: RoomLayout = {
-      index: i,
-      event,
-      side,
-      z,
-      length: size.length,
-      depth: size.depth,
-      height: size.height,
-      center: [cx, FLOOR_Y, z],
-      ceiling: UNDERGROUND.corridor.height,
-      // At the portal, facing the back wall (the visit steps in from here) —
-      // aimed a little off centre so the installation sits to one side and its
-      // plate to the other.
-      viewpoint: event.flagship ? [side * (hw - 0.4), EYE_Y + 0.2, z] : [side * (hw - 0.4), EYE_Y, z],
-      focus: event.flagship ? [side * (hw + size.depth), EYE_Y + 0.5, z - 2.6] : [side * (hw + size.depth), EYE_Y - 0.05, z - 1.8],
-    };
-    rooms.push(room);
-    prev = room;
-  });
+export const EVENT_ROOMS: RoomLayout[] = EVENTS.map((event, index) => {
+  const { cols, rows, bay, mullion, transom, base, face, reveal } = MATRIX;
+  const size = event.flagship ? ROOM_SIZE.flagship : ROOM_SIZE.regular;
+  const col = index % cols;
+  const row = Math.floor(index / cols);
+  const bayX = (col - (cols - 1) / 2) * (bay.w + mullion);
+  const baySill = base + (rows - 1 - row) * (bay.h + transom);
+  const scale = Math.min(bay.w / size.length, bay.h / size.height);
+  return {
+    index,
+    event,
+    ...size,
+    ceiling: size.height,
+    col,
+    row,
+    bayX,
+    baySill,
+    scale,
+    center: [bayX, FLOOR_Y + baySill, face - reveal - (size.depth * scale) / 2],
+  };
+});
 
-  // Where there are flagships the corridor's ceiling rises (the transept) —
-  // over every room between the first and the last of them.
-  const flagships = rooms.filter((r) => r.event.flagship);
-  const transept = flagships.length
-    ? {
-        z0: Math.max(...flagships.map((r) => r.z + r.length / 2)) + 1,
-        z1: Math.min(...flagships.map((r) => r.z - r.length / 2)) - 1,
-        height: Math.max(...flagships.map((r) => r.height)),
-      }
-    : null;
-  if (transept) for (const r of rooms) if (r.z <= transept.z0 && r.z >= transept.z1) r.ceiling = transept.height;
-
-  const lastZ = rooms.length ? Math.min(...rooms.map((r) => r.z - r.length / 2)) : start;
-  const doorZ = lastZ - DOOR_GAP;
-  return { rooms, start, doorZ, end: doorZ, transept };
-}
-
-export const CORRIDOR = buildCorridorLayout();
-export const DOOR = { z: CORRIDOR.doorZ, width: 4.4, height: 7 };
+/** Which of the matrix's three columns a room stands in (-1 left, 0 middle, 1 right). */
+export const columnOf = (col: number) => (col < 1 ? -1 : col > 1 ? 1 : 0) as -1 | 0 | 1;
 
 // ─── The portal & the Teams world ─────────────────────────────────────────────
 
+/** The passage's end wall, where the portal is cut. */
+export const DOOR = { z: EVENTS_PASSAGE.z1, halfWidth: EVENTS_PASSAGE.halfWidth, height: EVENTS_PASSAGE.height };
+
 /**
- * The portal stands in the vestibule's end wall, where the corridor runs out.
- * Its ring is vertical, facing +z (back down the corridor).
+ * The portal stands in the passage's end wall. Its ring is vertical, facing +z
+ * (back towards the matrix).
  */
 export const PORTAL = { z: DOOR.z, y: FLOOR_Y + 3.4, radius: 2.55, tube: 0.2 } as const;
 

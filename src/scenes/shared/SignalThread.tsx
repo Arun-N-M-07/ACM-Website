@@ -1,18 +1,20 @@
 'use client';
 /**
  * A light inlaid into the route. Its position and revealed length rewind with
- * scroll. It picks up where the opening's lobby hands over, at
- * the corridor mouth, and ends in the portal — and while the portal is held,
- * it floods towards it.
+ * scroll. It picks up where the opening's lobby hands over, at the mouth of
+ * the Events hall, and runs across it to the matrix's foot — where it waits
+ * while the matrix is the place (its rooms visited or not); when the matrix
+ * opens it runs on over the middle column, sunk into the floor, down the
+ * passage and into the portal — and while the portal is held, it floods
+ * towards it.
  */
 import { useFrame } from '@react-three/fiber';
 import { useMemo, useRef } from 'react';
 import { CatmullRomCurve3, Color, type Group, MeshBasicMaterial, SphereGeometry, TubeGeometry, Vector3 } from 'three';
-import { PORTAL_DWELL, SEGMENTS } from '@/config/timeline';
-import { CORRIDOR, FLOOR_Y, PORTAL, UNDERGROUND } from '@/config/world';
+import { EVENTS_TRACK, PORTAL_DWELL, PORTAL_SPLIT, SEGMENTS, eventsAt } from '@/config/timeline';
+import { FLOOR_Y, MATRIX, PORTAL, UNDERGROUND } from '@/config/world';
 import { introFrame } from '@/intro/state';
 import { T } from '@/intro/timeline';
-import { roomDwellRange } from '@/systems/camera/shots';
 import { smoothstep } from '@/systems/camera/pose';
 import { teamsFrame } from '@/teams/state';
 import { useDisposable } from '@/systems/performance/useDisposable';
@@ -21,28 +23,21 @@ import { progress } from '@/systems/scroll/progress';
 const Y = FLOOR_Y + 0.045;
 const within = (segment: keyof typeof SEGMENTS, f: number) => SEGMENTS[segment].start + (SEGMENTS[segment].end - SEGMENTS[segment].start) * f;
 const key = (p: number, x: number, y: number, z: number) => ({ p, at: new Vector3(x, y, z) });
+/** The matrix's foot, where the thread waits. */
+const FOOT_Z = MATRIX.face + 0.7;
 
-export const SIGNAL_KEYS = (() => {
-  // From the corridor mouth (just beyond the lobby's door), room by room.
-  const keys = [key(SEGMENTS.events.start, 0, Y, UNDERGROUND.hall.north + 2)];
-  for (const r of CORRIDOR.rooms) {
-    const [a, b] = roomDwellRange(r.index);
-    const gap = a - keys[keys.length - 1].p;
-    keys.push(
-      key(a - gap * .5, 0, Y, r.z + 1.2),
-      key(a, r.side * (UNDERGROUND.corridor.halfWidth + .2), Y, r.z + 1.2),
-      key(a + (b - a) * .7, r.center[0], Y, r.z + 1.2),
-      key(b, r.side * (UNDERGROUND.corridor.halfWidth + .2), Y, r.z + 1.2),
-    );
-  }
-  // Down the vestibule, and up into the foot of the ring.
-  keys.push(
-    key(within('portal', 0.35), 0, Y, PORTAL.z + 6),
-    key(within('portal', PORTAL_DWELL), 0, Y, PORTAL.z + 0.9),
-    key(SEGMENTS.portal.end, 0, PORTAL.y - PORTAL.radius - PORTAL.tube, PORTAL.z + 0.3),
-  );
-  return keys;
-})();
+export const SIGNAL_KEYS = [
+  // From the hall's mouth (just beyond the lobby's door) across to the matrix's foot…
+  key(SEGMENTS.events.start, 0, Y, UNDERGROUND.hall.north + 2),
+  key(eventsAt('arrival', 0.55), 0, Y, (UNDERGROUND.hall.north + FOOT_Z) / 2),
+  key(EVENTS_TRACK.arrival.end, 0, Y, FOOT_Z),
+  // …waiting there while the matrix is the place, and while it begins to open…
+  key(within('portal', PORTAL_SPLIT * 0.55), 0, Y, FOOT_Z - 0.01),
+  // …then over the middle column, sunk flush into the floor, down the passage, and up into the foot of the ring.
+  key(within('portal', PORTAL_SPLIT), 0, Y, MATRIX.back - 0.6),
+  key(within('portal', PORTAL_DWELL), 0, Y, PORTAL.z + 0.9),
+  key(SEGMENTS.portal.end, 0, PORTAL.y - PORTAL.radius - PORTAL.tube, PORTAL.z + 0.3),
+];
 
 export function signalFraction(p: number) {
   const last = SIGNAL_KEYS.length - 1;

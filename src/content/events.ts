@@ -5,14 +5,15 @@
  * the home page flagship section, the FAQ, and prodigy.html; the 2026 lineup
  * and the Prodigy 2026 programme from the chapter.
  *
- * `EVENTS` is this year's lineup — the rooms of the underground corridor, the
- * index, the archive and the /events pages. Its ORDER is the order of the
- * rooms along the corridor (config/world: buildCorridorLayout); `flagship:
- * true` rooms are larger and taller, and the corridor's ceiling rises over
- * them.
+ * `EVENTS` is this year's lineup — the rooms in the Events matrix underground,
+ * the index, the printed archive and the /events pages. Its ORDER is the
+ * matrix's: row by row from the top left (config/world: EVENT_ROOMS), and the
+ * order "Visit next" follows; `flagship: true` rooms are larger and taller
+ * (their bays add a lintel over them).
  *
  * To add an event: add an object to EVENTS where it belongs in the lineup, and
  * give it an `artifact` — its room's installation (scenes/events/exhibits).
+ * (The matrix is three to a row: a tenth event starts a fourth row.)
  */
 import { MEDIA, type MediaAsset } from './media';
 import { PRODIGY_PROGRAMME } from './prodigy';
