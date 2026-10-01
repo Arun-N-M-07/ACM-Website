@@ -43,6 +43,8 @@ export function Sky() {
           uHaze: { value: 0 },
           uBelow: { value: new Color() },
           uBelowSpan: { value: 0.2 },
+          uGoldDir: { value: new Vector3(0, 0, -1) },
+          uGold: { value: new Color(0, 0, 0) },
           ...mistUniforms,
         },
         vertexShader: /* glsl */ `
@@ -57,6 +59,7 @@ export function Sky() {
           uniform vec3 zenith; uniform vec3 mid; uniform vec3 horizon; uniform vec3 sunColor; uniform vec3 sunDir;
           uniform vec3 uFog; uniform float uHaze;
           uniform vec3 uBelow; uniform float uBelowSpan;
+          uniform vec3 uGoldDir; uniform vec3 uGold;
           uniform vec4 uMist; uniform vec3 uMistSun; uniform vec3 uMistGlow;
           varying vec3 vDir;
           void main() {
@@ -76,6 +79,14 @@ export function Sky() {
               float f = 1.0 - (1.0 - mist) * (1.0 - uHaze);
               float toward = pow(max(dot(d, uMistSun), 0.0), 5.0);
               col = mix(col, mix(uFog, uMistGlow, toward * 0.85), f);
+            }
+            // The film's light inside the cloud ahead (look.gold): the sky low above it glows with it — a
+            // band along the horizon, brightest over the light, that the cloud in front of it hides.
+            if (uGold.r + uGold.g + uGold.b > 0.0) {
+              vec3 d = normalize(vDir);
+              float g = max(dot(d, uGoldDir), 0.0);
+              float band = exp(-abs(d.y - uGoldDir.y - 0.02) * 14.0);
+              col += uGold * (0.35 * pow(g, 3.0) * band + 0.25 * pow(g, 28.0) + 0.12 * band);
             }
             gl_FragColor = vec4(col, 1.0);
             #include <tonemapping_fragment>
@@ -108,6 +119,8 @@ export function Sky() {
     // Haze: the denser the air, the less sky (the cloud takes it all).
     const haze = Math.min(1, Math.max(0, (look.fogDensity - 0.0035) / 0.02));
     u.uHaze.value = k * Math.max(haze * 0.96, look.cloud);
+    (u.uGoldDir.value as Vector3).subVectors(look.gold.pos, camera.position).normalize();
+    (u.uGold.value as Color).copy(look.gold.color).multiplyScalar(k * (1 - look.cloud));
   });
 
   return (

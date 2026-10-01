@@ -23,7 +23,7 @@ export type SegmentId = IntroChapterId | 'events' | 'portal' | 'teams' | 'return
  *             goes on — to the Crew
  *   the room  one stretch of track for whichever event was chosen: into its
  *             bay and its room (enter), a short way on inside it (room — the
- *             camera's slow step in; the room's installation plays on its own
+ *             scroll's slow step in; the room's installation plays on its own
  *             clock once the camera is there, never at the scroll's pace:
  *             scenes/events/controller), then its record: a page the
  *             scroll moves px for px, its edge rising over the room for a screen
@@ -36,7 +36,12 @@ export type SegmentId = IntroChapterId | 'events' | 'portal' | 'teams' | 'return
  *             (scenes/events/controller joins the hub's end to this, the
  *             picture the same at both), on into the portal segment
  */
-export const EVENTS_VH = { arrival: 44, hub: 60, enter: 16, room: 24, unfold: 100, read: 760, decide: 20, rejoin: 60 } as const;
+// The old 16/24vh slices were only thresholds for timed camera playback. Now that navigation is
+// scrubbed, give the hall-to-bay path and established room real scroll distance: no tiny wheel
+// gesture spanning the whole hall. Editorial remains measured px-for-px, not stretched with these.
+// The hall walk needs real travel distance too: 44vh compressed the whole doorway-to-shelf
+// approach into a few wheel notches. Match the scale of the subsequent room approach, not a zoom.
+export const EVENTS_VH = { arrival: 180, hub: 60, enter: 150, room: 100, unfold: 100, read: 760, decide: 20, rejoin: 60 } as const;
 const eventsVh = Object.values(EVENTS_VH).reduce((a, b) => a + b, 0);
 
 /**

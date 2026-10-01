@@ -25,6 +25,7 @@
  * materials.
  */
 import { Color, Vector3 } from 'three';
+import { ACM_CEG } from './camera';
 import { T } from './timeline';
 import { flashAt } from './world/lightning';
 
@@ -58,6 +59,19 @@ export function colorTrack(keys: Key<string>[]) {
   return (t: number, out: Color) => {
     const [i, j, w] = locate(cols, t);
     return out.copy(cols[i][1]).lerp(cols[j][1], w);
+  };
+}
+
+/** A number track that runs straight between its keys (for something travelling: it never pauses at a key). */
+function linearTrack(keys: Key<number>[]) {
+  return (t: number) => {
+    if (t <= keys[0][0]) return keys[0][1];
+    const n = keys.length;
+    if (t >= keys[n - 1][0]) return keys[n - 1][1];
+    let i = 0;
+    while (t > keys[i + 1][0]) i++;
+    const w = (t - keys[i][0]) / (keys[i + 1][0] - keys[i][0]);
+    return keys[i][1] + (keys[i + 1][1] - keys[i][1]) * w;
   };
 }
 
@@ -130,7 +144,12 @@ const fogColor = colorTrack([
   [T.cloudOut - 1, '#eceef0'],
   [T.cloudOut + 1, '#cfdbe6'],
   [T.apex, '#c3d3e2'],
-  [T.descend, '#c6d5e3'],
+  // The gold travelling through the air (goldReach): far off first, then all round the flight.
+  [T.acmCegIn, '#c5d2dd'],
+  [142.5, '#d6d6d0'],
+  [T.acmCegFormed, '#eedab9'],
+  [T.acmCegHold, '#eedbbd'],
+  [T.descend, '#dadcd6'],
   [T.cloudTop, '#dfe5ea'],
   [T.cloudTop + 1, '#e8ebed'],
   [T.cloudBase - 1, '#e2e5e7'],
@@ -295,6 +314,8 @@ const skyMid = colorTrack([
   [T.hover, '#90adc8'],
   [T.cloudOut + 1, '#86acd6'],
   [T.apex, '#82a9d6'],
+  [T.acmCegFormed, '#b4bcc2'],
+  [T.descend, '#88add6'],
   [T.plaza, '#a0b8cd'],
 ]);
 const skyHorizon = colorTrack([
@@ -306,6 +327,10 @@ const skyHorizon = colorTrack([
   [T.hover, '#ecd0b2'],
   [T.cloudOut + 1, '#f3e2cc'],
   [T.apex, '#f6e6d0'],
+  [T.acmCegIn, '#f6e4cc'],
+  [T.acmCegFormed, '#f6d9ae'],
+  [T.acmCegHold, '#f5dbb2'],
+  [T.descend, '#f3e2cc'],
   [T.plaza, '#e8d6c2'],
 ]);
 
@@ -337,26 +362,15 @@ const exposure = numberTrack([
   [T.cloudOut - 1, 0.98],
   [T.cloudOut + 1, 1.05],
   [T.apex, 1.06],
+  [T.acmCegIn, 1.02],
+  [141.5, 0.97],
+  [T.acmCegFormed, 0.97],
+  [T.acmCegHold, 0.98],
   [T.descend, 1.05],
   [T.cloudTop + 1, 1.0],
   [T.cloudBase + 1, 1.0],
   [T.plaza, 1.05],
   [T.end, 1.05],
-]);
-
-/**
- * The light ACM-CEG is revealed in: as its letters come up out of the cloud, one by one, a violet light
- * comes into the cloud around them — from none as the first breaks the surface to its fullest as the
- * last settles (AcmCeg: each letter 0.42 beats after the last, 2.7 to come up) — held, and gone as
- * the camera drops back into the cloud. Light on white cloud, not a colour of it (Clouds.tsx).
- */
-const violet = numberTrack([
-  [T.acmCegIn - 0.3, 0],
-  [T.acmCegIn + 1.2, 0.18],
-  [T.acmCegIn + 2.7 + 6 * 0.42, 1],
-  [T.acmCegHold, 1],
-  [T.descend + 1, 0.55],
-  [T.cloudTop, 0],
 ]);
 
 /** The cloud: how much of it is around the camera (0..1). (Also the sound's: SoundDirector.) */
@@ -388,6 +402,55 @@ const tunnelAmbient = numberTrack([
   [T.doorway, 0.9],
   [T.end, 1],
 ]);
+
+/**
+ * The gold (the ascent's reveal). Over the cloud, a warm light wakes deep inside it, ahead of the
+ * flight, behind where ACM–CEG rises (its place: world/AcmCeg.tsx sets it in the cloud behind the name).
+ * It is a light, not a colour: the cloud around it is lit by it from within and at its thin edges
+ * (Clouds), the sky glows low towards it (Sky), and it lights the name (AcmCeg). How bright it is, and
+ * how far its warmth has travelled out through the air from it (m): the far air first, then all round
+ * the flight — white, warm white, champagne, gold — built up as the name rises, warmest as it stands
+ * whole. It runs straight (a travelling thing never pauses on the way). It fades as the camera tilts
+ * down into the cloud, which is white inside.
+ */
+const goldAmount = numberTrack([
+  [T.goldIn, 0],
+  [T.acmCegIn, 0.22],
+  [141.5, 0.62],
+  [143, 0.95],
+  [T.acmCegFormed, 1.1],
+  [147, 1],
+  [T.acmCegHold, 0.95],
+  [153, 0.78],
+  [T.descend, 0.45],
+  [T.cloudTop, 0],
+]);
+const goldReach = linearTrack([
+  [T.goldIn, 0],
+  [T.acmCegIn, 12],
+  [140.8, 45],
+  [142, 90],
+  [143.2, 150],
+  [T.acmCegFormed, 270],
+  [145.8, 420],
+  [147.5, 560],
+  [T.acmCegHold, 650],
+]);
+/**
+ * How much of the white daylight is left on the cloud (it gives way to the gold: the sea of cloud goes
+ * soft and misty as the light wakes in it, and the gold brings the brightness back as it spreads).
+ */
+const goldDay = numberTrack([
+  [T.apex, 1],
+  [T.acmCegIn, 0.9],
+  [141.2, 0.7],
+  [T.acmCegFormed, 0.66],
+  [T.acmCegHold, 0.68],
+  [T.descend, 0.9],
+  [T.cloudTop, 1],
+]);
+/** Its colour: champagne gold, never orange (the air it lights is what turns warm). */
+const GOLD = new Color('#ffcb8c');
 
 /** Darkness (0..1) — none in the current script (kept for the look's shape). */
 const dark = numberTrack([[0, 0]]);
@@ -476,6 +539,8 @@ const vignette = numberTrack([
   [T.heroEnd, 0.2],
   [T.cloudIn + 1, 0.1],
   [T.apex, 0.16],
+  [T.acmCegFormed, 0.07],
+  [T.descend, 0.14],
   [T.cloudTop + 1, 0.1],
   [T.cloudBase + 3, 0.18],
   [T.shaft, 0.28],
@@ -515,13 +580,15 @@ export const look = {
   practicals: 1,
   exposure: 1,
   cloud: 0,
-  /** The violet light ACM-CEG is revealed in (0..1). */
-  violet: 0,
   /** Lightning's light (0..~1.2) at this beat, and where in the sky it comes from (unit). */
   flash: 0,
   flashDir: new Vector3(0, 1, 0),
   dark: 0,
   tunnelAmbient: 1,
+  /** The light inside the cloud (see goldAmount): where it is (world), its colour × brightness, how far it has reached (m). */
+  gold: { pos: new Vector3(ACM_CEG.x, ACM_CEG.y - 8, ACM_CEG.z - 45), color: new Color(), amount: 0, reach: 0, day: 1 },
+  /** Where ACM–CEG's letters stand at rest (world y of their feet): the cloud shelf in front of it lies just under (world/AcmCeg.tsx sets it). */
+  nameFoot: ACM_CEG.y - 17,
   grade: { saturation: 1, contrast: 1, lift: new Color(0, 0, 0), gain: new Color(1, 1, 1), vignette: 0, bloom: 0 },
 };
 
@@ -549,9 +616,12 @@ export function evaluateLook(t: number, reduced = false) {
   L.practicals = practicals(t);
   L.exposure = exposure(t);
   L.cloud = cloud(t);
-  L.violet = violet(t);
   L.dark = dark(t);
   L.tunnelAmbient = tunnelAmbient(t);
+  L.gold.amount = goldAmount(t);
+  L.gold.reach = goldReach(t);
+  L.gold.day = goldDay(t);
+  L.gold.color.copy(GOLD).multiplyScalar(L.gold.amount);
   const g = L.grade;
   g.saturation = saturation(t);
   g.contrast = contrast(t);

@@ -13,56 +13,44 @@
  * the room part is live instead — and walled at its end: the choice there,
  * never another event unasked.
  *
- *   Visit          the chosen room: the scroll set at its threshold — no scroll
- *                  carried for the visitor; the room's entry plays from there
- *   Back to full   the record slid away by the scroll, back to the matrix's
- *                  stretch; the room's exit plays from there
- *   Next event     back out, and — once the camera is at the matrix — the next
+ *   Visit          request entry on the same scroll track; input can interrupt
+ *   Back to full   scroll back through the record and room to the matrix
+ *   Next event     back out, and — once at the matrix — visit the next
  *   Visit the Crew on from the whole matrix through its opening to the portal
  *
  * Two kinds of time, never confused. The SCROLL is where the visitor is: the
- * matrix, a room's threshold crossed or not, how far up the record has come —
- * nothing moves on without it, and it stops where it stops. A room's ENTRY
- * (the camera in through its bay) and its INSTALLATION (and the camera's slow
- * step in with it) are choreography: each plays at its own fixed pace once the
- * scroll has crossed into the room, and plays back at its own pace once it has
- * crossed out — never faster or slower for how fast the scroll moved. Both are
- * clocks stepped once a frame with the frame's time (stepEventsTrack): no
- * timers, no loop of their own.
- * Nothing runs on a timer: the scroll moves, and everything is a function of it.
+ * matrix, camera approach, the step inside and editorial. It stops/reverses
+ * exactly at that position. Only the INSTALLATION plays at a fixed pace once
+ * the room is reached, reversing at its own pace when asked. That clock never
+ * writes scroll, camera or page progress. It uses the existing frame callback:
+ * no timers, no animation-completion navigation, no loop of its own.
  */
 import { EVENTS } from '@/content/events';
-import { EVENTS_TRACK as K, EVENTS_VH, INTRO_PROGRESS_END, PORTAL_DWELL, PORTAL_GATE, PORTAL_SPLIT, SEGMENTS, eventsAt, segmentAt, segmentProgress } from '@/config/timeline';
+import { EVENTS_TRACK as K, INTRO_PROGRESS_END, PORTAL_DWELL, PORTAL_GATE, PORTAL_SPLIT, SEGMENTS, eventsAt, segmentAt, segmentProgress } from '@/config/timeline';
 import { INTRO_SPAN, INTRO_START, T } from '@/intro/timeline';
+import { introFrame } from '@/intro/state';
 import { EVENT_ROOMS } from '@/config/world';
 import { experience } from '@/store/experience';
 import { cue } from '@/systems/audio/sfx';
 import { clamp01, easeInOutSine, smoothstep, type CameraPose } from '@/systems/camera/pose';
 import { progress } from '@/systems/scroll/progress';
-import { jumpToProgress, scrollSpan, scrollToProgress, shiftProgress } from '@/systems/scroll/ScrollTimeline';
+import { cancelScrollMotion, jumpToProgress, scrollSpan, scrollToProgress, shiftProgress } from '@/systems/scroll/ScrollTimeline';
 import { teamsFrame } from '@/teams/state';
 import { eventsFrame, eventsState } from './state';
-import { HUB_REST, HUB_SEAM, REJOIN_SEAM } from './track';
+import { eventsNavigation, HUB_REST, HUB_SEAM, REJOIN_SEAM } from './track';
 
 const N = EVENTS.length;
-const part = (p: number, r: { start: number; end: number }) => clamp01((p - r.start) / (r.end - r.start));
 
-/** Where a room is reached: across its threshold, half-way through the scroll's short step from the matrix. */
-const ENTRY_AT = K.enter.start + (K.enter.end - K.enter.start) * 0.5;
-/** Where "Visit" sets the scroll: the room reached (its entry plays from there). */
-const ROOM_REACHED = K.room.start;
 /** With reduced motion, the room's framed still (systems/camera/shots: ROOM_STILLS), cut to at once. */
 const ROOM_STILL = K.room.end;
-/** The choreography's own pace (s): in through the bay, and back out; the installation, and back. */
-const ENTRY_S = 2;
-const EXIT_S = 1.6;
+/** Only the installation has a playback pace (s), independent of navigation. */
 const ROOM_PLAY_S = 4;
 const ROOM_UNPLAY_S = 1.6;
 /** Standing before the portal (where "Visit the Crew" goes). */
 const PORTAL_STAND = SEGMENTS.portal.start + (SEGMENTS.portal.end - SEGMENTS.portal.start) * PORTAL_DWELL;
 
 /** The moves' own pace (s): the record slid away (Back, Next); on to the portal. */
-const PACE = { slide: 0.9, crew: 5.8 };
+const PACE = { crew: 5.8 };
 
 /** The matrix's light, and its rooms, coming up: from the door half open, to half-way across the hall. */
 const REVEAL_FROM = INTRO_PROGRESS_END * ((T.door + 3.5 - INTRO_START) / INTRO_SPAN);
@@ -107,22 +95,15 @@ function endVisit() {
   applyWall();
 }
 
-/**
- * What waits for the camera to be back at the whole matrix — after a room's exit, the next thing
- * (the next room, the matrix's opening): run once the exit and the installation have played back,
- * so what happens next starts from the picture every room's path starts from. Given up if the
- * scroll is taken back into the room meanwhile.
- */
-let afterOut: (() => void) | null = null;
-
-/** The choreography's clocks (0..1), and the room they are for. */
-let entry = 0;
+/** Installation playback (0..1), and the room it is for. */
 let roomPlay = 0;
 let clockFor = -1;
+let playbackAt = 0;
+let playbackDirection = 1;
 
 /**
  * Once a frame, before the camera is placed: the join at the matrix (no event chosen, the scroll
- * passes from the hub's seam to the rejoin's and back), the walls, and what waited for the matrix.
+ * passes from the hub's seam to the rejoin's and back), the walls and installation playback.
  */
 export function stepEventsTrack(dt = 0) {
   const st = eventsState();
@@ -132,19 +113,11 @@ export function stepEventsTrack(dt = 0) {
   applyWall();
   stepClocks(dt);
   if (teamsFrame.inside || experience().phase !== 'cinematic' || progress.pending) return;
-  if (afterOut) {
-    if (st.visiting && t >= ENTRY_AT) afterOut = null;
-    else if (entry === 0 && roomPlay === 0) {
-      const run = afterOut;
-      afterOut = null;
-      run();
-      lastTarget = progress.target;
-      return;
-    }
-  }
   // Back in the matrix, past where its scroll turns for the Crew, and the room's exit played: the
   // visit is over.
-  if (st.visiting && t < HUB_SEAM - 1e-5 && entry === 0 && roomPlay === 0) return endVisit();
+  // Selection at the hub is allowed to wait indefinitely. End a visit only when the visitor has
+  // actually scrolled back across the seam, not merely because selection began there.
+  if (st.visiting && prev !== null && prev >= HUB_SEAM && t < HUB_SEAM - 1e-5) return endVisit();
   if (st.visiting || !(t > HUB_SEAM && t < REJOIN_SEAM)) return;
   // No event chosen, and the scroll between the seams: carry it across, the way it came — a step of
   // the scroll's own (however fast, far less than the room part is long). Anything else put it there
@@ -159,31 +132,29 @@ export function stepEventsTrack(dt = 0) {
 }
 
 /**
- * The room's choreography, a frame on: its entry plays in once the scroll is across the room's
- * threshold and back out once it isn't, at its own pace; its installation plays once the camera is
- * in, and back as it leaves. (Reduced motion: at once.) Written into the picture (eventsFrame.view)
- * before the camera is placed from it.
+ * Installation playback only. Scroll chooses direction, never speed. Neither its completion nor
+ * its duration can move the camera, change the scroll or gate the editorial.
  */
 function stepClocks(dt: number) {
   const st = eventsState();
   const v = eventsFrame.view;
   if (st.selected !== clockFor) {
     clockFor = st.selected;
-    entry = 0;
     roomPlay = 0;
+    playbackAt = progress.target;
+    playbackDirection = 1;
   }
   const on = experience().phase === 'cinematic' && !teamsFrame.inside;
-  const inward = on && st.visiting && st.selected >= 0 && progress.target >= ENTRY_AT;
+  const navigation = eventsNavigation(progress.target, st.selected);
+  const delta = progress.target - playbackAt;
+  if (Math.abs(delta) > 1e-8) playbackDirection = delta > 0 ? 1 : -1;
+  playbackAt = progress.target;
+  const inside = on && st.visiting && navigation.enter === 1;
   const now = experience().reducedMotion;
-  if (now) entry = inward ? 1 : 0;
-  else if (inward) entry = Math.min(1, entry + dt / ENTRY_S);
-  else entry = Math.max(0, entry - dt / EXIT_S);
-  const inside = inward && entry >= 1;
   if (now) roomPlay = inside ? 1 : 0;
-  else if (inside) roomPlay = Math.min(1, roomPlay + dt / ROOM_PLAY_S);
+  else if (inside && playbackDirection > 0) roomPlay = Math.min(1, roomPlay + dt / ROOM_PLAY_S);
   else roomPlay = Math.max(0, roomPlay - dt / ROOM_UNPLAY_S);
-  v.enter = entry;
-  v.room = roomPlay;
+  v.play = roomPlay;
 }
 
 /** Well inside each side of the join (a page scroll lands to the pixel, never quite where it was sent). */
@@ -195,30 +166,104 @@ const REJOIN_END = K.rejoin.end - (K.rejoin.end - REJOIN_SEAM) * 0.02;
 // ─── What is asked of it ─────────────────────────────────────────────────────
 
 const reduced = () => experience().reducedMotion;
-/** Into event i's room, from the whole matrix: the scroll set at its threshold, and its entry plays. */
-export function visitEvent(i: number) {
-  if (i < 0 || i >= N || experience().phase !== 'cinematic') return;
-  afterOut = null;
+
+/**
+ * Explicit Visit/Back only: budget travel by the part of the existing path being traversed.
+ * A long editorial must not squeeze the physical room exit into the last fraction of a fixed
+ * two-second move. Return pacing is independent of record length; deliberate selection has a
+ * gentler approach budget. Wheel/touch can interrupt this single Lenis request at any point.
+ */
+function requestRoomTravel(to: number, onComplete?: () => void, entering = false) {
+  const from = progress.target;
+  const low = Math.min(from, to), high = Math.max(from, to);
+  const boundaries = [low, ...[K.arrival.end, K.enter.start, K.enter.end, K.room.end].filter((p) => p > low && p < high), high];
+  const points = to < from ? boundaries.reverse() : boundaries;
+  const legs = points.slice(1).map((end, i) => {
+    const start = points[i];
+    const mid = (start + end) / 2;
+    // Explicit entry has no time budget for the identical-pose browsing interval. Its scroll
+    // position can cross that interval instantaneously without cutting the physical camera path.
+    const secondsPerProgress = mid < K.arrival.end
+      ? 1.8 / (K.arrival.end - K.arrival.start)
+      : mid < K.enter.start
+        ? 0
+        : mid < K.enter.end
+          ? (entering ? 3.2 : 2.2) / (K.enter.end - K.enter.start)
+          : mid < K.room.end
+            ? (entering ? 0.8 : 0.6) / (K.room.end - K.room.start)
+            : scrollSpan() / 1000; // editorial retreat: 1000 CSS px/s, not a content-length multiplier
+    return { start, end, seconds: Math.abs(end - start) * secondsPerProgress };
+  });
+  const duration = legs.reduce((sum, leg) => sum + leg.seconds, 0);
+  if (duration < 1e-6) { onComplete?.(); return; }
+  // Short start/stop ramps; no second sine over the camera's already-authored approach easing.
+  // The middle of a long record remains constant-speed instead of racing through the room later.
+  const ramp = Math.min(0.25, 0.14 / duration);
+  const easing = (t: number) => {
+    const u = t < ramp ? t * t / (2 * ramp * (1 - ramp))
+      : t > 1 - ramp ? 1 - (1 - t) ** 2 / (2 * ramp * (1 - ramp))
+        : (t - ramp / 2) / (1 - ramp);
+    let elapsed = u * duration;
+    for (const leg of legs) {
+      if (leg.seconds === 0) continue;
+      if (elapsed <= leg.seconds) {
+        const p = leg.start + (leg.end - leg.start) * elapsed / leg.seconds;
+        return clamp01((p - from) / (to - from));
+      }
+      elapsed -= leg.seconds;
+    }
+    return 1;
+  };
+  scrollToProgress(to, duration, { easing, onComplete });
+}
+
+/** Only the matrix accepts selection, never an old hit region over an already-entered room. */
+export function canVisitEvent() {
   const st = eventsState();
+  const p = progress.target;
+  const ex = experience();
+  const pixel = 1 / Math.max(1, scrollSpan());
+  const doorway = INTRO_PROGRESS_END * ((T.doorway - INTRO_START) / INTRO_SPAN);
+  const matrix = (p >= doorway && p <= K.enter.start + pixel) || (p >= K.rejoin.start && p <= K.rejoin.end);
+  return matrix && ex.phase === 'cinematic' && !ex.menuOpen && !ex.dossier && !ex.textVersionOpen && !teamsFrame.inside &&
+    !(st.visiting && p >= K.enter.start - pixel && p < K.rejoin.start);
+}
+
+/** Click/tap explicitly requests entry on the same scroll path; any input interrupts it. */
+export function visitEvent(i: number) {
+  if (i < 0 || i >= N || !canVisitEvent()) return;
+  const st = eventsState();
+  cancelScrollMotion();
   st.set({ selected: i, visiting: true });
   applyWall();
   eventsFrame.hover = -1;
-  // (The camera is placed from the room's clocks, not the scroll: setting the scroll moves nothing.)
-  jumpToProgress(reduced() ? ROOM_STILL : ROOM_REACHED, 0, { fade: false });
+  if (reduced()) jumpToProgress(ROOM_STILL);
+  else {
+    // The hub is a stationary stretch, not part of the approach. Skip only
+    // that identical-pose stretch on an explicit selection so a tap responds
+    // immediately instead of spending its first half-second on invisible travel.
+    if (atHub(progress.target)) shiftProgress(K.enter.start - progress.target);
+    // Stop one CSS pixel before the editorial boundary. Browser scroll rounding must not put a
+    // selection into its record; the next real scroll is what brings that foreground layer up.
+    requestRoomTravel(K.room.end - 1 / Math.max(1, scrollSpan()), undefined, true);
+  }
 }
 
 /**
- * Out of a room (or its record) to the whole matrix: the record slid back down by the scroll, then the
- * scroll set at the matrix's stretch, and the room's exit plays; then `then`, once it has.
+ * An explicit Back/Next request scrolls the same path to the matrix. Any user input interrupts the
+ * existing Lenis move. Only an explicit Next request visits another room on completion.
  */
 function outToHub(then: (() => void) | null) {
-  afterOut = null;
-  const leave = () => {
-    jumpToProgress(HUB_REST, 0, { fade: false });
-    afterOut = then;
-  };
-  if (!reduced() && eventsFrame.view.page > 1) scrollToProgress(ROOM_REACHED, PACE.slide, { easing: easeInOutSine, onComplete: leave });
-  else leave();
+  if (reduced()) {
+    jumpToProgress(HUB_REST);
+    endVisit();
+    then?.();
+  } else requestRoomTravel(K.enter.start, () => {
+    // Only the stationary hub interval is skipped, after the physical return has completed.
+    shiftProgress(HUB_REST - progress.target);
+    endVisit();
+    then?.();
+  });
 }
 
 /** From a room (or its record) back out to the whole matrix. */
@@ -265,7 +310,9 @@ export function roomProgress(i: number, t = 0.02) {
 
 /** Nothing chosen, nothing lit (a jump elsewhere, the loop). */
 export function resetEvents() {
-  afterOut = null;
+  roomPlay = eventsFrame.view.play = 0;
+  clockFor = -1;
+  playbackDirection = 1;
   endVisit();
   eventsFrame.hover = -1;
   eventsFrame.lit.fill(0);
@@ -293,22 +340,20 @@ export function updateEvents(dt: number, shot: CameraPose, apply: boolean, reduc
   const ev = seg === 'events';
   // The matrix comes up as the door opens — lit, its rooms coming clear, by half-way across the hall.
   v.reveal = seg === 'descent' || ev || seg === 'portal' || seg === 'teams' || seg === 'return' ? smoothstep(REVEAL_FROM, REVEAL_TO, p) : 0;
-  // (v.enter and v.room are the room's choreography: stepClocks, before the camera was placed.)
-  if (!ev && seg !== 'portal') {
-    v.enter = 0;
-    v.room = 0;
-  }
-  const inRoomPart = ev && p >= K.enter.start && p < K.rejoin.start;
+  // The picture and camera read the same navigation sample. The installation's v.play is separate.
+  const navigation = eventsNavigation(p, st.visiting ? st.selected : -1);
+  v.enter = navigation.enter;
+  v.room = navigation.room;
   // The record: a page moved by the scroll from where its edge starts up over the room to its wall —
-  // its first screen the room giving way to it (unfold: the room's picture going up the screen with
-  // it, CameraRig), the rest of it read (read), and the last half screen of it, the choice coming up
-  // (decide). It goes with the scroll itself (Lenis's own smoothing), as a page does — not with the
+  // its first screen the sheet covering the room (unfold: CameraRig moves the deeper picture only
+  // slightly underneath), the rest of it read (read), and the last half screen, the choice coming up
+  // (decide). It goes with the native scroll itself, as a page does — not with the
   // camera's follow behind it (the camera stands still in the room while it does).
   const R = eventsFrame.record;
   const screen = Math.max(1, R.screen);
   const length = Math.max(R.height, screen);
   const from = K.unfold.start;
-  const pr = progress.target;
+  const pr = p;
   v.page = st.visiting && pr > from && pr < K.rejoin.start ? clamp01((pr - from) / Math.max(1e-9, recordWall() - from)) * length : 0;
   v.unfold = clamp01(v.page / screen);
   v.read = length > screen ? clamp01((v.page - screen) / (length - screen)) : v.page >= screen ? 1 : 0;
@@ -318,8 +363,12 @@ export function updateEvents(dt: number, shot: CameraPose, apply: boolean, reduc
   // The whole matrix, still: to be chosen from.
   let hub = 0;
   if (ev) {
-    if (p < K.arrival.end) hub = smoothstep(0.86, 1, part(p, K.arrival));
-    else hub = 1 - smoothstep(0, 0.06, v.enter);
+    hub = 1 - smoothstep(0, 0.06, v.enter);
+  } else if (seg === 'descent') {
+    // The gate is fully retracted by the doorway beat. The rooms are already
+    // visible there: their real buttons must not remain disabled until the
+    // last few pixels of the later shelf approach.
+    hub = smoothstep(T.doorway, T.doorway + 0.4, introFrame.t);
   } else if (seg === 'portal') hub = 1 - smoothstep(0, 0.05, segmentProgress(p, 'portal'));
   v.hub = hub;
 
@@ -342,13 +391,19 @@ export function updateEvents(dt: number, shot: CameraPose, apply: boolean, reduc
 
   if (!apply) return;
   // At the whole matrix, the camera leans a little with the pointer.
-  const w = reduced || !F.pointer.active ? 0 : hub;
+  const settled = smoothstep(eventsAt('arrival', 0.9), K.arrival.end, p);
+  // The UI can retire immediately on selection, but the physical pointer lean must release
+  // across the first part of the approach, not collapse with the hit areas in a few frames.
+  const presence = st.visiting && ev ? 1 - smoothstep(0, 0.24, v.enter) : hub;
+  const w = reduced || !F.pointer.active ? 0 : presence * settled;
   const kp = 1 - Math.exp(-dt * 3);
-  lean.x += (F.pointer.x * w - lean.x) * kp;
-  lean.y += (F.pointer.y * w - lean.y) * kp;
-  shot.x += lean.x * 0.45;
-  shot.y += lean.y * 0.22;
-  shot.yaw -= lean.x * 0.014;
+  lean.x += (F.pointer.x - lean.x) * kp;
+  lean.y += (F.pointer.y - lean.y) * kp;
+  // The pointer's damping must not leave a residual camera move inside a room.
+  // Gate the damped pointer by its scroll-authored presence, not its target.
+  shot.x += lean.x * w * 0.45;
+  shot.y += lean.y * w * 0.22;
+  shot.yaw -= lean.x * w * 0.014;
 }
 
 /** How far through the portal segment the matrix's opening sits (for the camera's keys: shots.ts). */

@@ -18,14 +18,14 @@ export interface TypeSpec {
   tracking?: number;
   align?: CanvasTextAlign;
   baseline?: CanvasTextBaseline;
-  /** (Width axis — no longer used: Montserrat has none.) */
+  /** Optional width axis; the shared Geist family uses its normal width. */
   stretch?: 'condensed' | 'semi-condensed' | 'normal' | 'semi-expanded' | 'expanded';
 }
 
 const FALLBACK: Record<Family, string> = {
-  serif: 'Montserrat, "Helvetica Neue", Arial, sans-serif',
-  sans: 'Montserrat, "Helvetica Neue", Arial, sans-serif',
-  mono: 'Montserrat, "Helvetica Neue", Arial, sans-serif',
+  serif: 'Geist, "Helvetica Neue", Arial, sans-serif',
+  sans: 'Geist, "Helvetica Neue", Arial, sans-serif',
+  mono: 'Geist, "Helvetica Neue", Arial, sans-serif',
 };
 
 let familyCache: Record<Family, string> | null = null;
@@ -59,10 +59,10 @@ export async function fontsReady(): Promise<void> {
 }
 
 /**
- * The in-world type's hierarchy, as the page's (globals.css --w-* / --t-*): one family, Montserrat,
+ * The in-world type's hierarchy, as the page's (globals.css --w-* / --t-*): one family, Geist,
  * so the roles are weights and tracking. A display line ('serif') set at a text weight is a title
  * — semibold, a touch tighter; a label ('mono') is semibold, and its tracking is held to what
- * Montserrat (already wide) needs; text ('sans') is as specified.
+ * its labels need; text ('sans') is as specified.
  */
 function roleWeight(spec: TypeSpec) {
   const w = spec.weight ?? 400;

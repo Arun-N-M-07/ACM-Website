@@ -1,5 +1,5 @@
 /**
- * The room clock and the Prodigy wall's timing — plain functions of scroll, with nothing of the
+ * The room clock and the Prodigy wall's timing — navigation plus fixed-rate playback, with nothing of the
  * renderer in them, so the page's own code (the sound director reads both) can use them without
  * bringing the 3D world into the page's first script. The exhibits reach them through common.ts.
  */
@@ -25,12 +25,12 @@ export interface RoomClock {
 
 export function readRoomClock(index: number, out: RoomClock) {
   const v = eventsFrame.view;
-  if (v.index === index && v.enter > 0) {
+  if (v.index === index) {
     out.here = true;
     out.near = true;
     // (Coming in through the frame, the installation's lead-in; inside, its own clock — and leaving
     // mid-way, that clock playing back, so it never jumps.)
-    out.u = Math.max(v.room, v.enter < 1 ? -0.3 + 0.3 * v.enter : 0);
+    out.u = v.play > 0 ? v.play : v.enter < 1 ? -0.3 + 0.3 * v.enter : 0;
     out.presence = v.enter < 1 ? 0.2 + 0.8 * v.enter : 1;
     return out;
   }

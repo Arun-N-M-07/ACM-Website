@@ -47,6 +47,7 @@ import { useGainedLightAnchors } from '@/systems/lighting/lightPool';
 import { useDisposable } from '@/systems/performance/useDisposable';
 import { text } from '@/systems/textures/typeset';
 import { Portal } from '@/teams/portal/Portal';
+import { LOBBY, PASSAGE as LOBBY_PASSAGE } from '@/intro/world/lobbyLayout';
 import { CanvasPanel } from '../shared/CanvasPanel';
 import { useKit } from '../underground/kit';
 import { EventRoom } from './EventRoom';
@@ -88,6 +89,23 @@ const bayRect = (r: RoomLayout) => ({ x0: r.bayX - M.bay.w / 2, x1: r.bayX + M.b
 
 // ─── The hall ───────────────────────────────────────────────────────────────
 
+/** Continuous metric UVs across architectural pieces, rather than each box
+ * restarting the plank/tile pattern at a different origin. The floor origin
+ * matches the existing lobby passage so its grid also meets at the doorway. */
+function hallUv(g: BufferGeometry) {
+  const p = g.getAttribute('position');
+  const n = g.getAttribute('normal');
+  const uv = g.getAttribute('uv');
+  for (let i = 0; i < p.count; i++) {
+    const x = p.getX(i), y = p.getY(i), z = p.getZ(i);
+    if (Math.abs(n.getY(i)) > 0.5) uv.setXY(i, x + UNDERGROUND.corridor.halfWidth, LOBBY.north - z);
+    else if (Math.abs(n.getX(i)) > 0.5) uv.setXY(i, n.getX(i) > 0 ? LOBBY_PASSAGE.z0 - z : z - LOBBY_PASSAGE.z1, y - FLOOR_Y);
+    else uv.setXY(i, x + UNDERGROUND.corridor.halfWidth, y - FLOOR_Y);
+  }
+  uv.needsUpdate = true;
+  return g;
+}
+
 function Hall() {
   const kit = useKit();
   const geo = useDisposable(() => {
@@ -97,11 +115,13 @@ function Hall() {
     const walls: BufferGeometry[] = [];
     const g = UNDERGROUND.corridor;
     // The south wall, open where the lobby's passage comes through.
-    const sz = HALL.south + t / 2;
+    // The lobby passage stops at `south`. Put this wall on the hall side of that
+    // joint: putting it behind the mouth duplicated the passage's inner jamb faces.
+    const sz = HALL.south - t / 2;
     for (const s of [-1, 1]) walls.push(place(metricBox(HALL.halfWidth - g.halfWidth, H, t), { position: [(s * (HALL.halfWidth + g.halfWidth)) / 2, F + H / 2, sz] }));
     walls.push(place(metricBox(2 * g.halfWidth, H - g.height, t), { position: [0, F + g.height + (H - g.height) / 2, sz] }));
     // The side walls, and pilasters along them.
-    const len = HALL.south + t - HALL.wall;
+    const len = HALL.south - HALL.wall;
     for (const s of [-1, 1]) {
       walls.push(place(metricBox(t, H, len), { position: [s * (HALL.halfWidth + t / 2), F + H / 2, HALL.wall + len / 2] }));
       for (let z = HALL.south - 4; z > HALL.wall + 2; z -= 5.6) walls.push(place(metricBox(0.6, H, 1), { position: [s * (HALL.halfWidth - 0.3), F + H / 2, z] }));
@@ -129,7 +149,9 @@ function Hall() {
     // The floor: the hall's; the niche's round the pit the middle column sinks into; the passage's.
     const floors: BufferGeometry[] = [];
     const pit = M.seam;
-    floors.push(place(metricBox(2 * HALL.halfWidth + 2 * t, 0.2, HALL.south + t - HALL.wall), { position: [0, F - 0.1, (HALL.south + t + HALL.wall) / 2] }));
+    // Meet the existing lobby floor edge-to-edge. Its top occupies z >= south;
+    // extending this floor through the mouth produced a coplanar overlap strip.
+    floors.push(place(metricBox(2 * HALL.halfWidth + 2 * t, 0.2, len), { position: [0, F - 0.1, (HALL.south + HALL.wall) / 2] }));
     floors.push(place(metricBox(2 * nw, 0.2, HALL.wall - M.face), { position: [0, F - 0.1, (HALL.wall + M.face) / 2] }));
     for (const s of [-1, 1]) floors.push(place(metricBox(nw - pit, 0.2, M.face - HALL.niche.back), { position: [(s * (nw + pit)) / 2, F - 0.1, (M.face + HALL.niche.back) / 2] }));
     floors.push(place(metricBox(2 * pit, 0.2, M.back - HALL.niche.back), { position: [0, F - 0.1, (M.back + HALL.niche.back) / 2] }));
@@ -148,7 +170,7 @@ function Hall() {
     const ceiling = place(metricBox(2 * HALL.halfWidth + 2 * t, 0.4, len), { position: [0, F + H + 0.2, HALL.wall + len / 2] });
     // Light: two long slots overhead, either side of the axis.
     const slots = merge([-6.5, 6.5].map((x) => place(metricBox(0.14, 0.04, len - 7), { position: [x, F + H - 0.02, HALL.wall + len / 2 + 1.5] })));
-    return { walls: merge(walls), niche: merge(niche), floor: merge(floors), pitWalls, ceiling, slots };
+    return { walls: hallUv(merge(walls)), niche: hallUv(merge(niche)), floor: hallUv(merge(floors)), pitWalls, ceiling, slots };
   }, []);
   return (
     <group name="events-hall">
@@ -339,15 +361,25 @@ function Column({ bk, mats }: { bk: (typeof BLOCKS)[number]; mats: Materials }) 
     [],
   );
 
-  useFrame(() => {
+  useFrame(({ camera }) => {
     const v = eventsFrame.view;
     const { side, sink } = splitOffsets(v.split);
     if (group.current) {
       group.current.position.x = bk.b * side;
       group.current.position.y = bk.b === 0 ? -sink : 0;
     }
-    // Inside a room nothing else is in view: only that room is drawn.
-    const inside = v.inside > 0.999;
+    // Cull only after the camera (including its near plane) is physically inside this room. The
+    // entry state alone is not an occlusion test: the threshold pose still stands before its portal,
+    // especially in portrait. Hiding the shelf there exposed the room as a floating separate box.
+    const selected = EVENT_ROOMS[v.index];
+    const near = camera.near;
+    const at = camera.position;
+    const inside = !!selected && v.enter === 1
+      && Math.abs(at.x - selected.center[0]) + near < selected.length * selected.scale / 2
+      && at.y - near > selected.center[1]
+      && at.y + near < selected.center[1] + selected.height * selected.scale
+      && at.z + near < selected.center[2] + selected.depth * selected.scale / 2
+      && at.z - near > selected.center[2] - selected.depth * selected.scale / 2;
     if (frame.current) frame.current.visible = !inside;
     bk.rooms.forEach((r, k) => {
       const g = roomGroups.current[k];
@@ -474,8 +506,10 @@ function Matrix() {
       const lit = F.lit[i];
       // Coming up out of the dark as the camera arrives: first the bays' light, then — one after
       // another — the rooms themselves.
-      const arrive = sstep(0.18 + i * 0.035, 0.5 + i * 0.035, v.reveal);
-      const worlds = sstep(0.45 + i * 0.04, 0.85 + i * 0.04, v.reveal);
+      // One architectural object, one reveal. The old per-row stagger ended
+      // above 1 for the last bays, so they stayed veiled even at the full view.
+      const arrive = sstep(0.18, 0.5, v.reveal);
+      const worlds = sstep(0.45, 0.85, v.reveal);
       // The one under the pointer: its room clear, the others quieter (never gone).
       const quiet = 0.24 * Math.max(0, litMax - lit);
       const entering = v.index === i ? v.enter : 0;

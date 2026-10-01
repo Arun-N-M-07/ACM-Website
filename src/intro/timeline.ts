@@ -107,10 +107,14 @@ export const T = {
   cloudOut: 135.5,
   /** Above the cloud: the rise levels out into flight over the sea of cloud. */
   apex: 138,
+  /** Warm cloud light preceding the name's staggered reveal. */
+  goldIn: 138.6,
   /** ACM-CEG rises out of the cloud ahead… */
   acmCegIn: 139.5,
   /** …the camera slows into its composition… */
   acmCeg: 144,
+  /** The final letter settles into the full composition. */
+  acmCegFormed: 144.6,
   /** …and holds it (a deliberate beat), drifting in a little, until here. */
   acmCegHold: 150.5,
   // 05 Descent

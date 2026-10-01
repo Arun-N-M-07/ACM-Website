@@ -8,14 +8,18 @@ import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Lenis from 'lenis';
 import { useEffect, useRef } from 'react';
-import { SCROLL_LENGTH_VH } from '@/config/timeline';
+import { EVENTS_TRACK, SCROLL_LENGTH_VH, SEGMENTS } from '@/config/timeline';
+import { progressAtIntroTime } from '@/intro/controller';
+import { T } from '@/intro/timeline';
 import { useExperience } from '@/store/experience';
 import { useTeams, type TeamsState } from '@/teams/state';
 import { progress } from './progress';
 import { wheelGain } from './wheelShape';
+import { eventsState } from '@/scenes/events/state';
 
 let lenis: Lenis | null = null;
 let trigger: ScrollTrigger | null = null;
+const WHEEL_MULTIPLIER = 0.85;
 
 /**
  * The page's scroll position for progress `p`, by the same measure the ScrollTrigger reads progress
@@ -32,6 +36,16 @@ function scrollAt(p: number) {
 /** How far the page scrolls (px) for the whole journey — progress 0 → 1 — by the same measure. */
 export function scrollSpan() {
   return scrollAt(1) - scrollAt(0);
+}
+
+/** A deliberate press takes ownership from existing input settling, without moving the page. */
+export function cancelScrollMotion() {
+  // Lenis exposes cancellation through its public stop/start pair. Both happen in this input
+  // callback, so no frame is locked; do not reach into its private animation/reset internals.
+  if (lenis && !lenis.isStopped) { lenis.stop(); lenis.start(); }
+  // Also cancel native touch momentum at the current position. The next actual scroll input is
+  // still free to move; this is not a scroll lock or a new animation controller.
+  window.scrollTo({ top: window.scrollY, behavior: 'instant' });
 }
 
 /**
@@ -140,13 +154,22 @@ export function ScrollTimeline() {
       ? null
       : new Lenis({
           lerp: 0.085,
-          wheelMultiplier: 0.85,
+          wheelMultiplier: WHEEL_MULTIPLIER,
           touchMultiplier: 1.4,
           autoRaf: false,
           // Wheel and trackpad: a fling is compressed, deliberate scrolling isn't (wheelShape.ts).
           virtualScroll: (data) => {
             if (data.event.type === 'wheel') {
-              const g = wheelGain(data.deltaX, data.deltaY);
+              // Keep the physical approach normally smoothed; the editorial responds immediately.
+              // Use the SAME Lenis target for both so no unconsumed wheel distance is dropped at the
+              // boundary. No velocity multiplier or second camera-follow is added to Events.
+              // Include the shared doorway handoff: changing gain at the shelf
+              // seam made equal forward/back input land at different positions.
+              // Page scroll is quantized to CSS pixels. Include the opening's first pixel rather
+              // than occasionally applying the Intro's shaped gain to that first gesture.
+              const inEvents = progress.target >= progressAtIntroTime(T.door) - 1 / Math.max(1, scrollSpan()) && progress.target <= SEGMENTS.events.end;
+              if (lenis) lenis.options.lerp = inEvents && eventsState().visiting && progress.target >= EVENTS_TRACK.unfold.start ? 1 : 0.085;
+              const g = inEvents ? 1 / WHEEL_MULTIPLIER : wheelGain(data.deltaX, data.deltaY);
               data.deltaX *= g;
               data.deltaY *= g;
             }
@@ -160,11 +183,20 @@ export function ScrollTimeline() {
       gsap.ticker.add(tick);
       gsap.ticker.lagSmoothing(0);
     }
+    let measuredWidth = window.innerWidth;
+    let measuredTrackHeight = track.current?.offsetHeight;
     const st = ScrollTrigger.create({
       trigger: track.current,
       start: 'top top',
       end: 'bottom bottom',
       onUpdate: (self) => {
+        // Native scrolling can report a browser resize/clamp before ScrollTrigger refreshes its
+        // old pixel range. Do not mistake that geometry change for Events navigation. The existing
+        // refresh hooks below restore this same normalized position against the new range.
+        const inEvents = progress.target >= SEGMENTS.events.start && progress.target <= SEGMENTS.events.end;
+        // Compare the stable lvh track, not innerHeight: phone toolbar movement intentionally
+        // does not resize that track and must not suspend scrolling while its bars animate.
+        if (inEvents && (window.innerWidth !== measuredWidth || track.current?.offsetHeight !== measuredTrackHeight)) return;
         if (progress.setTarget(self.progress)) pullBack();
       },
     });
@@ -179,6 +211,8 @@ export function ScrollTimeline() {
     };
     const afterRefresh = () => {
       const y = scrollAt(kept);
+      measuredWidth = window.innerWidth;
+      measuredTrackHeight = track.current?.offsetHeight;
       // (Lenis measures the page on a debounce of its own, a little after the trigger's refresh:
       // measured now, or a longer page — a phone turned back upright — is scrolled no further than
       // the shorter one went, and the next touch reads the journey from there.)

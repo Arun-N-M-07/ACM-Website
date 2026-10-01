@@ -110,14 +110,14 @@ const toHub = async (page) => {
 };
 const EVENT_TITLES = ['C.O.D.E', 'Tech Talks', 'MasterClass', 'Head Start', 'PatternX', 'CodeX', 'Prodigy', 'Open Source Mentorship Program', 'CodHer'];
 
-/** Visit room i by clicking its bay; returns the trace to the installation played. */
+/** Actual UI selection must navigate; do not inject a debug scroll that hides a broken button. */
 async function visitByClick(page, i) {
   const c = await bayCentre(page, i);
   await page.mouse.move(c.x, c.y, { steps: 5 });
   await sleep(300);
   return record(page, async () => {
     await page.mouse.click(c.x, c.y);
-    await until(page, () => window.__acm.events.snapshot().view.room > 0.999, null, 14000);
+    await until(page, () => window.__acm.events.snapshot().view.play > 0.999, null, 14000);
   }, 200);
 }
 async function backByEsc(page) {
@@ -137,7 +137,7 @@ async function desktop() {
   let tr = await record(page, async () => {
     await page.mouse.move(720, 450);
     for (let k = 0; k < 400; k++) {
-      if ((await page.evaluate(() => window.__acm.events.snapshot().view.hub)) > 0.99) break;
+      if (await page.evaluate(() => window.__acm.events.snapshot().value >= window.__acm.events.track.arrival.end)) break;
       await page.mouse.wheel({ deltaY: 90 });
       await sleep(40);
     }
@@ -190,7 +190,8 @@ async function desktop() {
   // Visit next: out to the matrix, into the next room — one continuous move.
   tr = await record(page, async () => {
     await page.click('.evx-next');
-    await until(page, () => { const s = window.__acm.events.snapshot(); return s.selected === 7 && s.view.room > 0.999; }, null, 16000);
+    await until(page, () => window.__acm.events.snapshot().selected === 7, null, 6000);
+    await until(page, () => window.__acm.events.snapshot().view.play > 0.999, null, 14000);
   }, 200);
   cut = cuts(tr, { label: 'next' });
   s = await snap(page);
@@ -236,7 +237,7 @@ async function desktop() {
   s = await snap(page);
   check(s.hover === 2 && s.lit[2] > 0.8, `${name}: keyboard focus lights a bay`, s.hover);
   await page.keyboard.press('Enter');
-  await until(page, () => window.__acm.events.snapshot().view.room > 0.999, null, 14000);
+  await until(page, () => window.__acm.events.snapshot().view.play > 0.999, null, 14000);
   s = await snap(page);
   check(s.selected === 2 && s.visiting, `${name}: Enter visits it`, s.selected);
   await page.keyboard.press('Escape');
@@ -252,7 +253,7 @@ async function desktop() {
     await sleep(200);
     tr = await record(page, async () => {
       await page.mouse.click(c.x, c.y);
-      await sleep(1300);
+      await sleep(600);
       for (let k = 0; k < 30; k++) { await page.mouse.wheel({ deltaY: -120 }); await sleep(30); }
       await sleep(2500);
     });
@@ -295,11 +296,11 @@ async function rooms() {
     const cut = cuts(tr, { label: `room ${i + 1}` });
     const s = await snap(page);
     // How long the installation took to play (its clock from the threshold to the end).
-    const t0 = tr.find((r) => r.v.room > 0.02)?.t ?? 0;
-    const t1 = tr.find((r) => r.v.room > 0.98)?.t ?? 0;
+    const t0 = tr.find((r) => r.v.play > 0.02)?.t ?? 0;
+    const t1 = tr.find((r) => r.v.play > 0.98)?.t ?? 0;
     const insideAt = tr.find((r) => r.v.inside > 0.99)?.t ?? 0;
     check(!cut && !dark(tr), `${name}: room ${i + 1} (${EVENT_TITLES[i]}) — entered without a cut or a fade`, cut);
-    check(s.selected === i && s.view.inside > 0.99 && s.view.room > 0.99, `${name}: room ${i + 1} — inside, its installation played`, s.view);
+    check(s.selected === i && s.view.inside > 0.99 && s.view.play > 0.99, `${name}: room ${i + 1} — inside, its installation played`, s.view);
     check(t1 - t0 >= 3800, `${name}: room ${i + 1} — the installation given its time (${((t1 - t0) / 1000).toFixed(1)} s)`, { t0, t1 });
     notes.push(`room ${i + 1}: through the frame at ${(insideAt / 1000).toFixed(1)} s, its installation ${((t1 - t0) / 1000).toFixed(1)} s`);
     await page.screenshot({ path: `${out}/room-${String(i + 1).padStart(2, '0')}.png` });
@@ -340,7 +341,7 @@ async function scroll() {
     cut = cuts(tr, { speed: label === 'fast' ? 5 : 3, floor: label === 'fast' ? 1 : 0.3, label: `${label} back` });
     check(!cut, `${name}: ${label} reverse — the portal, the matrix closing, the hall, back to the lobby: no cut`, cut);
     // (Back at the door the matrix is still in sight through it, coming up as the door opens: not dark, not whole.)
-    check(tr.some((r) => r.v.hub > 0.99 && r.v.split < 0.01) && tr.at(-1).v.hub < 0.01 && tr.at(-1).v.reveal < 0.95, `${name}: ${label} reverse — the matrix whole again, and left`, tr.at(-1).v);
+    check(tr.some((r) => r.v.hub > 0.99 && r.v.split < 0.01) && tr.at(-1).v.enter === 0 && tr.at(-1).v.reveal < 0.95, `${name}: ${label} reverse — the matrix whole again, and left`, tr.at(-1).v);
   }
   // Turned round in the middle of the opening.
   await toHub(page);
@@ -380,20 +381,17 @@ async function phone(name, width, height) {
     const c = await bayCentre(page, i);
     check(c && c.x > 0 && c.x < width && c.y > 0 && c.y < height, `${name}: bay ${i + 1} on screen`, c);
   }
-  // A tap: the room focused, named, its Visit offered large.
+  // A single tap enters. No debug scroll or second Visit action may hide a broken touch path.
   const c = await bayCentre(page, 6);
   const hit = await page.evaluate((c) => { const el = document.elementFromPoint(c.x, c.y); return el ? `${el.className} ${el.getAttribute('aria-label') ?? ''}`.slice(0, 60) : null; }, c);
   notes.push(`${name}: tap at ${Math.round(c.x)},${Math.round(c.y)} → ${hit}`);
-  await page.touchscreen.tap(c.x, c.y);
-  await sleep(700);
-  let s = await snap(page);
-  const bar = await page.evaluate(() => { const b = document.querySelector('.evx-focusbar'); const v = document.querySelector('.evx-focusbar-visit'); return { on: b?.dataset.on, text: b?.textContent ?? '', h: v?.getBoundingClientRect().height ?? 0 }; });
-  check(s.hover === 6 && s.lit[6] > 0.9 && !s.visiting && bar.on === 'true' && bar.text.includes('Prodigy') && bar.h >= 44, `${name}: a tap focuses the room — its name, and Visit (not a small target)`, { hover: s.hover, bar });
-  await page.screenshot({ path: `${out}/${name}-tap.png` });
-  // Tap Visit.
+  let s;
   let tr = await record(page, async () => {
-    await (await page.$('.evx-focusbar-visit')).tap();
-    await until(page, () => window.__acm.events.snapshot().view.room > 0.999, null, 15000);
+    await page.touchscreen.tap(c.x, c.y);
+    await sleep(400);
+    const moving = await snap(page);
+    check(moving.visiting && moving.selected === 6 && moving.view.enter > 0, `${name}: one tap starts the chosen room's physical entry`, moving.view);
+    await until(page, () => window.__acm.events.snapshot().view.play > 0.999, null, 15000);
   }, 200);
   let cut = cuts(tr, { label: `${name} visit` });
   s = await snap(page);

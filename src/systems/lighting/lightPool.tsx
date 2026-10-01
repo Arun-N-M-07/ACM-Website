@@ -70,6 +70,7 @@ const _near: LightAnchor[] = [];
 const _nearD: number[] = [];
 const _kept: boolean[] = [];
 const _free: number[] = [];
+const _wanted: (LightAnchor | null)[] = [];
 
 export function LightPool({ maxDistance = 48 }: { maxDistance?: number }) {
   const quality = useExperience((s) => s.quality);
@@ -83,7 +84,7 @@ export function LightPool({ maxDistance = 48 }: { maxDistance?: number }) {
     let m = 0;
     for (const a of anchors) {
       const real = a.position.distanceTo(camera.position);
-      if (!(real < maxDistance)) continue;
+      if (!(real < maxDistance) || (a.gain ?? 1) <= 0.001) continue;
       const d = real / (a.priority ?? 1);
       let j = m;
       while (j > 0 && _nearD[j - 1] > d) j--;
@@ -112,6 +113,7 @@ export function LightPool({ maxDistance = 48 }: { maxDistance?: number }) {
           }
         }
       }
+      _wanted[i] = kept ? a : null;
       if (!kept) _free[free++] = i;
     }
     let f = 0;
@@ -119,21 +121,29 @@ export function LightPool({ maxDistance = 48 }: { maxDistance?: number }) {
       if (_kept[j]) continue;
       const a = _near[j];
       const i = _free[f++];
-      const l = lights.current[i];
-      current.current[i] = a;
-      if (!l) continue;
-      l.intensity = 0;
-      l.position.copy(a.position);
-      l.color.copy(a.color);
-      l.distance = a.distance;
+      _wanted[i] = a;
     }
-    for (; f < free; f++) current.current[_free[f]] = null;
+    for (; f < free; f++) _wanted[_free[f]] = null;
 
     const k = 1 - Math.exp(-dt * 6);
     for (let i = 0; i < count; i++) {
       const l = lights.current[i];
       if (!l) continue;
-      const a = current.current[i];
+      let a = current.current[i];
+      const want = _wanted[i];
+      if (a !== want) {
+        // Retire the previous physical source before relocating its slot. Previously a lit source
+        // lost its entire contribution in one frame (intensity = 0), causing a close-approach pop.
+        l.intensity *= Math.exp(-Math.min(dt, 0.1) * 16);
+        if (l.intensity > 0.01) continue;
+        current.current[i] = a = want;
+        l.intensity = 0;
+        if (a) {
+          l.position.copy(a.position);
+          l.color.copy(a.color);
+          l.distance = a.distance;
+        }
+      }
       const target = a ? a.intensity * (a.gain ?? 1) : 0;
       l.intensity += (target - l.intensity) * k;
       if (a) l.position.copy(a.position);

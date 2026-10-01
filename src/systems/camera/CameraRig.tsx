@@ -19,9 +19,9 @@ import { useEffect, useRef } from 'react';
 import type { PerspectiveCamera } from 'three';
 import { CAMERA_RESPONSE } from '@/config/camera';
 import { chapterForSegment, INTRO_PROGRESS_END, segmentAt } from '@/config/timeline';
-import { INTRO_MAX_BEATS_PER_SECOND, INTRO_SPAN } from '@/intro/timeline';
+import { INTRO_MAX_BEATS_PER_SECOND, INTRO_SPAN, T } from '@/intro/timeline';
 import { evaluateIntroShot } from '@/intro/camera';
-import { syncIntro } from '@/intro/controller';
+import { progressAtIntroTime, syncIntro } from '@/intro/controller';
 import { introFrame } from '@/intro/state';
 import { experience } from '@/store/experience';
 import { world } from '@/scenes/shared/blend';
@@ -32,7 +32,7 @@ import { teamsFrame } from '@/teams/state';
 import { stepEventsTrack, updateEvents } from '@/scenes/events/controller';
 import { eventsFrame } from '@/scenes/events/state';
 import { fx } from './effects';
-import { copyPose, emptyPose } from './pose';
+import { copyPose, emptyPose, smoothstep } from './pose';
 import { cinematic, evaluateCinematic, nearestStop } from './shots';
 
 /** The opening's fastest follow rate, in progress units per second. */
@@ -118,12 +118,20 @@ export function CameraRig() {
         if (progress.snapFade) fx.fade = 1;
         progress.snapFade = true;
       }
-      const k = 1 - Math.exp(-dt * CAMERA_RESPONSE.progressDamping);
+      // Events has one smooth input owner already (Lenis/native touch). Following it a second time
+      // made the camera trail the editorial and keep travelling after the actual scroll stopped.
+      const directEvents = segmentAt(progress.target) === 'events' && !progress.pending;
+      // Release the Intro's extra follow gradually BEFORE the doorway, not halfway across the
+      // hall: accumulated camera lag must not release at the Events seam. The same Lenis input
+      // smoothing then owns the entire walk to the Events shelf.
+      const doorway = smoothstep(progressAtIntroTime(T.door - 2), progressAtIntroTime(T.doorway), progress.target);
+      const follow = 1 - Math.exp(-dt * CAMERA_RESPONSE.progressDamping);
+      const k = directEvents ? 1 : follow + (1 - follow) * (progress.target < INTRO_PROGRESS_END ? doorway : 0);
       let step = (progress.target - progress.value) * k;
       // Within the opening the camera follows the scroll no faster than a
       // cinematic maximum, so even a hard fling reads as a move.
-      if (progress.value < INTRO_PROGRESS_END && progress.target < INTRO_PROGRESS_END + 0.02) {
-        const cap = INTRO_MAX_RATE * dt;
+      if (progress.value < INTRO_PROGRESS_END && progress.target < INTRO_PROGRESS_END && doorway < 0.999) {
+        const cap = INTRO_MAX_RATE * dt / Math.max(0.01, 1 - doorway);
         step = Math.max(-cap, Math.min(cap, step));
       }
       progress.value += step;
@@ -165,7 +173,7 @@ export function CameraRig() {
     copyPose(shot.current, p);
     // (The intro camera carries its own breath.)
     driftIn.current = inIntro ? 0 : Math.min(1, driftIn.current + dt / 1.5);
-    if (!st.reducedMotion && st.phase !== 'travel' && !inIntro) {
+    if (!st.reducedMotion && st.phase !== 'travel' && !inIntro && seg !== 'events') {
       const d = (teamsFrame.inside ? 0.35 : 1) * driftIn.current * driftIn.current;
       p.yaw += Math.sin(time * 0.31) * CAMERA_RESPONSE.driftAngle * d;
       p.pitch += Math.sin(time * 0.23 + 1.3) * CAMERA_RESPONSE.driftAngle * 0.7 * d;
@@ -197,13 +205,14 @@ export function CameraRig() {
       camera.near = near;
       camera.updateProjectionMatrix();
     }
-    // An event's record: the room's picture goes up the screen with the page as the record's black
-    // canvas comes up under it — the same lens, the same room, scrolled (its foot is the canvas's
-    // top edge: scenes/events/controller, view.unfold — how much of the screen the canvas has).
+    // Events has two depth layers: the foreground sheet travels one screen,
+    // while the deep room travels just 14% of it. The sheet occludes the room,
+    // rather than both leaving together. This is a pure scroll-position offset
+    // on the existing lens, not a second camera, follow clock or room transform.
     const lift = st.phase === 'cinematic' && !st.reducedMotion && !inTeams && !inIntro ? eventsFrame.view.unfold : 0;
     const vo = camera.view;
     if (lift > 0) {
-      const y = lift * size.height;
+      const y = lift * size.height * 0.14;
       if (!vo || !vo.enabled || vo.fullWidth !== size.width || vo.fullHeight !== size.height || Math.abs(vo.offsetY - y) > 0.05) camera.setViewOffset(size.width, size.height, 0, y, size.width, size.height);
     } else if (vo && vo.enabled) camera.clearViewOffset();
     camera.updateMatrixWorld();

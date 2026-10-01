@@ -37,13 +37,14 @@ export const eventsFrame = {
     reveal: 0,
     /** How much the picture is the whole matrix, still — to be chosen from (0..1). */
     hub: 0,
-    /** Into the chosen room: 0 at the matrix, 1 inside (the room clock's approach). */
+    /** Into the chosen room: scroll position along the authored approach, not a playback clock. */
     enter: 0,
     /**
-     * The chosen room's installation, as far as it has played (0..1): its own clock, at its own pace,
-     * while the camera is in the room (controller.ts) — not the scroll's.
+     * The scroll's step inside the room (0..1). Only this navigation value moves the camera.
      */
     room: 0,
+    /** Installation playback (0..1), stepped at its own fixed rate; never drives camera/page/scroll. */
+    play: 0,
     /**
      * The record moved up the screen by the scroll (px, 0 → its length): its edge rising over the room
      * for the first screen of it, and it read on up the screen after that.

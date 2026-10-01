@@ -25,15 +25,15 @@
   --gutter-y: clamp(16px, 3.6vw, 52px);
   --gutter: max(var(--gutter-y), env(safe-area-inset-left, 0px), env(safe-area-inset-right, 0px));
   --ease: cubic-bezier(0.2, 0.7, 0.1, 1);
-  /* Typography — one family, Montserrat (layout.tsx), and one hierarchy. Rules don't choose
+  /* Typography — one family, Geist (layout.tsx), and one hierarchy. Rules don't choose
      weights or tracking of their own: each takes its role's, below, so the site's voice is set
      here. (--serif / --sans / --mono are kept as the role names the rules use — display, text,
-     label — all Montserrat; the --font-* names are what the in-world canvases read,
+     label — all Geist; the --font-* names are what the in-world canvases read,
      systems/textures/typeset.) */
-  --font-family: var(--font-montserrat), Montserrat, 'Helvetica Neue', Arial, sans-serif;
-  --font-serif: var(--font-montserrat);
-  --font-sans: var(--font-montserrat);
-  --font-mono: var(--font-montserrat);
+  --font-family: var(--font-geist), Geist, 'Helvetica Neue', Arial, sans-serif;
+  --font-serif: var(--font-geist);
+  --font-sans: var(--font-geist);
+  --font-mono: var(--font-geist);
   --serif: var(--font-family);
   --sans: var(--font-family);
   --mono: var(--font-family);
@@ -51,7 +51,7 @@
   --w-meta: 500;
   /* Tracking: the larger the type, the tighter; text as drawn; numerals just open; uppercase
      interface and labels open by degrees — never more than a mark (the wordmark, the threshold)
-     needs. Montserrat is wide already. */
+     needs. */
   --t-display: -0.035em;
   --t-title: -0.025em;
   --t-heading: -0.015em;

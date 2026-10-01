@@ -217,6 +217,9 @@ export function introCameraAt(t: number) {
   return S;
 }
 
+/** Shared portrait opening for the camera and the cloud wordmark's frame fit. */
+export const portraitOpen = (aspect: number) => (aspect < 0.9 ? Math.min(1.9, 1 + (0.9 / aspect - 1) * 0.72) : 1);
+
 /** Evaluate the opening's camera at the current beat into `out`. */
 export function evaluateIntroShot(time: number, aspect: number, out: CameraPose, reduced: boolean) {
   const t = introFrame.t;
@@ -238,7 +241,7 @@ export function evaluateIntroShot(time: number, aspect: number, out: CameraPose,
     _dir.subVectors(look, _pos).normalize();
     _pos.addScaledVector(_dir, 16 * close);
     lookY += 2.6 * close;
-    const open = Math.min(1.9, 1 + (0.9 / aspect - 1) * 0.72);
+    const open = portraitOpen(aspect);
     let wide = (2 * Math.atan(Math.tan((fov * Math.PI) / 360) * open) * 180) / Math.PI;
     wide += (44 - wide) * close;
     const rigWiden = Math.min(2.1, 1 + (1 / aspect - 1) * 0.9);

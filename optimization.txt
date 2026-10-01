@@ -1,12 +1,16 @@
-ACM CEG — FINAL PERFORMANCE & OPTIMIZATION PASS
-================================================
+ACM CEG — FINAL PRODUCTION OPTIMIZATION, PERFORMANCE & STABILITY PASS
+=====================================================================
 
 OBJECTIVE
 =========
 
-Perform a complete production-grade performance optimization of the existing ACM CEG website.
+Perform a complete production-grade optimization and stability pass over
+the CURRENT ACM CEG website implementation.
 
-The goal is NOT to make the website "lighter" by sacrificing the cinematic experience.
+This is a WHOLE-EXPERIENCE optimization pass.
+
+The goal is NOT to make the website "lighter" by sacrificing the
+cinematic experience.
 
 The goal is:
 
@@ -29,31 +33,91 @@ The goal is:
     BETTER MOBILE PERFORMANCE
           +
     STABLE PERFORMANCE OVER LONG SESSIONS
+          +
+    ZERO UNNECESSARY ARCHITECTURAL DUPLICATION
 
-The experience is a cinematic Next.js + React + React Three Fiber + Three.js website.
 
-Optimize the ACTUAL implementation rather than applying generic recommendations.
+The website is a cinematic:
 
-================================================
-1. FIRST RULE — PROFILE BEFORE OPTIMIZING
-================================================
+- Next.js
+- React
+- TypeScript
+- React Three Fiber
+- Three.js
+- GSAP
+- Lenis
+- Zustand
+- Web Audio
 
-Do NOT immediately rewrite or simplify the project.
+experience.
 
-First inspect and measure the current implementation.
+Optimize the ACTUAL current implementation.
 
-Establish a baseline for:
+Do NOT apply generic optimization advice blindly.
+
+=====================================================================
+0. CRITICAL RULE — UNDERSTAND THE CURRENT IMPLEMENTATION FIRST
+=====================================================================
+
+Before modifying anything:
+
+1. Inspect the complete repository.
+2. Inspect git status.
+3. Inspect the current branch.
+4. Inspect the current HEAD.
+5. Inspect the current diff.
+6. Read the architecture/documentation files.
+7. Read mobile.txt completely if present.
+8. Inspect the actual current Intro implementation.
+9. Inspect ASCENT.
+10. Inspect ACM-CEG.
+11. Inspect Events completely.
+12. Inspect the current Events 3D architecture.
+13. Inspect the current Events 3D → 2D editorial transition.
+14. Inspect Crew / THE CREW.
+15. Inspect the global camera system.
+16. Inspect Lenis / scroll ownership.
+17. Inspect Zustand stores.
+18. Inspect audio / SoundDirector architecture.
+19. Inspect responsive/mobile systems.
+20. Inspect adaptive-quality systems.
+21. Inspect reduced-motion behavior.
+22. Inspect resource cleanup.
+23. Inspect existing QA scripts.
+24. Inspect loading / asset lifecycle.
+
+DO NOT assume that an older implementation is still current.
+
+In particular:
+
+DO NOT resurrect an old Events corridor/room architecture merely
+because an older specification mentioned it.
+
+The CURRENT repository is authoritative.
+
+Understand what is actually implemented now.
+
+=====================================================================
+1. PROFILE BEFORE OPTIMIZING
+=====================================================================
+
+Do NOT immediately rewrite, simplify, or refactor the project.
+
+First establish a realistic baseline.
+
+Measure or inspect where possible:
 
 - FPS
-- frame-time
+- frame time
 - main-thread time
 - scripting time
 - rendering time
 - GPU pressure where measurable
 - draw calls
 - triangles
-- geometries
-- textures
+- geometry count
+- material count
+- texture count
 - texture memory where measurable
 - mounted Three.js objects
 - React renders
@@ -63,62 +127,94 @@ Establish a baseline for:
 - particle count
 - active lights
 - shadow cost
-- memory/resource growth
+- WebGL resource usage
+- DOM node growth
+- event listener growth
+- animation callback growth
+- audio node/source growth
 - asset loading
-- bundle size
-- route/page loading
+- production bundle size
+- initial loading cost
+- section transition cost
 - long-session behavior
-- repeated loop behavior
+- repeated-loop behavior
 
-Do not invent measurements.
+DO NOT INVENT MEASUREMENTS.
 
-If an exact metric cannot be measured, state that clearly.
+If an exact metric cannot be measured in the current environment,
+say so.
+
+Distinguish:
+
+VERIFIED
+from
+INFERRED
+from
+NOT VERIFIED.
 
 Find the REAL bottlenecks before changing architecture.
 
-================================================
-2. PRESERVE THE EXPERIENCE
-================================================
+=====================================================================
+2. PRESERVE THE CURRENT EXPERIENCE
+=====================================================================
 
-Optimization must NOT break or substantially alter:
+Optimization must NOT substantially alter the intended current
+experience.
 
-- Intro
-- cinematic prologue
+Preserve:
+
+- cinematic Intro
 - gas/smog sequence
 - "22 YEARS AGO" gas typography
 - papers
-- ACM stone
+- ACM stone / lettering
 - lightning
-- drone sequence
 - red-building sequence
-- cloud/aerial sequence
+- clouds / aerial atmosphere
 - ASCENT
 - ACM-CEG reveal
-- portal transition
+- current ACM-CEG creative direction
 - Events
-- Prodigy event
-- Events tile interactions
-- Events tunnel
-- Teams
-- all seven Teams/domain cards
+- current Events architectural matrix / room experience
+- current event interactions
+- current event editorial experience
+- current 3D → 2D transition
+- Crew / THE CREW
+- seven-card/domain sequence
 - member-card experience
-- chapter rail
+- camera choreography
+- chapter/progress UI where still part of the current design
 - audio/SoundDirector
-- infinite end-to-start loop
+- reduced-motion behavior
+- mobile behavior
+- infinite end → start loop
 - reverse scrolling
 - scroll restoration
-- deterministic entry
-- PatternX behavior
+- deterministic section entry
+- PatternX behavior where intentionally used
 
-Do NOT reduce quality merely to increase a benchmark number.
+Do NOT reduce quality merely to make benchmark numbers look better.
 
-Do NOT remove important visual elements unless profiling proves they are unnecessary and an equivalent-quality replacement is possible.
+Do NOT remove important visual elements unless profiling proves they
+are a meaningful bottleneck AND an equivalent-quality solution exists.
 
-================================================
-3. EXISTING ARCHITECTURE MUST REMAIN AUTHORITATIVE
-================================================
+The target is:
 
-Continue using the existing architecture for:
+BETTER PERFORMANCE
++
+SAME EXPERIENCE
+
+NOT:
+
+LESS EXPERIENCE
++
+BETTER BENCHMARK
+
+=====================================================================
+3. EXISTING ARCHITECTURE IS AUTHORITATIVE
+=====================================================================
+
+Continue using the current architecture:
 
 - Next.js
 - React
@@ -131,41 +227,91 @@ Continue using the existing architecture for:
 - existing scroll/progress system
 - existing audio architecture
 - existing Events architecture
-- existing Teams architecture
+- existing Crew architecture
+- existing adaptive-quality system
+- existing mobile architecture
 
-Do NOT create duplicate:
+DO NOT create duplicate:
 
 - camera systems
 - Lenis instances
-- scroll handlers
+- scroll systems
 - progress systems
 - Zustand stores
 - animation loops
 - audio systems
+- AudioContexts
 - Three.js renderers
+- competing state machines
 
-Do not replace the architecture merely for the sake of optimization.
+Do not replace architecture merely because another architecture is
+theoretically simpler.
 
 Optimize the existing architecture first.
 
-================================================
-4. RENDER LOOP OPTIMIZATION
-================================================
+=====================================================================
+4. SINGLE SOURCE OF TRUTH
+=====================================================================
+
+Identify ownership for:
+
+USER SCROLL
+    ↓
+LENIS
+    ↓
+GLOBAL PROGRESS
+    ↓
+SECTION PROGRESS
+    ↓
+CAMERA / WORLD
+    ↓
+DOM EDITORIAL
+    ↓
+AUDIO / EFFECTS
+    ↓
+NEXT SECTION
+
+Every layer should have a clear owner.
+
+The user's scroll remains the source of truth.
+
+Do NOT introduce:
+
+- fake progress
+- scroll hijacking
+- arbitrary scroll multipliers
+- timer-driven section progression
+- independent section scrolling
+- second Lenis
+- second camera
+- second RAF
+- second AudioContext
+- competing raw wheel systems
+
+If multiple systems currently write to the same state, identify and
+resolve the conflict at the root.
+
+=====================================================================
+5. RENDER LOOP AUDIT
+=====================================================================
 
 Inspect every per-frame update.
 
-Identify expensive work happening inside:
+Search for:
 
 - useFrame
 - requestAnimationFrame
-- GSAP tick/update callbacks
+- GSAP ticker/update
 - Lenis callbacks
 - scroll listeners
 - Zustand subscriptions
 - React effects
-- Three.js update loops
+- Three.js animation loops
+- audio animation loops
 
-Remove unnecessary per-frame calculations.
+Determine which loop owns each responsibility.
+
+Remove unnecessary per-frame work.
 
 Avoid:
 
@@ -173,62 +319,64 @@ Avoid:
 - creating arrays every frame
 - creating vectors every frame
 - creating colors every frame
-- creating temporary geometries/materials every frame
-- creating functions unnecessarily inside hot paths
-- repeated calculations whose result can be cached
+- creating temporary geometry/material
 - repeated scene traversal
 - repeated DOM queries
+- repeated expensive calculations
 - unnecessary React state updates
 - unnecessary Zustand updates
+- duplicate animation callbacks
 
-Reuse objects where appropriate.
+Cache or precompute values where safe.
 
-Precompute static values.
+Use refs / imperative animation where appropriate for
+high-frequency values.
 
-Cache expensive calculations.
+Do not introduce a new global RAF to solve a local problem.
 
-Keep animation work inside the rendering pipeline where appropriate instead of causing React renders.
+=====================================================================
+6. REACT / R3F RENDER OPTIMIZATION
+=====================================================================
 
-================================================
-5. REACT / R3F OPTIMIZATION
-================================================
-
-Audit React rendering behavior.
-
-Find components that rerender unnecessarily.
+Audit unnecessary React reconciliation.
 
 Pay particular attention to:
 
 - Experience
-- Intro components
+- Intro
+- ASCENT
+- ACM-CEG
 - Events
-- Teams
-- chapter rail
-- overlays
+- Events matrix
+- event rooms
+- editorial overlays
+- Crew
+- chapter/progress UI
+- camera components
 - audio controls
-- camera-related components
-- large 3D scene components
+- large R3F scene components
 
-Use appropriate techniques such as:
+Use only where justified:
 
 - memoization
 - stable references
 - selective Zustand subscriptions
 - derived values
-- refs for frequently changing animation values
-- avoiding React state for frame-by-frame values
+- refs for rapidly changing values
+- imperative Three.js updates
 
-Do NOT blindly wrap everything in React.memo.
+Do NOT blindly add React.memo everywhere.
 
-Only optimize where it actually reduces work.
+Only make changes that reduce actual work.
 
-Ensure frequently changing 3D animation values do not trigger unnecessary React reconciliation.
+Frame-by-frame 3D values should not trigger React renders unless
+there is a genuine reason.
 
-================================================
-6. THREE.JS SCENE OPTIMIZATION
-================================================
+=====================================================================
+7. THREE.JS SCENE AUDIT
+=====================================================================
 
-Audit the complete Three.js scene.
+Audit the complete scene.
 
 Inspect:
 
@@ -236,6 +384,7 @@ Inspect:
 - mesh count
 - geometry count
 - material count
+- texture count
 - light count
 - shadow casters
 - shadow maps
@@ -243,144 +392,367 @@ Inspect:
 - blending
 - depth testing
 - depth writing
-- expensive shaders
+- shader complexity
 - post-processing
-- particle systems
-- instanced objects
+- particles
+- instancing
+- render targets
+- environment maps
+- transmission/glass
 
-Reduce unnecessary scene complexity without visibly damaging the design.
+Look for:
+
+- duplicate meshes
+- duplicate geometry
+- duplicate materials
+- duplicate textures
+- invisible objects still rendering
+- unnecessary transparent surfaces
+- unnecessary overdraw
+- unnecessary shadows
+- expensive inactive effects
 
 Where appropriate:
 
-- reuse geometries
-- reuse materials
+- share geometry
+- share materials
 - share textures
-- use instancing
-- merge static geometry
-- remove invisible objects
-- avoid rendering objects outside the relevant experience
-- disable expensive features when not needed
+- instance repeated geometry
+- merge static geometry where safe
+- gate invisible systems
 - reduce unnecessary transparency
+- optimize shadows
 - reduce overdraw
-- optimize shadow usage
 
-Do not merge or instance objects whose individual transforms/interaction require independent control unless the architecture supports it safely.
+Do not merge objects that require independent transforms,
+interaction, animation, or lifecycle unless the architecture
+supports it safely.
 
-================================================
-7. VISIBILITY / LIFECYCLE / LAZY MOUNTING
-================================================
+=====================================================================
+8. EVENTS — CURRENT ARCHITECTURE ONLY
+=====================================================================
 
-The experience is divided into major cinematic sections.
+Perform a dedicated performance and stability audit of the CURRENT
+Events implementation.
 
-Inspect whether expensive sections remain fully active when they are no longer visible or relevant.
+First understand exactly what exists now.
 
-Where safe, use:
+Do not assume the old Events architecture.
 
-- visibility gating
-- conditional mounting
-- lazy loading
-- section-level activation
-- resource lifecycle management
+Inspect:
 
-Examples include:
+- Events entry
+- current architectural matrix / shelf
+- all current event rooms
+- room rendering
+- room lighting
+- room animation
+- wall/shelf architecture
+- hover/focus behavior
+- mobile tap/focus behavior
+- event selection
+- Visit interaction
+- camera entry
+- editorial transition
+- editorial DOM
+- next-event navigation
+- Crew transition
+- portal
+- reverse behavior
 
-- Intro-specific effects
-- Events-only effects
-- Teams-only effects
-- large particle systems
-- expensive post-processing
-- distant environmental elements
-- audio resources
-- event-specific assets
+The nine-room architecture, if present in the current repository,
+must remain actual 3D event rooms.
 
-IMPORTANT:
+Do NOT replace rooms with:
 
-Do not destroy/recreate shared resources unnecessarily during normal scrolling.
+- posters
+- screenshots
+- flat cards
+- fake placeholders
 
-Avoid mount/unmount thrashing at section boundaries.
+Optimize intelligently.
 
-Choose the lifecycle strategy based on actual profiling.
+Consider where justified:
 
-================================================
-8. LOD / DISTANCE OPTIMIZATION
-================================================
+- shared geometry
+- shared materials
+- texture reuse
+- inactive-room quality reduction
+- selected-room quality increase
+- bounded visibility
+- shadow reduction
+- post-processing reduction
+- distant-room simplification
+- controlled animation
 
-Identify objects that do not need full detail when far from the camera.
+Preserve the visual identity of each room.
 
-Where useful, introduce appropriate:
+=====================================================================
+9. EVENTS — WALL / ARCHITECTURAL STABILITY
+=====================================================================
 
-- LOD
-- reduced geometry
-- simplified materials
-- reduced particle density
-- reduced shader complexity
-- lower-resolution textures
-- simplified distant objects
+Because Events contains a large architectural composition, audit it
+for:
 
-The transition must be visually smooth.
+- duplicate meshes
+- duplicated slabs
+- duplicate floors
+- duplicate ceilings
+- duplicate walls
+- coplanar surfaces
+- z-fighting
+- incorrect parent transforms
+- inherited transforms
+- unexpected offsets
+- camera-relative positioning bugs
+- clipping
+- depth conflicts
+- state-transition duplication
+- two versions of the same architecture being mounted simultaneously
 
-Do not introduce obvious popping.
+The Events architecture should read as ONE coherent physical space.
 
-Do not reduce the quality of hero objects when they are close to the camera.
+Do not fix these problems with arbitrary offsets or negative margins.
 
-================================================
-9. INSTANCING
-================================================
+Find the actual source.
 
-Look for repeated objects such as:
+=====================================================================
+10. EVENTS — ROOM ANIMATION TIMING
+=====================================================================
 
+Audit the internal animation timing of event rooms.
+
+Important:
+
+USER SCROLL SPEED
+must not accidentally become
+ROOM ANIMATION SPEED
+
+unless that relationship is explicitly part of the current design.
+
+A fast scroll should not make a carefully designed room animation
+play unnaturally fast.
+
+A slow scroll should not make it painfully slow.
+
+Where appropriate, separate:
+
+- navigation progress
+from
+- internal animation timing
+
+while preserving the existing scroll-driven architecture.
+
+Do NOT use timers merely to hide the problem.
+
+Do NOT introduce an independent animation system.
+
+=====================================================================
+11. EVENTS — 3D → 2D EDITORIAL TRANSITION
+=====================================================================
+
+Preserve the current intended continuous transition.
+
+The desired relationship is:
+
+        3D EVENT WORLD
+               ↓
+       3D composition moves upward
+               ↓
+      BLACK EDITORIAL ENTERS
+               ↓
+      TITLE / NUMBER / DESCRIPTION
+               ↓
+        3D continues leaving
+               ↓
+      EDITORIAL becomes dominant
+
+This should feel like ONE continuous long-form page.
+
+Do NOT:
+
+- fade to black abruptly
+- hard-swap the 3D scene
+- teleport
+- use a timer
+- create a second scroll system
+- create a fake progress system
+
+The 3D world should remain spatially meaningful while the editorial
+layer enters.
+
+If the current design uses different movement strengths:
+
+- 3D = subtle/deep movement
+- editorial = stronger/faster foreground movement
+
+preserve that relationship.
+
+Optimize the implementation without flattening the visual design.
+
+=====================================================================
+12. EVENTS — EDITORIAL PERFORMANCE
+=====================================================================
+
+Audit the editorial DOM.
+
+Look for:
+
+- expensive filters
+- backdrop-filter
+- large fixed elements
+- unnecessary re-renders
+- layout-triggering animation
+- unnecessary DOM writes
+- unnecessary DOM reads
+- expensive typography effects
+- large images
+- oversized content
+- hidden but still-expensive elements
+
+Prefer transform/opacity-based animation where appropriate.
+
+Avoid layout-triggering animation when a transform can achieve the
+same visual result.
+
+Do not change the editorial composition merely for theoretical
+optimization.
+
+=====================================================================
+13. INTRO OPTIMIZATION
+=====================================================================
+
+Audit the complete cinematic Intro.
+
+Inspect:
+
+- fog
+- gas
+- "22 YEARS AGO"
+- papers
+- ash transition
+- ACM stone
+- lightning
+- camera movement
+- atmospheric effects
 - particles
+- typography
+- audio
+- loading
+- transition into ASCENT
+
+Identify expensive work that remains active after Intro is no longer
+relevant.
+
+Where safe:
+
+- stop
+- pause
+- lower quality
+- unload
+- reduce update frequency
+
+Do not destroy the cinematic feeling.
+
+=====================================================================
+14. ASCENT + ACM-CEG
+=====================================================================
+
+Audit:
+
+- ASCENT typography
+- ACM-CEG geometry
+- materials
+- clouds
+- atmospheric lighting
+- shimmer/highlight
+- particles
+- camera
+- audio
+- scroll mapping
+- post-processing
+
+Preserve the current creative direction.
+
+Do not simplify the ACM-CEG experience into generic text merely for
+performance.
+
+Optimize expensive implementation details rather than removing
+creative features.
+
+=====================================================================
+15. CREW / THE CREW OPTIMIZATION
+=====================================================================
+
+Audit the complete Crew experience.
+
+Preserve:
+
+- physical domain-card journey
+- seven-card sequence
+- domain ordering
+- member-card composition
+- portraits
+- card focus
+- cursor response
+- spine
 - dust
-- stars
-- environmental elements
-- repeated decorative geometry
-- repeated event elements
-- repeated card-related geometry
+- materials
+- camera choreography
+- entry/exit
+- reverse scrolling
+- reduced motion
+- accessibility
 
-Where objects share geometry/material and do not require independent complex behavior, consider:
+Inspect:
 
-- InstancedMesh
-- batched rendering
-- shared geometry/material
+- card geometry
+- portrait textures
+- transmission/glass
+- post-processing
+- dust
+- cursor effects
+- camera updates
+- animation loops
 
-Measure whether instancing actually reduces draw calls.
+If glass/transmission is expensive:
 
-Do not introduce instancing where it makes the implementation more complex without a measurable benefit.
+1. measure/profile it
+2. determine the actual bottleneck
+3. optimize only where visual quality can remain effectively intact
 
-================================================
-10. GEOMETRY OPTIMIZATION
-================================================
+Do not replace the physical card experience with flat DOM cards.
+
+=====================================================================
+16. GEOMETRY OPTIMIZATION
+=====================================================================
 
 Audit all geometry.
 
 Look for:
 
-- unnecessarily high segment counts
-- duplicated geometry
+- excessive segment counts
+- duplicate geometry
 - unused geometry
-- excessive subdivisions
+- unnecessary subdivisions
 - unnecessarily detailed distant objects
 - repeated geometry that can be shared
 
-Reduce geometry only where the visual result remains effectively identical.
+Reduce geometry only where the visual difference is negligible.
 
-Hero objects and close-up objects should retain appropriate detail.
+Hero and close-up objects retain appropriate detail.
 
-Do not destroy the cinematic quality to save a small amount of geometry.
+=====================================================================
+17. MATERIAL / SHADER OPTIMIZATION
+=====================================================================
 
-================================================
-11. MATERIAL / SHADER OPTIMIZATION
-================================================
-
-Audit expensive materials and shaders.
-
-Pay attention to:
+Audit:
 
 - custom shaders
 - transparent shaders
-- volumetric effects
 - fog
 - gas/smog
+- clouds
 - particles
 - glass/transmission
 - noise
@@ -388,61 +760,124 @@ Pay attention to:
 - bloom
 - post-processing
 
-Identify shaders that run unnecessarily on:
+Identify shaders unnecessarily running on:
 
 - invisible objects
 - distant objects
 - inactive sections
 
-Optimize shader complexity where possible.
+Optimize shader complexity where practical.
 
-Avoid replacing important visual effects with cheap-looking approximations unless the difference is genuinely negligible.
+Do not replace important atmospheric effects with visibly cheap
+approximations.
 
-================================================
-12. TEXTURE OPTIMIZATION
-================================================
+=====================================================================
+18. TEXTURE OPTIMIZATION
+=====================================================================
 
-Audit all textures.
+Inventory textures.
 
 Check:
 
 - resolution
 - format
-- mipmaps
 - color space
-- repeated textures
+- mipmaps
+- alpha
 - duplicate textures
 - unused textures
-- unnecessarily large textures
-- texture loading strategy
-- texture disposal
-- texture caching
+- loading strategy
+- caching
+- disposal
 
 Use appropriate resolution for actual display size.
 
-Do not blindly convert everything to low-resolution assets.
+Do not blindly downscale everything.
 
-Ensure shared textures are not accidentally disposed while another component still uses them.
+Do not dispose shared resources while another component still uses
+them.
 
-================================================
-13. INFINITE LOOP / RESOURCE STABILITY
-================================================
+=====================================================================
+19. VISIBILITY / RESOURCE LIFECYCLE
+=====================================================================
 
-The experience contains an end-to-start infinite loop.
+Determine what remains active while the user is elsewhere.
 
-This is a critical performance area.
+Audit:
 
-Repeatedly traverse:
+- Intro effects
+- Events
+- event rooms
+- Crew
+- particles
+- audio
+- post-processing
+- environmental effects
+- DOM overlays
 
-END
+Where safe, use:
+
+- visibility gating
+- section activation
+- lazy loading
+- conditional mounting
+- controlled lifecycle
+
+Avoid mount/unmount thrashing at boundaries.
+
+Do not repeatedly recreate shared resources during normal scrolling.
+
+=====================================================================
+20. MEMORY LEAK AUDIT
+=====================================================================
+
+Audit lifecycle cleanup for:
+
+- window listeners
+- document listeners
+- pointer listeners
+- wheel/touch listeners
+- ResizeObserver
+- IntersectionObserver
+- MutationObserver
+- timers
+- RAF callbacks
+- GSAP timelines
+- ScrollTriggers
+- Lenis callbacks
+- Zustand subscriptions
+- AudioContext nodes
+- AudioSources
+- geometries
+- materials
+- textures
+- render targets
+- post-processing passes
+
+Every effect should have appropriate cleanup.
+
+Do not merely suppress symptoms.
+
+Find the actual owner of the leak.
+
+=====================================================================
+21. INFINITE END → START LOOP
+=====================================================================
+
+This is a CRITICAL test.
+
+Repeatedly perform:
+
+START
+→ END
 → START
 → END
 → START
+→ END
 
-and verify that resources do NOT continuously accumulate.
+and monitor:
 
-Monitor:
-
+- memory
 - textures
 - geometries
 - materials
@@ -452,136 +887,237 @@ Monitor:
 - audio nodes
 - animation callbacks
 - subscriptions
+- DOM nodes
 
-There must be no progressive memory/resource leak after repeated loops.
+A visually correct loop that continuously accumulates resources is
+NOT acceptable.
 
-A loop that looks visually correct but continuously increases memory usage is NOT acceptable.
+Fix resource ownership at the root.
 
-Fix ownership/disposal issues at the root.
+=====================================================================
+22. SCROLL / CAMERA STABILITY
+=====================================================================
 
-Do not repeatedly recreate resources that could safely be shared.
+Audit the complete scroll/camera system.
 
-================================================
-14. EVENTS PERFORMANCE
-================================================
+Test:
 
-Explicitly audit the entire Events experience.
+- slow scrolling
+- normal scrolling
+- fast scrolling
+- stopping
+- reversing
+- reversing mid-transition
+- scrubbing
+- entering sections from unusual positions
+- repeated loops
 
-Do not focus only on Intro.
+Look for:
 
-Inspect:
+- camera jumps
+- FOV jumps
+- orientation flips
+- incorrect interpolation
+- competing camera writes
+- stale section state
+- NaN values
+- progress discontinuities
 
-- Events scene
-- event cards
-- Prodigy
-- event tiles
-- tile attachment animation
-- tunnel
-- lighting
-- particles
-- backgrounds
-- event-specific textures
-- event-specific audio
-- DOM overlays
-- transitions
+The camera must remain deterministic.
 
-Ensure inactive Events elements do not continue expensive work unnecessarily.
+There must be ONE authoritative camera.
 
-Preserve:
+=====================================================================
+23. RESIZE / ORIENTATION STABILITY
+=====================================================================
 
-- visual quality
-- tile fitting interaction
-- registration buttons
-- Prodigy content
-- event navigation
-- existing audio design
+Explicitly test:
 
-Do not remove event functionality for performance.
+DESKTOP
+→ resize narrower
+→ resize wider
 
-================================================
-15. TEAMS PERFORMANCE
-================================================
+MOBILE PORTRAIT
+→ LANDSCAPE
+→ PORTRAIT
 
-Explicitly audit the complete Teams section.
+Also test browser viewport changes caused by mobile browser UI.
+
+Ensure resizing does NOT:
+
+- reset the journey
+- jump the camera
+- return to Intro
+- change section progress unexpectedly
+- break Events
+- break Crew
+- change the user's scroll position unexpectedly
+- produce canvas zoom
+- create duplicate render targets
+- recreate expensive resources unnecessarily
+
+Preserve journey position across resize/orientation.
+
+=====================================================================
+24. MOBILE OPTIMIZATION
+=====================================================================
+
+Read mobile.txt completely and audit every requirement against the
+CURRENT implementation.
+
+Classify each requirement:
+
+- SATISFIED
+- PARTIAL
+- MISSING
+- BROKEN
+
+Then fix the actual root cause.
 
 Pay attention to:
 
-- domain cards
-- seven-card sequence
-- member-card composition
-- spine
+- dynamic browser address bar
+- viewport sizing
+- visual viewport
+- 100vh / 100lvh behavior
+- orientation
+- safe areas
+- touch scrolling
+- touch targets
+- mobile camera
+- Events
+- Crew
+- editorial
+- audio lifecycle
+- background/foreground
+- reduced motion
+- loading
+- cleanup
+- memory
+- RAF stability
+- audio-source stability
+- performance
+
+Do not resurrect an old architecture simply because mobile.txt
+describes it differently.
+
+Apply its principles to the current implementation.
+
+=====================================================================
+25. ADAPTIVE QUALITY
+=====================================================================
+
+Inspect the existing adaptive quality system.
+
+Quality tiers may appropriately control:
+
+- DPR
+- shadows
+- post-processing
+- particles
+- volumetrics
+- texture resolution
+- inactive event-room quality
+- expensive transmission
+- animation complexity
+
+Quality degradation should be graceful.
+
+Avoid constant quality oscillation.
+
+Do not make high-end desktop unnecessarily low quality.
+
+Do not make mobile unnecessarily expensive.
+
+=====================================================================
+26. DEVICE PIXEL RATIO
+=====================================================================
+
+Audit renderer DPR.
+
+Avoid rendering at extreme DPR on every device.
+
+Use sensible caps where appropriate.
+
+Balance:
+
+SHARPNESS
+against
+GPU COST.
+
+High-resolution desktop displays should remain visually excellent.
+
+=====================================================================
+27. PARTICLES / DUST / ATMOSPHERE
+=====================================================================
+
+Audit all:
+
+- particles
 - dust
-- glass/transmission materials
-- hover interactions
-- card focus
-- camera movement
-- Teams HUD
-- text overlays
-- infinite-loop transition
+- stars
+- fog
+- gas
+- clouds
+- atmospheric effects
 
-The Teams section must remain normally user-controlled.
+Check:
 
-Do not introduce automatic camera movement while optimizing.
-
-Do not alter the existing scroll behavior merely to improve performance.
-
-If glass/transmission is expensive, profile it first and optimize only where visual quality can be preserved.
-
-================================================
-16. PARTICLE / DUST / STAR OPTIMIZATION
-================================================
-
-Audit all particle systems.
-
-Determine:
-
-- actual particle counts
-- CPU vs GPU simulation
-- per-frame allocations
+- count
+- CPU/GPU simulation
 - buffer updates
 - draw calls
-- unnecessary particles outside the camera view
+- allocations
+- visibility
+- update frequency
 
-Use appropriate:
+Use:
 
-- instancing
 - BufferGeometry
 - typed arrays
+- instancing
 - shared materials
-- frustum-aware visibility
-- reduced update frequency for non-critical effects
+- bounded visibility
+- lower update frequency for non-critical effects
 
-Do not make hero atmospheric effects look obviously sparse.
+where appropriate.
 
-================================================
-17. LIGHTING / SHADOW OPTIMIZATION
-================================================
+Do not make hero atmospheric effects obviously sparse.
+
+=====================================================================
+28. LIGHTING / SHADOWS
+=====================================================================
 
 Audit:
 
 - directional lights
 - point lights
 - spotlights
-- ambient/environment lighting
+- environment lighting
 - shadow maps
 - shadow resolution
-- shadow update frequency
+- shadow updates
 
 Reduce unnecessary dynamic shadows.
 
-Use static lighting where appropriate.
+Use static approaches where appropriate.
 
-Avoid multiple expensive dynamic lights when a cheaper equivalent produces the same visual result.
+Avoid multiple expensive dynamic lights when a cheaper equivalent
+produces the same visual result.
 
-Lightning effects should remain visually convincing.
+Preserve:
 
-================================================
-18. POST-PROCESSING
-================================================
+- lightning
+- room atmosphere
+- ACM-CEG lighting
+- Events lighting
+- Crew lighting
 
-Audit all post-processing.
+=====================================================================
+29. POST-PROCESSING
+=====================================================================
 
-Identify:
+Audit:
 
 - bloom
 - blur
@@ -592,308 +1128,291 @@ Identify:
 - depth of field
 - custom passes
 
-Measure their GPU cost.
+Measure their GPU cost where possible.
 
 Reduce:
 
-- render resolution
-- pass count
-- unnecessary full-screen passes
+- unnecessary passes
+- unnecessary full-screen effects
+- excessive render resolution
 
-ONLY where visual quality remains effectively unchanged.
+only where visual quality remains effectively unchanged.
 
-Avoid stacking multiple expensive full-screen effects unnecessarily.
+=====================================================================
+30. AUDIO LIFECYCLE
+=====================================================================
 
-================================================
-19. CAMERA / SCROLL PERFORMANCE
-================================================
+Maintain one coherent audio architecture.
 
-The camera and scroll system must remain smooth.
+Audit:
 
-Optimize:
-
-- camera interpolation
-- Lenis integration
-- scroll event handling
-- progress calculations
-- camera look-at calculations
-- path interpolation
-
-Avoid unnecessary work on every raw wheel event.
-
-Prefer the existing authoritative Lenis/render progression.
-
-Do not introduce a second scroll system.
-
-Do not change the cinematic camera path simply to improve performance.
-
-The user's scroll must remain responsive and deterministic.
-
-================================================
-20. AUDIO PERFORMANCE
-================================================
-
-Audit audio lifecycle.
-
-Check:
-
-- audio loading
-- decoding
-- duplicated buffers
-- repeated audio creation
-- event listeners
-- Web Audio nodes
-- looping
+- AudioContext
+- buffers
+- sources
+- gain nodes
+- spatial audio
+- event sounds
+- transition sounds
+- mobile unlock
+- background/foreground
+- visibility changes
 - cleanup
-- reverse-scroll behavior
+- looping
+- reverse scrolling
 
-Ensure sounds are not repeatedly created during scrolling.
+Ensure:
 
-Ensure audio does not accumulate across loops.
+- no duplicate AudioContexts
+- no duplicate persistent sources
+- no repeated source creation during scrolling
+- no accumulated nodes after looping
+- no stale listeners
+- no audio continuing after it should stop
 
-Preserve the existing cinematic audio experience.
+Preserve the cinematic audio experience.
 
-Do not remove audio merely because it is difficult to optimize.
+=====================================================================
+31. DOM / CSS PERFORMANCE
+=====================================================================
 
-================================================
-21. DOM / CSS / OVERLAY PERFORMANCE
-================================================
+Audit:
 
-Audit non-WebGL UI too.
-
-Inspect:
-
-- chapter rail
-- overlays
 - navigation
+- chapter rail
 - event UI
-- Teams UI
+- editorial
+- Crew UI
+- overlays
 - buttons
 - text
-- filters
-- blur/backdrop-filter
+- CSS filters
+- backdrop-filter
 - CSS animations
-- layout thrashing
 
-Avoid unnecessary:
+Look for:
 
 - forced layout
 - getBoundingClientRect in hot paths
-- DOM writes followed immediately by reads
-- expensive backdrop filters over large areas
-- unnecessary repaint-heavy effects
+- DOM reads immediately followed by writes
+- expensive large-area blur
+- repaint-heavy effects
+- unnecessary React DOM updates
 
-Keep the design visually identical.
+Prefer transforms and opacity where appropriate.
 
-================================================
-22. MOBILE OPTIMIZATION
-================================================
+Keep the design visually intact.
 
-Test mobile/tablet behavior.
+=====================================================================
+32. LOADING / CODE SPLITTING
+=====================================================================
 
-Where appropriate, introduce adaptive quality based on device capability.
+Audit:
 
-Possible adaptations include:
+- initial JavaScript
+- dynamic imports
+- 3D assets
+- textures
+- fonts
+- audio
+- Events assets
+- Crew assets
 
-- particle density
-- shadow resolution
-- post-processing resolution
-- texture resolution
-- effect quality
-- DPR limits
-- expensive glass/transmission quality
+Load what is needed for the opening experience.
 
-Do NOT create a completely different experience.
+Do not force the entire experience to load before Intro can begin.
 
-Mobile should retain the same visual language and narrative.
-
-Use device-aware degradation only where necessary.
-
-================================================
-23. DEVICE PIXEL RATIO
-================================================
-
-Audit renderer DPR.
-
-Do not blindly render at extremely high DPR on every device.
-
-Use a sensible maximum DPR where appropriate.
-
-Balance:
-
-visual sharpness
-vs
-GPU cost.
-
-Ensure desktop high-resolution displays still look excellent.
-
-================================================
-24. LOADING / CODE SPLITTING
-================================================
-
-Audit initial loading.
-
-Identify assets and code that do not need to be loaded immediately.
-
-Where appropriate use:
+Where safe, use:
 
 - dynamic imports
 - lazy loading
-- progressive asset loading
+- progressive loading
 - section-aware loading
 
-Do not delay assets required immediately for the opening experience.
+Avoid visible popping.
 
-Avoid loading the entire Events + Teams experience if it is unnecessary for the initial frame.
-
-Ensure lazy loading does not cause visible popping or broken transitions.
-
-================================================
-25. BUNDLE OPTIMIZATION
-================================================
+=====================================================================
+33. BUNDLE OPTIMIZATION
+=====================================================================
 
 Inspect the production bundle.
 
-Identify:
+Look for:
 
 - unnecessarily large dependencies
 - duplicated libraries
 - unused imports
 - accidental client-side imports
 - heavy modules loaded globally
-- development-only code entering production
+- development-only code
 
-Do not replace major dependencies without strong evidence.
+Do not replace essential libraries merely because they are large.
 
-Do not remove a dependency simply because it appears large if it is essential to the experience.
+=====================================================================
+34. ERROR / WARNING AUDIT
+=====================================================================
 
-================================================
-26. MEMORY LEAK AUDIT
-================================================
-
-Search for lifecycle leaks involving:
-
-- event listeners
-- window listeners
-- document listeners
-- ResizeObserver
-- MutationObserver
-- IntersectionObserver
-- timers
-- requestAnimationFrame
-- GSAP timelines
-- Lenis callbacks
-- Zustand subscriptions
-- Web Audio nodes
-- Three.js objects
-- textures
-- geometries
-- materials
-- post-processing passes
-
-Every effect should have appropriate cleanup.
-
-Pay particular attention to repeated mounting/unmounting and infinite looping.
-
-================================================
-27. ERROR / WARNING CLEANUP
-================================================
-
-The final production experience should not produce avoidable:
+Final production experience should not produce avoidable:
 
 - React warnings
-- hydration warnings caused by the application
+- hydration warnings
 - WebGL warnings
 - resource warnings
 - console errors
 - failed asset requests
+- repeated error loops
 
 Do not suppress warnings blindly.
 
-Find the actual cause.
+Find the real cause.
 
-Browser-extension-generated warnings should not be "fixed" by changing application architecture.
+Ignore browser-extension-generated noise that is outside the app.
 
-================================================
-28. ACCESSIBILITY / REDUCED MOTION
-================================================
+=====================================================================
+35. ACCESSIBILITY / REDUCED MOTION
+=====================================================================
 
 Optimization must not break:
 
-- reduced motion
 - keyboard interaction
+- focus
 - accessible controls
-- focus states
-- semantic UI
+- semantic DOM
 - readable text
+- reduced motion
+- mobile interaction
 
-Reduced-motion mode should remain significantly cheaper where possible.
+Reduced-motion mode should also be cheaper where possible.
 
-================================================
-29. QUALITY PRESERVATION RULE
-================================================
+It must still provide access to all important content.
 
-NEVER optimize by simply making the experience visibly worse.
+=====================================================================
+36. NO FAKE OPTIMIZATION
+=====================================================================
 
-Do not arbitrarily:
+DO NOT optimize by:
 
-- remove particles
-- remove fog
-- remove lighting
-- remove shadows
-- flatten materials
-- remove glass
-- reduce all textures
-- disable post-processing
-- reduce geometry everywhere
-- shorten animations
+- removing the cinematic Intro
+- removing fog
+- removing atmosphere
+- removing lighting
+- removing important shadows
+- flattening materials
+- removing glass
+- removing event rooms
+- removing Crew cards
+- replacing 3D with screenshots
+- disabling all post-processing
+- massively reducing textures
+- massively reducing geometry
+- shortening meaningful animation
+- hiding expensive features without understanding why they exist
 
-unless profiling proves the feature is a meaningful bottleneck AND the resulting visual difference is acceptable.
+unless profiling demonstrates a real bottleneck and the replacement
+preserves the intended visual result.
 
-Prefer targeted optimization.
+Targeted optimization only.
 
-================================================
-30. MEASURE EVERY SIGNIFICANT OPTIMIZATION
-================================================
+=====================================================================
+37. PROFILE → CHANGE → REPROFILE
+=====================================================================
 
-For each major optimization:
+For every significant optimization:
 
 BEFORE
-→ implement
-→ AFTER
-→ verify visual quality
+    ↓
+IDENTIFY BOTTLENECK
+    ↓
+IMPLEMENT TARGETED CHANGE
+    ↓
+AFTER
+    ↓
+VERIFY VISUAL QUALITY
+    ↓
+KEEP / REVERT
 
-Record meaningful improvements where measurable.
+Where measurable, record:
 
-Examples:
+- FPS
+- frame time
+- draw calls
+- triangles
+- texture count
+- memory/resource count
+- bundle size
+- load cost
 
-- draw calls: before / after
-- frame time: before / after
-- FPS: before / after
-- texture count: before / after
-- memory/resource count: before / after
-- bundle size: before / after
-- load time: before / after
+Do not claim an optimization was successful merely because code
+changed.
 
-Do not claim improvements without measurement.
+=====================================================================
+38. PRIORITY SYSTEM
+=====================================================================
 
-================================================
-31. REGRESSION TESTING
-================================================
+Prioritize:
 
-After optimization, test the COMPLETE experience:
+P0 — CORRECTNESS / SEVERE PERFORMANCE
+--------------------------------------
+
+- memory leaks
+- infinite-loop resource growth
+- runaway RAF/update loops
+- severe frame drops
+- broken cleanup
+- excessive CPU/GPU work
+- duplicate render/audio/camera systems
+- broken resize/orientation behavior
+
+
+P1 — MAJOR PERFORMANCE
+----------------------
+
+- expensive rendering
+- excessive draw calls
+- expensive post-processing
+- expensive shaders
+- excessive particles
+- unnecessary React renders
+- excessive textures
+- expensive Events rendering
+- expensive Crew rendering
+
+
+P2 — LOADING / RUNTIME
+----------------------
+
+- code splitting
+- asset loading
+- lazy loading
+- texture lifecycle
+- mobile adaptation
+- bundle optimization
+
+
+P3 — MICRO OPTIMIZATION
+-----------------------
+
+- tiny allocations
+- minor calculations
+- small cleanup improvements
+
+Do NOT spend significant time on P3 while P0/P1 problems remain.
+
+=====================================================================
+39. FULL REGRESSION TEST
+=====================================================================
+
+After optimization test the complete experience:
 
 INTRO
 → STORY
 → ASCENT
-→ RED BUILDING
-→ CLOUDS
+→ ACM-CEG
 → EVENTS
-→ PRODIGY
-→ TUNNEL
-→ TEAMS
-→ ALL 7 CARDS
-→ END LOOP
+→ EVENT ROOMS
+→ EDITORIAL
+→ CREW
+→ ALL DOMAIN CARDS
+→ END
 → START
 
 Test:
@@ -904,120 +1423,112 @@ Test:
 - reverse scrolling
 - scrubbing
 - stopping
-- reload
+- mid-transition reversal
 - repeated loops
+- reload
+- resize
+- orientation changes
 
 Check for:
 
 - stutter
 - dropped frames
 - camera jumps
-- incorrect state
+- FOV jumps
+- orientation flips
+- state errors
 - missing assets
 - missing audio
 - visual popping
 - resource accumulation
 - memory growth
+- console errors
+- broken accessibility
 
-================================================
-32. PRODUCTION BUILD
-================================================
-
-Optimization must be validated against the production build.
+=====================================================================
+40. PRODUCTION VALIDATION
+=====================================================================
 
 Run:
 
 npm run typecheck
+
 npm run build
+
 git diff --check
 
-Then test the production output in a real browser.
+Then test the production build in a real browser.
 
 Do not rely only on the development server.
 
-================================================
-33. QA
-================================================
-
 Run all relevant existing QA scripts.
 
-Do not remove or weaken QA tests just because an optimization causes them to fail.
+Do NOT weaken QA tests simply because an optimization causes failure.
 
 If a test fails:
 
-1. determine whether the optimization caused the regression
-2. fix the implementation
-3. rerun the test
+1. determine whether the optimization caused it
+2. identify the root cause
+3. fix the implementation
+4. rerun the test
 
-================================================
-34. GIT SAFETY
-================================================
+=====================================================================
+41. GIT SAFETY
+=====================================================================
 
-Before making changes:
+Before modifying anything:
 
 inspect:
 
 - git status
-- current branch
-- current HEAD
-- current diff
+- branch
+- HEAD
+- diff
 
-Do not:
+DO NOT:
 
 - reset
 - revert
 - stash
 - clean
-- overwrite existing work
 - force checkout
+- overwrite unrelated work
+- delete existing work without justification
 - push
+- commit
 
-Preserve all existing work.
+Preserve all current work.
 
-Do not commit unless explicitly instructed.
+The user will handle the commit separately.
 
-================================================
-35. OPTIMIZATION PRIORITY
-================================================
+=====================================================================
+42. FINAL DIFF REVIEW
+=====================================================================
 
-Prioritize in this order:
+Before finishing:
 
-P0 — correctness/performance blockers
-- memory leaks
-- infinite-loop resource growth
-- severe frame drops
-- runaway render/update loops
-- broken lifecycle cleanup
-- excessive GPU/CPU work
+inspect the complete git diff.
 
-P1 — major performance improvements
-- expensive rendering
-- excessive draw calls
-- excessive post-processing
-- expensive shaders
-- excessive particles
-- unnecessary React rerenders
-- large unnecessary textures
-- expensive Events/Teams rendering
+Verify that the optimization pass did NOT accidentally alter:
 
-P2 — loading/runtime improvements
-- code splitting
-- asset loading
-- bundle optimization
-- lazy loading
-- texture management
-- mobile adaptation
+- content
+- event data
+- member data
+- domain ordering
+- section ordering
+- camera choreography
+- scroll behavior
+- audio design
+- visual identity
+- responsive behavior
+- accessibility
+- reduced-motion behavior
 
-P3 — micro-optimizations
-- small allocations
-- minor calculations
-- tiny cleanup improvements
+Remove accidental/unrelated changes.
 
-Do not spend significant time on P3 work while P0/P1 problems remain.
-
-================================================
-36. FINAL ACCEPTANCE CRITERIA
-================================================
+=====================================================================
+43. FINAL ACCEPTANCE CRITERIA
+=====================================================================
 
 The optimization pass is complete only when:
 
@@ -1025,15 +1536,29 @@ The optimization pass is complete only when:
 
 ✓ Intro remains visually intact.
 
+✓ ASCENT remains visually intact.
+
+✓ ACM-CEG remains visually intact.
+
 ✓ Events remains visually and functionally intact.
 
-✓ Teams remains visually and functionally intact.
+✓ Current Events architecture remains intact.
 
-✓ Scroll remains user-controlled and smooth.
+✓ Events 3D → 2D transition remains continuous.
+
+✓ Crew remains visually and functionally intact.
+
+✓ Scroll remains user-controlled.
 
 ✓ Forward scrolling works.
 
 ✓ Reverse scrolling works.
+
+✓ Mid-transition reversal works.
+
+✓ Resize does not reset the journey.
+
+✓ Orientation changes do not reset the journey.
 
 ✓ Infinite looping works.
 
@@ -1049,63 +1574,142 @@ The optimization pass is complete only when:
 
 ✓ Assets are appropriately managed.
 
-✓ Mobile performance has been considered and tested.
+✓ Mobile performance has been considered.
+
+✓ mobile.txt requirements have been audited.
+
+✓ Reduced motion still works.
+
+✓ Accessibility still works.
+
+✓ Audio lifecycle remains stable.
 
 ✓ Production build passes.
 
-✓ TypeScript passes.
+✓ Typecheck passes.
 
-✓ Git diff check passes.
+✓ git diff --check passes.
 
 ✓ Existing QA passes.
 
 ✓ No new avoidable console errors/warnings were introduced.
 
-✓ Major optimizations are supported by actual measurements.
+✓ Significant optimizations are supported by measurements where
+  measurements are possible.
 
-================================================
-FINAL REPORT
-================================================
+=====================================================================
+44. FINAL REPORT
+=====================================================================
 
-At the end, provide a concise engineering report containing:
+At the end, provide a concise engineering report.
 
-1. BASELINE
-   - important measured performance/resource metrics
+Use exactly this structure:
 
-2. OPTIMIZATIONS IMPLEMENTED
-   - grouped by CPU / GPU / memory / loading / React / Three.js / mobile
+BASELINE
+--------
+- important measured metrics
+- what could/could not be measured
 
-3. MEASURED IMPROVEMENTS
-   - before → after where measurable
+OPTIMIZATIONS IMPLEMENTED
+-------------------------
+- CPU
+- GPU
+- React
+- Three.js
+- memory
+- loading
+- mobile
+- Events
+- Crew
+- audio
 
-4. PRESERVED
-   - major visual/functional systems intentionally left unchanged
+MEASURED IMPROVEMENTS
+---------------------
+- before → after
+- only where actually measurable
 
-5. VALIDATION
-   - browser
-   - production build
-   - typecheck
-   - QA
-   - loop testing
-   - reverse scrolling
+RESOURCE / MEMORY STABILITY
+---------------------------
+- leaks found
+- leaks fixed
+- repeated-loop behavior
 
-6. REMAINING BOTTLENECKS
-   - only genuine remaining issues
+SCROLL / CAMERA
+---------------
+- forward
+- reverse
+- resize
+- orientation
+- mid-transition reversal
 
-Do not claim "optimized" merely because code was changed.
+EVENTS
+------
+- current architecture
+- rendering cost
+- room behavior
+- 3D → 2D transition
+- mobile
 
-The final standard is:
+INTRO / ASCENT / ACM-CEG
+------------------------
+- performance
+- lifecycle
+- preserved visual quality
 
-HIGH-END CINEMATIC QUALITY
-+
-SMOOTH USER-CONTROLLED INTERACTION
-+
-STABLE LONG-SESSION PERFORMANCE
-+
-STRONG MOBILE PERFORMANCE
-+
-NO RESOURCE LEAKS
-+
-NO FUNCTIONAL REGRESSIONS
+CREW
+----
+- rendering
+- card experience
+- resource lifecycle
 
-Optimize intelligently, measure the result, and preserve the experience.
+AUDIO
+-----
+- lifecycle
+- duplication
+- mobile/background behavior
+
+ACCESSIBILITY / REDUCED MOTION
+------------------------------
+- status
+
+VALIDATION
+----------
+- typecheck
+- production build
+- git diff --check
+- QA
+- browser/device checks
+
+REMAINING BOTTLENECKS
+---------------------
+- only genuine remaining issues
+
+NOT VERIFIED
+------------
+- explicitly list anything that could not actually be tested
+
+Do NOT claim "fully optimized" unless the evidence supports it.
+
+The standard is:
+
+    HIGH-END CINEMATIC QUALITY
+            +
+    SMOOTH USER-CONTROLLED INTERACTION
+            +
+    STABLE LONG-SESSION PERFORMANCE
+            +
+    STRONG MOBILE PERFORMANCE
+            +
+    NO RESOURCE LEAKS
+            +
+    NO FUNCTIONAL REGRESSIONS
+            +
+    MEASURED, TARGETED OPTIMIZATION
+
+Optimize intelligently.
+
+Measure where possible.
+
+Preserve the experience.
+
+DO NOT COMMIT OR PUSH.

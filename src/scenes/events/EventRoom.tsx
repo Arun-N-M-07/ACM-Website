@@ -32,9 +32,6 @@ interface Props {
   total: number;
 }
 
-/** Where a light anchor waits while its room isn't the one visited: out of every light's reach. */
-const PARKED_Y = -1e4;
-
 /**
  * A soft spot on the centrepiece: a faint cone of light from the ceiling and a
  * warm pool on the floor.
@@ -122,24 +119,30 @@ export const EventRoom = memo(function EventRoom({ layout, total }: Props) {
   // waits out of reach unless this is the room being visited, so the few pooled lights stay with the
   // hall and the matrix — systems/lighting.)
   const k = layout.scale;
-  const anchor = useLightAnchor([0, PARKED_Y, 0], event.flagship ? '#ffd2a2' : '#ffdcb4', (event.flagship ? 95 : 65) * k * k, (event.flagship ? 20 : 15) * k);
+  const anchor = useLightAnchor([layout.center[0], layout.center[1] + (H - 0.7) * k, layout.center[2] - D * 0.1 * k], event.flagship ? '#ffd2a2' : '#ffdcb4', (event.flagship ? 95 : 65) * k * k, (event.flagship ? 20 : 15) * k);
   const group = useRef<Group>(null);
   const level = useRef(0.5);
   const response = useRef(1);
   useFrame((_, dt) => {
     const c = clock.current;
     // (Pointed at in the matrix, across the hall, it asks the pool for a light of its own.)
-    if ((c.here || c.near) && group.current) {
+    if (group.current) {
       group.current.updateWorldMatrix(true, false);
       anchor.position.set(0, H - 0.7, -D * 0.1).applyMatrix4(group.current.matrixWorld);
-      anchor.priority = c.here ? 1 : 12;
-    } else anchor.position.y = PARKED_Y;
+    }
+    // A retired pooled light must stay at its physical fixture while fading, not teleport 10km
+    // away. Inactive rooms have no gain and don't compete for slots. Priority/light level follow
+    // continuous presence instead of abruptly switching from "hover" to "here" at selection.
+    // Physical distance, not hover/entry progress, decides which fixture is
+    // closest. A priority boost swapped hall lighting for a tiny room light
+    // while the camera was still looking at the entire shelf.
+    anchor.priority = 1;
     // The shared blue signal takes on this installation's colour as it performs.
     accentMat.color.copy(signalBlue).lerp(roomColor, sstep(c.u, 0, .85)).multiplyScalar(1.25);
-    let target = (c.here ? 1.3 : c.near ? 0.7 : 0.45) * response.current;
+    let target = (0.45 + 0.85 * c.presence) * response.current;
     if (exhibit.darkUntil !== undefined) target *= 0.12 + 0.88 * sstep(c.u, 0.04, exhibit.darkUntil);
     level.current += (target - level.current) * (1 - Math.exp(-dt * 4));
-    anchor.gain = level.current;
+    anchor.gain = c.near ? level.current : 0;
   });
 
   // The three projection walls.

@@ -9,10 +9,10 @@
  *                     bay hatched and its corners marked (EventsHall), and the
  *                     way in — "[Visit PatternX]" — with the pointer, kept
  *                     inside that room's opening. A click, Enter,
- *                     or on a touch screen a tap and then Visit, goes in
+ *                     or a single tap on a touch screen, goes in
  *                     (controller.visitEvent). At the matrix's foot, the way
  *                     on: "Next, let's meet the Crew".
- *   an event's record once its room has played, the scroll unfolds it — the
+ *   an event's record after the room threshold, the scroll unfolds it — the
  *                     room going down under it — into an editorial page: its
  *                     number, kind and cadence; its name, large; what it is;
  *                     the record's own words; its facts; how it runs; its
@@ -31,7 +31,8 @@ import { DOSSIERS, type DossierFlow } from '@/content/dossiers';
 import { EVENTS, type EventRecord } from '@/content/events';
 import { experience, useExperience } from '@/store/experience';
 import { anchorAt, onProjected, stage, toNdc } from '@/systems/anchors/anchors';
-import { backToFullView, visitCrew, visitEvent, visitNextEvent } from './controller';
+import { cancelScrollMotion } from '@/systems/scroll/ScrollTimeline';
+import { backToFullView, canVisitEvent, visitCrew, visitEvent, visitNextEvent } from './controller';
 import { eventsFrame, eventsState, useEvents } from './state';
 
 const N = EVENTS.length;
@@ -70,28 +71,6 @@ const restatesFacts = (flow: DossierFlow, e: EventRecord) =>
     const t = st.title.toLowerCase();
     return e.facts.some((f) => f.label.toLowerCase() === t || f.value.toLowerCase().includes(t));
   });
-/**
- * The letters a line of a name must hold for it to set in three lines at most — never fewer than its
- * longest word (its type is set no larger than lets such a line keep to its column: never a word broken).
- */
-function lineLetters(title: string) {
-  const words = title.split(/\s+/);
-  const lines = (width: number) => {
-    let n = 1;
-    let run = 0;
-    for (const w of words) {
-      if (run > 0 && run + 1 + w.length > width) {
-        n++;
-        run = w.length;
-      } else run = run > 0 ? run + 1 + w.length : w.length;
-    }
-    return n;
-  };
-  let width = Math.max(...words.map((w) => w.length));
-  while (lines(width) > 3) width++;
-  return width;
-}
-
 /** A flow of the dossier's: its label on the left — and whether it is the exhibition's reading — its steps on the right. */
 function Flow({ flow, id }: { flow: DossierFlow; id: string }) {
   const List = flow.kind === 'sequence' ? 'ol' : 'ul';
@@ -117,9 +96,8 @@ function Flow({ flow, id }: { flow: DossierFlow; id: string }) {
  * An event's record: a black sheet the scroll moves up over its room, px for px, and on up the screen
  * to its end — one story, told in the order it is understood:
  *
- *   what it is        its name, massive, its number under it, dim (and under that, small: which
- *                     event, and the way back to the full view); beside it, large, what it is, and
- *                     what it is for as the record draws it — one opening, on three columns
+ *   what it is        its small index first, then a dominant name and the record's introduction;
+ *                     the wider title column lets long names wrap without shrinking their voice
  *   what kind         its category; then about it, in the record's own words where they say more;
  *                     how it runs; its programme
  *   the details       one later layer, ruled: kind, cadence, the record's facts, its links
@@ -146,25 +124,22 @@ function Record({ index }: { index: number }) {
   const kinds = [e.kind, e.cadence, ...(e.flagship ? ['Flagship'] : [])];
   return (
     <>
-      <header className="evx-intro" style={{ ['--word' as string]: lineLetters(e.title) }}>
+      <header className="evx-intro">
+        <div className="evx-meta">
+          <span className="evx-meta-at">Event {pad2(index + 1)} / {TOTAL}</span>
+          <button type="button" className="evx-toplink" onClick={() => backToFullView()}>
+            <span aria-hidden="true">←</span> Back to full view
+          </button>
+        </div>
         <div className="evx-name">
           <h2 className="evx-title" id="evx-title" tabIndex={-1}>
             {e.title}
           </h2>
-          <p className="evx-count" aria-hidden="true">
-            {pad2(index + 1)}
-          </p>
-          <div className="evx-meta">
-            <span className="evx-meta-at">
-              Event {pad2(index + 1)} / {TOTAL}
-            </span>
-            <button type="button" className="evx-toplink" onClick={() => backToFullView()}>
-              <span aria-hidden="true">←</span> Back to full view
-            </button>
-          </div>
         </div>
-        <p className="evx-lede">{essence}</p>
-        {d?.character ? <p className="evx-lede evx-lede-2">{d.character}</p> : null}
+        <div className="evx-opening">
+          <p className="evx-lede">{essence}</p>
+          {d?.character ? <p className="evx-lede-2">{d.character}</p> : null}
+        </div>
       </header>
 
       <section className="evx-split evx-kind" data-reveal aria-labelledby={`evx-kind-${index}`}>
@@ -358,9 +333,9 @@ export function EventsUI() {
   const shownRef = useRef(-1);
   /** The screen the record is read on (px), and its parts' places in it. */
   const measure = useRef({ parts: [] as { el: HTMLElement; top: number }[], vh: 0 });
-  /** A touch arms a bay first (its name, and Visit); a second touch — or Visit — goes in. */
+  /** Remember the initiating input so keyboard focus returns to its original bay. */
   const pressedWith = useRef<'mouse' | 'touch' | 'pen' | 'key'>('key');
-  const armed = useRef(-1);
+  const press = useRef<{ id: number; x: number; y: number; moved: boolean } | null>(null);
   /** The bay an event was visited from, and the keyboard's way back to it once the matrix is there again. */
   const openedFrom = useRef(-1);
   const focusBack = useRef(-1);
@@ -385,13 +360,12 @@ export function EventsUI() {
         // The whole matrix: its bays' hit areas where the world puts them.
         const h = hub.current;
         if (h) {
-          const live = on && !overlay && v.hub > 0.9;
+          const live = on && !overlay && v.hub > 0.9 && canVisitEvent();
           put(h, 'data-live', live ? 'true' : 'false');
           put(h, 'inert', live ? 'false' : 'true');
           put(h, 'visibility', on && v.hub > 0.01 ? 'visible' : 'hidden');
-          if (!live && !overlay && (F.hover >= 0 || armed.current >= 0)) {
+          if (!live && !overlay && F.hover >= 0) {
             F.hover = -1;
-            armed.current = -1;
           }
           if (v.hub > 0.01) {
             for (let i = 0; i < N; i++) {
@@ -506,8 +480,8 @@ export function EventsUI() {
 
   // Said as it happens (for assistive technology): going in, and back.
   useEffect(() => {
-    if (visiting && selected >= 0) setAnnounce(`Visiting ${EVENTS[selected].title}, event ${selected + 1} of ${N}.`);
-    else if (!visiting && selected < 0 && announce.startsWith('Visiting')) setAnnounce('Back at the full view of the events.');
+    if (visiting && selected >= 0) setAnnounce(`Entering ${EVENTS[selected].title}, event ${selected + 1} of ${N}. Scroll at any time to control the approach; continue scrolling to read its record.`);
+    else if (!visiting && selected < 0 && announce.startsWith('Entering')) setAnnounce('Back at the full view of the events.');
     if (!visiting && openedFrom.current >= 0) {
       const from = openedFrom.current;
       openedFrom.current = -1;
@@ -545,23 +519,12 @@ export function EventsUI() {
     const leave = () => {
       eventsFrame.pointer.active = false;
     };
-    // A touch off every bay (and off the focus bar) lets an armed one go.
-    const down = (e: PointerEvent) => {
-      if (e.pointerType === 'mouse' || armed.current < 0) return;
-      const t = e.target instanceof Element ? e.target : null;
-      if (t?.closest('.evx-bay, .evx-focusbar')) return;
-      armed.current = -1;
-      eventsFrame.hover = -1;
-      setFocusBay(-1);
-    };
     window.addEventListener('pointermove', move, { passive: true });
-    window.addEventListener('pointerdown', down, { passive: true });
     document.documentElement.addEventListener('pointerleave', leave);
     window.addEventListener('blur', leave);
     return () => {
       window.removeEventListener('keydown', key, { capture: true });
       window.removeEventListener('pointermove', move);
-      window.removeEventListener('pointerdown', down);
       document.documentElement.removeEventListener('pointerleave', leave);
       window.removeEventListener('blur', leave);
     };
@@ -572,25 +535,27 @@ export function EventsUI() {
     setFocusBay(i);
   };
   const unlight = (i: number) => {
-    if (eventsFrame.hover !== i || armed.current === i) return;
+    if (eventsFrame.hover !== i) return;
     eventsFrame.hover = -1;
     setFocusBay(-1);
   };
   const go = (i: number) => {
-    armed.current = -1;
+    if (!canVisitEvent()) return;
     // (The keyboard is brought back to the bay only if it went in from the keyboard: a pointer or a
     // finger went in by itself, and a bay focused under a finger would light it again.)
     openedFrom.current = pressedWith.current === 'key' ? i : -1;
     setFocusBay(-1);
+    // Retire the hit layer synchronously. A second click before the next projected frame must not
+    // restart the flight or pick another room while the camera already approaches the first.
+    if (hub.current) {
+      put(hub.current, 'data-live', 'false');
+      put(hub.current, 'inert', 'true');
+    }
     visitEvent(i);
   };
   const choose = (i: number) => {
-    // A touch shows the bay first — its name, and Visit; the second touch goes in.
-    if (pressedWith.current === 'touch' && armed.current !== i) {
-      armed.current = i;
-      light(i);
-      return;
-    }
+    // A bay is a real button on every input device. One tap must do the same
+    // thing as one click/Enter, rather than silently arming a second action.
     go(i);
   };
 
@@ -612,15 +577,32 @@ export function EventsUI() {
                 className="evx-bay"
                 type="button"
                 aria-label={`Visit ${e.title} — event ${i + 1} of ${N}, ${e.kind}${e.flagship ? ', flagship' : ''}`}
-                onPointerDown={(p) => void (pressedWith.current = p.pointerType === 'touch' ? 'touch' : p.pointerType === 'pen' ? 'pen' : 'mouse')}
-                onKeyDown={() => void (pressedWith.current = 'key')}
+                onPointerDown={(p) => {
+                  if (p.button !== 0 || !p.isPrimary || !canVisitEvent()) return;
+                  pressedWith.current = p.pointerType === 'touch' ? 'touch' : p.pointerType === 'pen' ? 'pen' : 'mouse';
+                  press.current = { id: p.pointerId, x: p.clientX, y: p.clientY, moved: false };
+                  // The physical bay/hit rectangle can move under a stationary pointer. Keep the
+                  // release on the button that was actually pressed, without selecting on down.
+                  p.currentTarget.setPointerCapture(p.pointerId);
+                  cancelScrollMotion();
+                }}
+                onPointerCancel={() => void (press.current = null)}
+                onKeyDown={() => { pressedWith.current = 'key'; press.current = null; }}
                 // (Lit by a mouse moving over it — not by the browser's own enter when the page changes
                 // under a pointer left still, as a touch screen's is.)
-                onPointerMove={(p) => p.pointerType === 'mouse' && eventsFrame.hover !== i && light(i)}
+                onPointerMove={(p) => {
+                  const down = press.current;
+                  if (down && down.id === p.pointerId && Math.hypot(p.clientX - down.x, p.clientY - down.y) > 10) down.moved = true;
+                  if (p.pointerType === 'mouse' && eventsFrame.hover !== i) light(i);
+                }}
                 onPointerLeave={(p) => p.pointerType === 'mouse' && unlight(i)}
                 onFocus={() => eventsFrame.hover !== i && light(i)}
                 onBlur={() => unlight(i)}
-                onClick={() => choose(i)}
+                onClick={(e) => {
+                  const dragged = e.detail > 0 && press.current?.moved;
+                  press.current = null;
+                  if (!dragged) choose(i);
+                }}
               />
             </li>
           ))}
@@ -644,7 +626,7 @@ export function EventsUI() {
           </div>
         )}
         <div ref={crew} className="evx-crew" data-away={touch && ev ? 'true' : 'false'}>
-          <p className="evx-crew-hint">{touch ? 'Tap a room to see it' : 'Point at a room to see it'} · or go on</p>
+          <p className="evx-crew-hint">{visiting && selected >= 0 ? `Entering ${EVENTS[selected].title} · scroll to control the approach` : `${touch ? 'Tap' : 'Click'} a room to enter · or go on`}</p>
           <button type="button" className="evx-crew-btn" onClick={() => visitCrew()}>
             <span className="evx-crew-k">Next,</span> let’s meet the Crew{' '}
             <span className="evx-arrow" aria-hidden="true">

@@ -254,38 +254,38 @@
 
 /* ── An event's record ───────────────────────────────────────────────────── */
 
-/* One page with the room above it: as the scroll goes on, the room's picture goes up the screen
-   (CameraRig lifts it by the share of the screen the canvas has) and the black canvas comes up under
-   it, edge to edge — no fade, no cut. On the canvas only type and hairlines, on three columns:
+/* Two depth layers: the black sheet rises over the room, while CameraRig gives
+   the deep layer only 14% of that first screen's travel. No fade, no cut.
+   On the sheet only type and hairlines, on an editorial column grid:
      pitch black        the canvas, and the negative space
-     warm off-white     the name, what it is, the values, the choices
+     neutral grey       the name, what it is, the values, the choices
      muted grey         labels, the number, the way back
      dark grey          the rules
    The hierarchy is in size, weight, place and contrast. Its spaces are set by the type (which the
    screen's width sets) — never by the screen's height, never as a block of screen. */
 .evx {
   --ed-black: #000;
-  --ed-white: #ebe7e0;
-  --ed-soft: #dcd8d1;
-  --ed-label: #7a7772;
-  --ed-number: #6f6c68;
+  --ed-white: #c4c4c4;
+  --ed-soft: #b9b9b9;
+  --ed-label: #858585;
   --ed-rule: rgba(255, 255, 255, 0.12);
   /* Three columns, as wide as each other, across the canvas. */
-  --ed-col-gap: clamp(12px, 1.2vw, 24px);
-  --ed-tight: clamp(10px, 1vw, 18px);
-  --ed-step: clamp(18px, 1.9vw, 34px);
-  --ed-breath: clamp(44px, 4.6vw, 80px);
-  /* The name's size — and no larger than lets a line of it keep to its column (--word: its letters). */
-  --ed-title: clamp(52px, 6.4vw, 132px);
-  --ed-title-room: calc((100vw - 2 * var(--gutter) - 2 * var(--ed-col-gap)) / 3);
+  --ed-col-gap: clamp(16px, 1.25vw, 24px);
+  --ed-tight: clamp(12px, 1vw, 18px);
+  --ed-step: clamp(20px, 1.9vw, 32px);
+  --ed-breath: clamp(32px, 3.2vw, 56px);
+  --ed-title: clamp(64px, 7.65vw, 156px);
   /* What the event is: large, readable copy, set tight. */
-  --ed-copy: clamp(20px, 2.15vw, 44px);
+  --ed-copy: clamp(26px, 2.95vw, 44px);
   /* The site's top bar: what goes up under it goes into black. */
   --ed-bar: calc(env(safe-area-inset-top, 0px) + 76px);
 }
 .evx-record {
   position: absolute;
   inset: 0;
+  /* The measured reading viewport ends below the existing site chrome. Its
+     sheet still starts at the screen's foot; no empty heading spacer needed. */
+  top: var(--ed-bar);
   visibility: hidden;
   overflow: hidden;
 }
@@ -293,13 +293,24 @@
   visibility: visible;
 }
 .evx-sheet {
+  --ed-font: var(--font-family);
+  /* These role tokens are local: none of the global type system changes. */
+  --w-display: 600;
+  --w-title: 600;
+  --w-sub: 600;
+  --w-ui: 600;
+  --sans: var(--font-family);
+  --ed-gutter: clamp(16px, 1.25vw, 32px);
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   min-height: 100vh;
-  padding: 0 var(--gutter);
+  padding: 0 max(var(--ed-gutter), env(safe-area-inset-right, 0px)) 0 max(var(--ed-gutter), env(safe-area-inset-left, 0px));
   background: var(--ed-black);
+  color: var(--ed-white);
+  font-family: var(--ed-font);
+  font-weight: 600;
   /* (The black carried on below its foot: never a sliver of the room under the end of the record.) */
   box-shadow: 0 100vh 0 0 var(--ed-black);
   will-change: transform;
@@ -308,7 +319,7 @@
    as the bar — black, not a fade). */
 .evx-record::after {
   content: '';
-  position: absolute;
+  position: fixed;
   left: 0;
   right: 0;
   top: 0;
@@ -320,62 +331,71 @@
 .evx-record[data-on='true'] .evx-sheet {
   pointer-events: auto;
 }
-[data-reveal] {
+.evx-sheet [data-reveal] {
   --in: 0;
   opacity: calc(0.12 + 0.88 * var(--in));
   transform: translate3d(0, calc((1 - var(--in)) * 14px), 0);
 }
 
-/* The opening, right at the canvas's edge: the name in the first column (its number under it, and
-   under that, small, which event and the way back); in the second, what it is; in the third, what it
-   is for — large, set tight, the same voice. */
+/* The index starts at the sheet's edge. A 7/5 opening gives the title room to
+   be dominant without squeezing long event names into miniature type. */
 .evx-intro {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(12, minmax(0, 1fr));
   column-gap: var(--ed-col-gap);
+  row-gap: var(--ed-tight);
   align-items: start;
-  padding-top: clamp(20px, 2vw, 36px);
+  padding-top: 16px;
 }
 .evx-name {
-  grid-column: 1;
+  grid-column: 1 / 8;
   display: grid;
   justify-items: start;
-}
-.evx-title,
-.evx-count {
-  margin: 0;
-  font-family: var(--sans);
-  line-height: 0.86;
-  letter-spacing: -0.05em;
+  min-width: 0;
 }
 .evx-title {
-  font-size: min(var(--ed-title), calc(var(--ed-title-room) / (var(--word, 8) * 0.58)));
+  margin: 0;
+  font-family: var(--sans);
+  line-height: 0.9;
+  letter-spacing: -0.04em;
+}
+.evx-title {
+  font-size: var(--ed-title);
   font-weight: var(--w-display);
   color: var(--ed-white);
-  overflow-wrap: break-word;
+  overflow-wrap: anywhere;
+  text-wrap: balance;
 }
 .evx-title:focus {
   outline: none;
 }
-.evx-count {
-  margin-top: 0.12em;
-  font-size: calc(var(--ed-title) * 0.52);
-  font-weight: var(--w-title);
-  color: var(--ed-number);
+.evx-opening {
+  grid-column: 8 / -1;
+  min-width: 0;
 }
 .evx-lede {
   margin: 0;
   font-family: var(--sans);
   font-weight: var(--w-title);
   font-size: var(--ed-copy);
-  line-height: 1.04;
-  letter-spacing: -0.03em;
+  line-height: 1.02;
+  letter-spacing: -0.04em;
+  color: var(--ed-white);
+}
+.evx-lede-2 {
+  margin: var(--ed-step) 0 0;
+  max-width: 40ch;
+  font-size: clamp(18px, 1.55vw, 24px);
+  line-height: 1.22;
+  letter-spacing: -0.02em;
   color: var(--ed-soft);
 }
 .evx-meta {
-  display: grid;
-  justify-items: start;
-  margin-top: var(--ed-step);
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 16px;
 }
 .evx-toplink,
 .evx-meta-at {
@@ -392,7 +412,7 @@
   display: inline-flex;
   gap: 8px;
   align-items: center;
-  min-height: 32px;
+  min-height: 24px;
   transition: color 0.2s var(--ease);
 }
 .evx-toplink:hover,
@@ -424,8 +444,8 @@
   margin: 0;
   font-family: var(--sans);
   font-weight: var(--w-title);
-  font-size: clamp(16px, 1.45vw, 28px);
-  line-height: 1.05;
+  font-size: clamp(20px, 1.875vw, 28px);
+  line-height: 1;
   letter-spacing: -0.03em;
   color: var(--ed-label);
 }
@@ -452,14 +472,15 @@
   margin: 0;
   font-family: var(--sans);
   font-weight: var(--w-sub);
-  font-size: clamp(16px, 1.35vw, 24px);
-  line-height: 1.3;
-  letter-spacing: -0.015em;
+  font-size: clamp(18px, 1.56vw, 24px);
+  line-height: 1.28;
+  letter-spacing: -0.02em;
   color: var(--ed-soft);
 }
 .evx-said {
   column-count: 2;
   column-gap: var(--ed-col-gap);
+  column-width: 25ch;
 }
 
 /* Rows, ruled: a hairline each, drawn in from the left as they arrive. */
@@ -548,8 +569,8 @@
 .evx-step-note {
   font-family: var(--sans);
   font-weight: var(--w-sub);
-  font-size: clamp(14px, 1.05vw, 18px);
-  line-height: 1.4;
+  font-size: clamp(16px, 1.25vw, 20px);
+  line-height: 1.28;
   color: var(--ed-soft);
 }
 .evx-related > li {
@@ -702,13 +723,12 @@ html[data-evx-record='true'] .rail {
 
 /* ── Smaller screens ─────────────────────────────────────────────────────── */
 
-/* Narrower: the name across the top; what it is, and what it is for, side by side under it; the later
+/* Narrower: the index then the name across the top; the introduction and context side by side; the later
    parts' labels over them. */
 @media (max-width: 1000px) {
   .evx {
-    --ed-title: clamp(48px, 9vw, 96px);
-    --ed-title-room: calc(100vw - 2 * var(--gutter));
-    --ed-copy: clamp(19px, 2.6vw, 28px);
+    --ed-title: clamp(52px, 9vw, 96px);
+    --ed-copy: clamp(24px, 3.8vw, 36px);
   }
   .evx-intro {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -716,16 +736,15 @@ html[data-evx-record='true'] .rail {
   }
   .evx-name {
     grid-column: 1 / -1;
-    grid-template-columns: auto auto 1fr;
-    align-items: end;
-    column-gap: 0.3em;
   }
-  .evx-count {
-    margin: 0;
+  .evx-opening {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: var(--ed-col-gap);
+    align-items: start;
   }
-  .evx-meta {
-    justify-self: end;
-    justify-items: end;
+  .evx-lede-2 {
     margin: 0;
   }
   .evx-split,
@@ -743,12 +762,12 @@ html[data-evx-record='true'] .rail {
     row-gap: 24px;
   }
 }
-/* One column: the number and the way back over the name, then what it is, what it is for, and the
+/* One column: the index and the way back over the name, then the introduction, context, and the
    rest in the same order. */
 @media (max-width: 640px) {
   .evx {
     --ed-title: clamp(44px, 14vw, 72px);
-    --ed-copy: clamp(19px, 5.4vw, 24px);
+    --ed-copy: clamp(24px, 6.4vw, 32px);
   }
   .evx-intro {
     grid-template-columns: minmax(0, 1fr);
@@ -756,20 +775,12 @@ html[data-evx-record='true'] .rail {
   .evx-intro > * {
     grid-column: 1;
   }
-  .evx-name {
-    grid-template-columns: auto 1fr;
-    grid-template-areas: 'count meta' 'title title';
-    align-items: end;
-    row-gap: 4px;
+  .evx-opening {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: var(--ed-tight);
   }
-  .evx-title {
-    grid-area: title;
-  }
-  .evx-count {
-    grid-area: count;
-  }
-  .evx-meta {
-    grid-area: meta;
+  .evx-toplink {
+    min-height: 44px;
   }
   .evx-said {
     column-count: 1;
