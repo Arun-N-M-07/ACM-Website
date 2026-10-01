@@ -31,7 +31,7 @@ import {
 } from 'three';
 import { smoothstep } from '@/systems/camera/pose';
 import { useDisposable } from '@/systems/performance/useDisposable';
-import { teamsFrame } from '../state';
+import { teamsFrame, teamsWorldActive } from '../state';
 import { useExperience } from '@/store/experience';
 import { cardY, O, spineAxis, type Composition } from '../layout';
 import { filamentPoints, spineGeometry } from './spineGeometry';
@@ -108,6 +108,7 @@ function spineMaterial(env: Texture | null) {
 
 export function Spine({ env, comp }: { env: Texture | null; comp: Composition }) {
   const group = useRef<Group>(null);
+  const prepared = useRef(false);
   const [geo, setGeo] = useState<BufferGeometry | null>(null);
   useEffect(() => {
     let alive = true;
@@ -141,6 +142,11 @@ export function Spine({ env, comp }: { env: Texture | null; comp: Composition })
   useFrame(({ clock, camera }, dt) => {
     const f = teamsFrame;
     const reduced = useExperience.getState().reducedMotion;
+    // Keep the bead's global phase, but not the curve sampling/material work
+    // while this resident world is hidden by Intro or Events.
+    if (!reduced) beadT.current = (beadT.current + dt * 0.018) % 1;
+    if (!teamsWorldActive() && prepared.current) return;
+    prepared.current = true;
     const t = reduced ? 0 : clock.elapsedTime;
     const u = res.uniforms;
     u.uTime.value = t;
@@ -165,7 +171,6 @@ export function Spine({ env, comp }: { env: Texture | null; comp: Composition })
     const drawn = smoothstep(0.24, 0.92, f.reveal);
     res.tube.setDrawRange(0, Math.floor(drawn * 640) * 30);
     res.thread.opacity = 0.18 * (1 - 0.99 * f.focus);
-    if (!reduced) beadT.current = (beadT.current + dt * 0.018) % 1;
     if (bead.current) {
       bead.current.visible = drawn > 0.99 && f.focus < 0.5;
       const p = bead.current.position;

@@ -19,11 +19,16 @@ class MusicPlayer {
   private ctx: AudioContext | null = null;
   private gain: GainNode | null = null;
   private filter: BiquadFilterNode | null = null;
+  private source: MediaElementAudioSourceNode | null = null;
   private wanted = false;
   private level = 1;
   private holdTimer = 0;
   /** Suspends the audio graph a little after the sound is switched off (see disable). */
   private sleepTimer = 0;
+  private duckTimer = 0;
+  /** Async playback may finish after sound was disabled or the player was destroyed. */
+  private playbackRequest = 0;
+  private pendingSeek: (() => void) | null = null;
   /** The muffle filter's last target (Hz), so an unchanged one isn't sent again every frame. */
   private muffleHz = -1;
   private holding = false;
@@ -38,6 +43,11 @@ class MusicPlayer {
   /** Set when the browser refuses to play (autoplay policy, missing file…). */
   message = '';
 
+  private onMediaError = () => {
+    this.state = 'missing';
+    this.message = `No audio file at ${MUSIC.src}`;
+  };
+
   private build() {
     if (this.el) return;
     const el = new Audio(MUSIC.src);
@@ -45,10 +55,7 @@ class MusicPlayer {
     el.preload = 'auto';
     el.crossOrigin = 'anonymous';
     el.volume = 1;
-    el.addEventListener('error', () => {
-      this.state = 'missing';
-      this.message = `No audio file at ${MUSIC.src}`;
-    });
+    el.addEventListener('error', this.onMediaError);
     this.el = el;
   }
 
@@ -69,6 +76,7 @@ class MusicPlayer {
       src.connect(filter).connect(gain).connect(ctx.destination);
       ctx.addEventListener('statechange', this.onContextState);
       this.ctx = ctx;
+      this.source = src;
       this.filter = filter;
       this.gain = gain;
       // From here the gain node does all the fading: the element itself plays at full volume
@@ -132,7 +140,10 @@ class MusicPlayer {
 
   /** Called from a user gesture (the loader's buttons, the top bar). */
   async enable() {
+    const request = ++this.playbackRequest;
     this.wanted = true;
+    this.disarm();
+    window.clearTimeout(this.duckTimer);
     window.clearTimeout(this.sleepTimer);
     this.build();
     this.graph();
@@ -143,12 +154,13 @@ class MusicPlayer {
     try {
       // play() first, synchronously inside the gesture (Safari needs that), then the context.
       const playing = el.play();
-      await this.ctx?.resume();
-      await playing;
+      await Promise.all([playing, this.ctx?.resume()]);
+      if (!this.wanted || request !== this.playbackRequest || this.el !== el) return;
       this.state = 'playing';
       this.message = '';
       this.fadeTo(MUSIC.volume * this.level, MUSIC.fade);
     } catch (err) {
+      if (!this.wanted || request !== this.playbackRequest || this.el !== el) return;
       this.state = el.error ? 'missing' : 'blocked';
       this.message = el.error ? `No audio file at ${MUSIC.src}` : String((err as Error)?.message ?? err);
     }
@@ -159,15 +171,21 @@ class MusicPlayer {
    * metadata has loaded (the seek is applied once it has).
    */
   async playFrom(at: number, fade = 0.6) {
+    const request = ++this.playbackRequest;
     this.wanted = true;
+    this.disarm();
+    window.clearTimeout(this.duckTimer);
     window.clearTimeout(this.sleepTimer);
     this.build();
     this.graph();
     const el = this.el;
     if (!el) return;
+    this.clearSeek();
     window.clearTimeout(this.holdTimer);
     this.holding = false;
     const seek = () => {
+      this.pendingSeek = null;
+      if (this.el !== el || !this.wanted) return;
       try {
         el.currentTime = at;
       } catch {
@@ -175,16 +193,20 @@ class MusicPlayer {
       }
     };
     if (el.readyState >= 1) seek();
-    else el.addEventListener('loadedmetadata', seek, { once: true });
+    else {
+      this.pendingSeek = seek;
+      el.addEventListener('loadedmetadata', seek, { once: true });
+    }
     this.silence();
     try {
       const playing = el.play();
-      await this.ctx?.resume();
-      await playing;
+      await Promise.all([playing, this.ctx?.resume()]);
+      if (!this.wanted || request !== this.playbackRequest || this.el !== el) return;
       this.state = 'playing';
       this.message = '';
       this.fadeTo(MUSIC.volume * this.level, fade);
     } catch (err) {
+      if (!this.wanted || request !== this.playbackRequest || this.el !== el) return;
       this.state = el.error ? 'missing' : 'blocked';
       this.message = el.error ? `No audio file at ${MUSIC.src}` : String((err as Error)?.message ?? err);
     }
@@ -212,7 +234,12 @@ class MusicPlayer {
   }
 
   disable() {
+    this.playbackRequest++;
     this.wanted = false;
+    this.away = false;
+    this.disarm();
+    this.clearSeek();
+    window.clearTimeout(this.duckTimer);
     this.fadeTo(0, 0.8);
     const el = this.el;
     if (!el) return;
@@ -268,8 +295,9 @@ class MusicPlayer {
   /** Brief dip, for the push through the door. */
   duck(depth = 0.45, seconds = 1.2) {
     if (!this.wanted) return;
+    window.clearTimeout(this.duckTimer);
     this.fadeTo(MUSIC.volume * this.level * (1 - depth), 0.25);
-    window.setTimeout(() => {
+    this.duckTimer = window.setTimeout(() => {
       if (this.wanted) this.fadeTo(MUSIC.volume * this.level, seconds);
     }, seconds * 400);
   }
@@ -324,11 +352,13 @@ class MusicPlayer {
     const resumeEl = this.away && el.paused;
     const resumeCtx = !!ctx && ctx.state !== 'running' && ctx.state !== 'closed';
     if (!resumeEl && !resumeCtx) return;
+    const request = this.playbackRequest;
     const go = async () => {
+      if (!this.wanted || request !== this.playbackRequest || this.el !== el) return;
       try {
         const playing = resumeEl ? el.play() : null;
-        await ctx?.resume();
-        await playing;
+        await Promise.all([playing, ctx?.resume()]);
+        if (!this.wanted || request !== this.playbackRequest || this.el !== el) return;
         if (ctx && ctx.state !== 'running') throw new Error('audio context not running');
         this.away = false;
         this.disarm();
@@ -338,7 +368,7 @@ class MusicPlayer {
           this.fadeTo(MUSIC.volume * this.level, 0.8);
         }
       } catch {
-        this.arm(go);
+        if (this.wanted && request === this.playbackRequest && this.el === el) this.arm(go);
       }
     };
     void go();
@@ -361,15 +391,38 @@ class MusicPlayer {
     for (const t of ['touchend', 'click', 'keydown'] as const) window.removeEventListener(t, once, { capture: true });
   }
 
+  private clearSeek() {
+    if (this.pendingSeek) this.el?.removeEventListener('loadedmetadata', this.pendingSeek);
+    this.pendingSeek = null;
+  }
+
   destroy() {
+    this.playbackRequest++;
     this.wanted = false;
     this.disarm();
+    this.clearSeek();
     window.clearTimeout(this.holdTimer);
     window.clearTimeout(this.sleepTimer);
-    this.el?.pause();
+    window.clearTimeout(this.duckTimer);
+    if (this.el) {
+      this.el.removeEventListener('error', this.onMediaError);
+      this.el.pause();
+      this.el.removeAttribute('src');
+      this.el.load();
+    }
     this.el = null;
-    void this.ctx?.close();
+    this.source?.disconnect();
+    this.filter?.disconnect();
+    this.gain?.disconnect();
+    this.ctx?.removeEventListener('statechange', this.onContextState);
+    if (this.ctx && this.ctx.state !== 'closed') void this.ctx.close().catch(() => undefined);
     this.ctx = null;
+    this.source = null;
+    this.filter = null;
+    this.gain = null;
+    this.muffleHz = -1;
+    this.holding = this.away = this.fallback = false;
+    this.state = 'idle';
   }
 }
 

@@ -38,7 +38,7 @@ import { DUST_IMPULSES, dustQa, impulsePos, impulseVel, now, pushImpulse } from 
 import { FLOW } from '../glsl';
 import { cardAngle, cardY, ENTRY_Z, LAST, O, spineAxis, type Composition } from '../layout';
 import { IMPULSE_GLSL } from '../pointer';
-import { teamsFrame } from '../state';
+import { teamsFrame, teamsWorldActive } from '../state';
 
 const PALETTE = ['#e397b2', '#9b8cea', '#6f9ee6', '#e9dfcf', '#7fc4c6', '#c77fb0'].map((c) => new Color(c));
 const COUNTS = { high: [14000, 3600, 2400], medium: [7500, 2200, 1500], low: [2400, 1000, 800] } as const;
@@ -256,6 +256,7 @@ export function ParticleField({ comp }: { comp: Composition }) {
   const size = useThree((s) => s.size);
   const gl = useThree((s) => s.gl);
   const points = useRef<Points>(null);
+  const prepared = useRef(false);
   const [blooms, ambient, airCount] = COUNTS[quality];
   const geo = useDisposable(() => build(comp, blooms, ambient, airCount), [comp.portrait, comp.drop, comp.radius, blooms, ambient, airCount]);
   const mat = useDisposable(
@@ -289,11 +290,15 @@ export function ParticleField({ comp }: { comp: Composition }) {
 
   useFrame(({ clock, camera }, dt) => {
     const f = teamsFrame;
+    // The air takes up the motion quickly and gives it back more slowly (the environmental layer).
+    vel.current += (Math.min(2, Math.abs(f.cVel)) - vel.current) * (1 - Math.exp(-dt * (Math.abs(f.cVel) > vel.current ? 6 : 3.2)));
+    // Preserve that small velocity memory while resident but unseen; no
+    // projection, pointer sampling or GPU-uniform writes are needed there.
+    if (!teamsWorldActive() && prepared.current) return;
+    prepared.current = true;
     const u = mat.uniforms;
     const reduced = useExperience.getState().reducedMotion;
     u.uTime.value = reduced ? 0 : clock.elapsedTime;
-    // The air takes up the motion quickly and gives it back more slowly (the environmental layer).
-    vel.current += (Math.min(2, Math.abs(f.cVel)) - vel.current) * (1 - Math.exp(-dt * (Math.abs(f.cVel) > vel.current ? 6 : 3.2)));
     u.uVel.value = vel.current;
     u.uReveal.value = smoothstep(0.02, 0.4, f.arrival);
     // Once through a card, a little of the dust stays: the depth field behind the member hand.

@@ -1,4 +1,4 @@
-// Audio QA (dev server — it taps the effects bus, window.__sfxBus, dev builds only): enters with
+// Audio QA (development or a production URL with ?debug): enters with
 // sound and runs the film's sections — the stone's storms, the rise into and out of the cloud, the
 // ACM-CEG hold and the descent, the shaft to the Events, standing in the Events, the Prodigy wall
 // (forward, then back), the portal (in, out, abandoned) — reporting for each the cues that played,
@@ -16,10 +16,21 @@ const H = Number(process.env.H ?? 900);
 const MOBILE = !!process.env.MOBILE;
 const b = await puppeteer.launch({ executablePath: process.env.CHROME ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: 'new', args: ['--use-angle=metal', '--enable-gpu', '--autoplay-policy=no-user-gesture-required', `--window-size=${Math.max(W, 900)},${Math.max(H, 900)}`], defaultViewport: { width: W, height: H, deviceScaleFactor: Number(process.env.DPR ?? 1), isMobile: MOBILE, hasTouch: MOBILE } });
 const page = await b.newPage();
+// Observe the existing effects-bus connection instead of requiring an application dev-only hook.
+// This adds no node/source to the application graph; the analyser below belongs to the QA meter.
+await page.evaluateOnNewDocument(() => {
+  const connect = AudioNode.prototype.connect;
+  AudioNode.prototype.connect = function (...args) {
+    if (this instanceof GainNode && this.gain.value === 0.9 && args[0] instanceof DynamicsCompressorNode) window.__sfxBus = this;
+    return connect.apply(this, args);
+  };
+});
 const logs = [];
 page.on('console', (m) => ['error', 'warn'].includes(m.type()) && logs.push(`[${m.type()}] ${m.text().slice(0, 160)}`));
 page.on('pageerror', (e) => logs.push(`[pageerror] ${e.message}`));
-await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 120000 });
+const debugUrl = new URL(url);
+debugUrl.searchParams.set('debug', '');
+await page.goto(debugUrl.href, { waitUntil: 'domcontentloaded', timeout: 120000 });
 await page.waitForSelector('.loader[data-state="ready"]', { timeout: 180000 });
 await sleep(500);
 await page.evaluate(() => { window.__sfxLog = []; window.__sfxLayers = {}; });

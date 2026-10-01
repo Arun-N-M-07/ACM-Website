@@ -19,7 +19,7 @@ import { useExperience } from '@/store/experience';
 import { useLightAnchor } from '@/systems/lighting/lightPool';
 import { smoothstep } from '@/systems/camera/pose';
 import { cardCenter, composition, O } from '../layout';
-import { teams, teamsFrame } from '../state';
+import { teamsFrame, teamsWorldActive } from '../state';
 import { Backdrop } from './Backdrop';
 import { DomainCards } from './DomainCards';
 import { teamsEnvironment } from './environment';
@@ -146,9 +146,12 @@ export function TeamsWorld() {
     const g = group.current;
     if (!g) return;
     const f = teamsFrame;
-    const st = teams().state;
-    const show = f.inside || st === 'portalEntering' || st === 'portalExiting';
+    const show = teamsWorldActive();
     g.visible = ready.current ? show : true;
+    if (!show) {
+      pointerLight.gain = 0;
+      return;
+    }
     // The pointer's light rides the pointer ray between the lens and the cards
     // (following the short damped field, not the slow channel), so its sheen
     // slides broadly over the spine and glass instead of burning a spot under

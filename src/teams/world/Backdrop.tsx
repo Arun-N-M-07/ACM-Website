@@ -12,10 +12,11 @@ import { BackSide, Color, type Mesh, ShaderMaterial, SphereGeometry } from 'thre
 import { TEAM_DOMAINS } from '@/content/teams';
 import { smoothstep } from '@/systems/camera/pose';
 import { useDisposable } from '@/systems/performance/useDisposable';
-import { teamsFrame } from '../state';
+import { teamsFrame, teamsWorldActive } from '../state';
 
 export function Backdrop() {
   const mesh = useRef<Mesh>(null);
+  const prepared = useRef(false);
   const res = useDisposable(() => {
     const geo = new SphereGeometry(500, 32, 16);
     const mat = new ShaderMaterial({
@@ -49,6 +50,8 @@ export function Backdrop() {
   useFrame(({ camera }) => {
     const m = mesh.current;
     if (!m) return;
+    if (!teamsWorldActive() && prepared.current) return;
+    prepared.current = true;
     m.position.copy(camera.position);
     res.mat.uniforms.uLevel.value = smoothstep(0.05, 0.7, teamsFrame.arrival);
     res.mat.uniforms.uFocus.value = teamsFrame.focus;

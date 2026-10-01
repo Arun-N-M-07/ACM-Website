@@ -56,10 +56,43 @@ const PARK_AFTER = 4;
 const NO_OPTS: { freq?: number; pan?: number; q?: number } = Object.freeze({});
 
 let bus: GainNode | null = null;
+let compressor: DynamicsCompressorNode | null = null;
 let noiseBuf: AudioBuffer | null = null;
 let brownBuf: AudioBuffer | null = null;
 const layers = new Map<string, Layer>();
 let built: AudioContext | null = null;
+/** Only sounding cues are owned here; an ended cue disconnects its complete branch. */
+const sources = new Map<AudioScheduledSourceNode, AudioNode[]>();
+
+function ownSource(src: AudioScheduledSourceNode, nodes: AudioNode[]) {
+  sources.set(src, nodes);
+  src.addEventListener('ended', () => {
+    nodes.forEach((n) => n.disconnect());
+    sources.delete(src);
+  }, { once: true });
+}
+
+/** Release the effects graph when its shared context is replaced or the experience unmounts. */
+export function destroyEffects() {
+  for (const [src, nodes] of sources) {
+    try { src.stop(); } catch { /* A cue may already have ended. */ }
+    nodes.forEach((n) => n.disconnect());
+  }
+  sources.clear();
+  for (const l of layers.values()) {
+    park(l);
+    l.filter.disconnect();
+    l.gain.disconnect();
+    l.pan?.disconnect();
+  }
+  layers.clear();
+  bus?.disconnect();
+  compressor?.disconnect();
+  bus = compressor = null;
+  built = noiseFor = null;
+  noiseBuf = brownBuf = null;
+  if (process.env.NODE_ENV !== 'production') delete (globalThis as unknown as { __sfxBus?: GainNode }).__sfxBus;
+}
 
 function makeNoise(ctx: AudioContext, brown: boolean) {
   // (Six seconds, started at a random point: long enough that a filtered bed's loop isn't heard.)
@@ -83,12 +116,14 @@ function ensure(): AudioContext | null {
   const ctx = music.context;
   if (!ctx || ctx.state !== 'running' || !music.wantsSound) return null;
   if (built === ctx) return ctx;
+  if (built) destroyEffects();
   // (Re)build the graph on this context.
   built = ctx;
   layers.clear();
   bus = ctx.createGain();
   bus.gain.value = 0.9;
   const comp = ctx.createDynamicsCompressor();
+  compressor = comp;
   comp.threshold.value = -16;
   comp.ratio.value = 3;
   bus.connect(comp).connect(ctx.destination);
@@ -110,7 +145,10 @@ function noise(ctx: AudioContext) {
 /** Make the noise as sound is turned on (inside the gesture's hand-off), not on the film's first sounding frame. */
 export function prepare() {
   const ctx = music.context;
-  if (ctx && music.wantsSound) noise(ctx);
+  if (ctx && music.wantsSound) {
+    if (built && built !== ctx) destroyEffects();
+    noise(ctx);
+  }
 }
 
 /** A looping noise bed through a filter, at zero until the director raises it. */
@@ -308,12 +346,15 @@ function noiseBurst(ctx: AudioContext, o: { type: BiquadFilterType; f0: number; 
   g.gain.setValueAtTime(o.level, t0 + o.attack + o.hold);
   g.gain.exponentialRampToValueAtTime(0.0001, t0 + o.attack + o.hold + o.release);
   let node: AudioNode = src.connect(filter).connect(g);
+  const nodes: AudioNode[] = [src, filter, g];
   if (o.pan !== undefined) {
     const p = ctx.createStereoPanner();
     p.pan.value = o.pan;
     node = node.connect(p);
+    nodes.push(p);
   }
   node.connect(bus!);
+  ownSource(src, nodes);
   src.start(t0, Math.random() * 2);
   src.stop(t0 + o.attack + o.hold + o.release + 0.05);
 }
@@ -330,6 +371,7 @@ function tone(ctx: AudioContext, o: { f0: number; f1?: number; type?: Oscillator
   g.gain.setValueAtTime(o.level, t0 + o.attack + o.hold);
   g.gain.exponentialRampToValueAtTime(0.0001, t0 + o.attack + o.hold + o.release);
   osc.connect(g).connect(bus!);
+  ownSource(osc, [osc, g]);
   osc.start(t0);
   osc.stop(t0 + o.attack + o.hold + o.release + 0.05);
 }
@@ -581,6 +623,11 @@ export function portalTravel(dir: 1 | -1, toCross: number, total: number): { sto
   out.gain.value = 1;
   out.connect(bus);
   const sources: AudioScheduledSourceNode[] = [];
+  let remaining = 4;
+  const finish = () => {
+    remaining--;
+    if (!remaining) out.disconnect();
+  };
   const env = (g: GainNode, peak: number, after: number) => {
     g.gain.setValueAtTime(0.0001, t0);
     g.gain.exponentialRampToValueAtTime(peak, tc);
@@ -599,6 +646,8 @@ export function portalTravel(dir: 1 | -1, toCross: number, total: number): { sto
     const g = ctx.createGain();
     env(g, peak, after);
     src.connect(f).connect(g).connect(out);
+    ownSource(src, [src, f, g]);
+    src.addEventListener('ended', finish, { once: true });
     src.start(t0, Math.random() * 5);
     src.stop(end + 0.1);
     sources.push(src);
@@ -610,6 +659,8 @@ export function portalTravel(dir: 1 | -1, toCross: number, total: number): { sto
     const g = ctx.createGain();
     env(g, peak, 0.3);
     o.connect(g).connect(out);
+    ownSource(o, [o, g]);
+    o.addEventListener('ended', finish, { once: true });
     o.start(t0);
     o.stop(end + 0.1);
     sources.push(o);

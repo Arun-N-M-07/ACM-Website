@@ -8,6 +8,7 @@
 import { useEffect } from 'react';
 import { useExperience } from '@/store/experience';
 import { music } from '@/systems/audio/music';
+import { destroyEffects } from '@/systems/audio/sfx';
 import { world } from '@/scenes/shared/blend';
 import { useProgressFrame } from './useProgressFrame';
 
@@ -37,7 +38,9 @@ export function MusicDirector() {
     music.setMuffle(u * 0.75);
   });
 
-  useEffect(() => () => music.destroy(), []);
+  useEffect(() => () => {
+    destroyEffects();
+    music.destroy();
+  }, []);
   return null;
 }
-

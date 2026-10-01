@@ -191,12 +191,11 @@ export function ScrollTimeline() {
       end: 'bottom bottom',
       onUpdate: (self) => {
         // Native scrolling can report a browser resize/clamp before ScrollTrigger refreshes its
-        // old pixel range. Do not mistake that geometry change for Events navigation. The existing
+        // old pixel range. Do not mistake that geometry change for navigation in ANY chapter. The existing
         // refresh hooks below restore this same normalized position against the new range.
-        const inEvents = progress.target >= SEGMENTS.events.start && progress.target <= SEGMENTS.events.end;
         // Compare the stable lvh track, not innerHeight: phone toolbar movement intentionally
         // does not resize that track and must not suspend scrolling while its bars animate.
-        if (inEvents && (window.innerWidth !== measuredWidth || track.current?.offsetHeight !== measuredTrackHeight)) return;
+        if (window.innerWidth !== measuredWidth || track.current?.offsetHeight !== measuredTrackHeight) return;
         if (progress.setTarget(self.progress)) pullBack();
       },
     });

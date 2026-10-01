@@ -5,10 +5,10 @@
  */
 import { useFrame } from '@react-three/fiber';
 import { type ComponentType, type MutableRefObject, useRef } from 'react';
-import { type PerspectiveCamera, Vector3 } from 'three';
+import { type Object3D, type PerspectiveCamera, Vector3 } from 'three';
 import type { EventRecord } from '@/content/events';
 import { PALETTE } from '@/config/palette';
-import { toNdc } from '@/systems/anchors/anchors';
+import { eventsFrame } from '../state';
 import { fitSize, text } from '@/systems/textures/typeset';
 import { readRoomClock, type RoomClock } from './roomClock';
 
@@ -26,9 +26,13 @@ export function useRoomClock(index: number) {
 
 // ─── Pointer proximity ─────────────────────────────────────────────────────
 
-const pointer = { x: 0, y: 0, live: false };
-let listening = false;
 const _ndc = new Vector3();
+
+/** Residency is not activity: keep the installations built, but don't animate a hidden chapter. */
+export function visibleInScene(object: Object3D) {
+  for (let parent: Object3D | null = object; parent; parent = parent.parent) if (!parent.visible) return false;
+  return true;
+}
 
 /**
  * How close the (mouse) pointer is to a world point on screen: 1 over it,
@@ -36,21 +40,10 @@ const _ndc = new Vector3();
  * stays 0 there; nothing depends on it — it only lets an artifact answer.
  */
 export function pointerNear(point: Vector3, camera: PerspectiveCamera, radius = 0.16) {
-  if (!listening && typeof window !== 'undefined') {
-    listening = true;
-    window.addEventListener(
-      'pointermove',
-      (e) => {
-        if (e.pointerType === 'touch') return;
-        const p = toNdc(e.clientX, e.clientY);
-        pointer.x = p.x;
-        pointer.y = p.y;
-        pointer.live = true;
-      },
-      { passive: true },
-    );
-  }
-  if (!pointer.live) return 0;
+  // EventsUI already owns this normalized pointer, including touch/leave/blur and teardown.
+  // An exhibit must not install a permanent second window listener on its first use.
+  const pointer = eventsFrame.pointer;
+  if (!pointer.active) return 0;
   _ndc.copy(point).project(camera);
   if (_ndc.z > 1) return 0;
   const d = Math.hypot((_ndc.x - pointer.x) * camera.aspect, _ndc.y - pointer.y) / 2;

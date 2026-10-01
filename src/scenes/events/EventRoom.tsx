@@ -26,6 +26,7 @@ import { CanvasPanel } from '../shared/CanvasPanel';
 import { useKit } from '../underground/kit';
 import { pad2, sstep, useRoomClock, type Wall, type WallInfo } from './exhibits/common';
 import { EXHIBITS } from './exhibits';
+import { eventsFrame } from './state';
 
 interface Props {
   layout: RoomLayout;
@@ -123,12 +124,17 @@ export const EventRoom = memo(function EventRoom({ layout, total }: Props) {
   const group = useRef<Group>(null);
   const level = useRef(0.5);
   const response = useRef(1);
+  const anchorSplit = useRef(NaN);
   useFrame((_, dt) => {
     const c = clock.current;
     // (Pointed at in the matrix, across the hall, it asks the pool for a light of its own.)
-    if (group.current) {
+    // Layout and room scale are immutable; the column's split is the only changing ancestor
+    // transform. Avoid walking/recomposing the same hierarchy nine times every held frame.
+    // Keep the full matrix calculation when it moves, so the physical fixture stays exact.
+    if (group.current && anchorSplit.current !== eventsFrame.view.split) {
       group.current.updateWorldMatrix(true, false);
       anchor.position.set(0, H - 0.7, -D * 0.1).applyMatrix4(group.current.matrixWorld);
+      anchorSplit.current = eventsFrame.view.split;
     }
     // A retired pooled light must stay at its physical fixture while fading, not teleport 10km
     // away. Inactive rooms have no gain and don't compete for slots. Priority/light level follow

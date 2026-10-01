@@ -15,7 +15,7 @@ import { ExtrudeGeometry, type Mesh, MeshPhysicalMaterial, Path, Shape, type Tex
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { useDisposable } from '@/systems/performance/useDisposable';
 import { ENTRY_Z, O, type Composition } from '../layout';
-import { teams, teamsFrame } from '../state';
+import { teams, teamsFrame, teamsWorldActive } from '../state';
 import { LETTER_CAP, LETTER_DEPTH, letterLayout, type Point } from './letters';
 
 const trace = (s: Shape | Path, pts: Point[], x: number, y: number) => {
@@ -28,6 +28,7 @@ const HIDE_AFTER = 0.7;
 
 export function TeamEntrance({ env, comp }: { env: Texture | null; comp: Composition }) {
   const mesh = useRef<Mesh>(null);
+  const prepared = useRef(false);
   const res = useDisposable(() => {
     const parts: ExtrudeGeometry[] = [];
     for (const { glyph, x, y } of letterLayout(comp.portrait).glyphs) {
@@ -61,6 +62,8 @@ export function TeamEntrance({ env, comp }: { env: Texture | null; comp: Composi
   useFrame(() => {
     const m = mesh.current;
     if (!m) return;
+    if (!teamsWorldActive() && prepared.current) return;
+    prepared.current = true;
     const s = teams().state;
     const travelling = s === 'portalEntering' || s === 'portalExiting';
     m.visible = travelling || teamsFrame.c < HIDE_AFTER;

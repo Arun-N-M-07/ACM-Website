@@ -25,9 +25,15 @@ export function IntroAtmosphere() {
     const ph = experience().phase;
     const film = introFrame.active || ph === 'loading' || ph === 'ready';
     world.intro = film ? 1 : 0;
+    if (!film) {
+      // All physical look consumers blend by world.intro. Preserve resident resources, but don't
+      // evaluate dozens of opening colour tracks throughout Events/Crew when they contribute zero.
+      mistUniforms.uMist.value.w = 0;
+      mistUniforms.uMistFlash.value.w = 0;
+      gl.toneMappingExposure = DEFAULT_EXPOSURE;
+      return;
+    }
     evaluateLook(introFrame.t, experience().reducedMotion);
-
-
     // The ground mist, and the light it scatters towards the sun: faint and
     // cool before dawn, warm as the sun clears the horizon.
     mistUniforms.uMist.value.set(look.mist.density, look.mist.height, 0, world.intro);

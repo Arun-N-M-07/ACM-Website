@@ -15,7 +15,7 @@ import { fitSize, makeCanvas, paragraph, text, toTexture } from '@/systems/textu
 import { CanvasPanel } from '../../shared/CanvasPanel';
 import { Chair, Desk, Laptop, Monitor } from '../../shared/props';
 import { useKit } from '../../underground/kit';
-import { clamp01, codeScreen, hash, openSpan, type PieceProps, pointerNear, puzzleOrder, puzzleSpan, ramp, reviewScreen, sstep, swell } from './common';
+import { clamp01, codeScreen, hash, openSpan, type PieceProps, pointerNear, puzzleOrder, puzzleSpan, ramp, reviewScreen, sstep, swell, visibleInScene } from './common';
 import { BALLOON_COLORS, cellLanded, CODHER_SPAN, contestT, CONTRIBUTIONS, forkAt, mergeAt, OSS_U, OSS_WALL, PX_U, SORT, solveAt, sortStep, SPAN, SPAN_U, spanPlacement, STAIRS } from './walls';
 
 const dummy = new Object3D();
@@ -25,6 +25,7 @@ const easeIO = (x: number) => x * x * (3 - 2 * x);
 
 export function SortColumns({ event, clock }: PieceProps) {
   const inst = useRef<InstancedMesh>(null);
+  const placedAt = useRef(NaN);
   const n = SORT.values.length;
   const slot = (i: number) => -4.2 + i * (8.4 / (n - 1));
   const res = useDisposable(() => {
@@ -43,7 +44,9 @@ export function SortColumns({ event, clock }: PieceProps) {
 
   useFrame(() => {
     const m = inst.current;
-    if (!m) return;
+    const u = clock.current.u;
+    if (!m || u === placedAt.current) return;
+    placedAt.current = u;
     const k = sortStep(clock.current.u);
     const s0 = Math.floor(k);
     const f = easeIO(k - s0);
@@ -83,6 +86,7 @@ export function ContestFloor({ clock }: PieceProps) {
   const balloons = useRef<InstancedMesh>(null);
   const strings = useRef<InstancedMesh>(null);
   const total = desks.length * BALLOON_COLORS.length;
+  const placedAt = useRef(NaN);
   const res = useDisposable(
     () => ({
       ball: new SphereGeometry(0.17, 18, 14).scale(1, 1.18, 1),
@@ -102,7 +106,12 @@ export function ContestFloor({ clock }: PieceProps) {
     const b = balloons.current;
     const s = strings.current;
     if (!b || !s) return;
-    const ct = contestT(clock.current.u);
+    const u = clock.current.u;
+    const ct = contestT(u);
+    // Before the first solve there is no time-dependent sway, just the same zero-scale instances.
+    // Still initialize once for precompile, and recompute immediately when playback/reverse changes u.
+    if (u === placedAt.current && (ct === 0 || !visibleInScene(b))) return;
+    placedAt.current = u;
     const t = c.elapsedTime;
     desks.forEach((d, team) => {
       BALLOON_COLORS.forEach((_, p) => {
@@ -170,11 +179,14 @@ export function LectureHall({ event, depth, clock }: PieceProps) {
   const kit = useKit();
   const rows = useMemo(() => [-1.4, -0.2, 1].map((z, r) => ({ z, y: r * 0.28 })), []);
   const bubbles = useRef<Group>(null);
+  const lastQ = useRef(NaN);
   const risers = useDisposable(() => merge(rows.map((r) => place(metricBox(6.8, Math.max(0.02, r.y), 1.2), { position: [0, r.y / 2, r.z] }))), [rows]);
   useFrame(({ clock: c }) => {
     const g = bubbles.current;
     if (!g) return;
     const q = ramp(clock.current.u, 0.74, 0.8);
+    if (q === lastQ.current && (q === 0 || !visibleInScene(g))) return;
+    lastQ.current = q;
     g.children.forEach((b, i) => {
       const k = (c.elapsedTime * 0.25 + hash(i)) % 1;
       b.visible = q > 0 && i < Math.ceil(q * g.children.length);
@@ -242,7 +254,7 @@ export function PuzzlePieces({ event, width, depth, clock }: PieceProps) {
   const kit = useKit();
   useFrame(({ clock: c }) => {
     const g = group.current;
-    if (!g) return;
+    if (!g || !visibleInScene(g)) return;
     const u = clock.current.u;
     g.children.forEach((piece, i) => {
       const [from, home] = puzzleSpan(puzzleOrder(i));
@@ -529,7 +541,7 @@ export function HackNight({ event, width, depth, height, clock }: PieceProps) {
   const tableLen = Math.min(4.6, width * 0.3);
   useFrame(({ clock: c }) => {
     const g = trophy.current;
-    if (!g) return;
+    if (!g || !visibleInScene(g)) return;
     const k = sstep(clock.current.u, 0.84, 0.95);
     g.position.y = 0.9 + k * 0.5;
     g.rotation.y = c.elapsedTime * 0.5;

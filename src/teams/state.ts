@@ -151,6 +151,12 @@ export const teamsFrame = {
   cardRect: { x: 0, y: 0, w: 0, h: 0, visible: false } as ScreenRect,
 };
 
+/** Resident geometry only needs its frame work while this world can be seen. */
+export function teamsWorldActive() {
+  const state = teams().state;
+  return teamsFrame.inside || state === 'portalEntering' || state === 'portalExiting';
+}
+
 type Listener = () => void;
 const rectListeners = new Set<Listener>();
 /** Subscribe to per-frame updates of teamsFrame.cardRect (fires after the camera is placed). */

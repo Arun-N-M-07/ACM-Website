@@ -328,6 +328,8 @@ export function EventsUI() {
   const label = useRef<HTMLDivElement>(null);
   const labelSize = useRef({ w: 0, h: 0 });
   const crew = useRef<HTMLDivElement>(null);
+  /** Invitation + safe-area padding, measured on layout changes, never in the frame loop. */
+  const crewHeight = useRef(0);
   const record = useRef<HTMLElement>(null);
   const page = useRef<HTMLDivElement>(null);
   const shownRef = useRef(-1);
@@ -410,7 +412,7 @@ export function EventsUI() {
           // The way on, at the matrix's foot.
           const cr = crew.current;
           const foot = anchorAt('events:foot');
-          if (cr && foot) put(cr, 'transform', `translate3d(-50%, ${Math.min(foot.y + 16, stage.h - 104).toFixed(1)}px, 0)`);
+          if (cr && foot && crewHeight.current > 0) put(cr, 'transform', `translate3d(-50%, ${Math.min(foot.y + 16, stage.h - crewHeight.current).toFixed(1)}px, 0)`);
         }
 
         // An event's record.
@@ -477,6 +479,19 @@ export function EventsUI() {
     const q = label.current;
     if (q) labelSize.current = { w: q.offsetWidth, h: q.offsetHeight };
   }, [focusBay]);
+
+  // The invitation can wrap, compact into one row, or gain hardware safe-area padding. Its actual
+  // height is the viewport constraint; a fixed 104px reserve pushed it over the last room row on
+  // short landscape screens. Observe display/size changes rather than forcing frame-time layout.
+  useLayoutEffect(() => {
+    const cr = crew.current;
+    if (!cr) return;
+    const measureCrew = () => { crewHeight.current = cr.offsetHeight; };
+    measureCrew();
+    const ro = new ResizeObserver(measureCrew);
+    ro.observe(cr, { box: 'border-box' });
+    return () => ro.disconnect();
+  }, []);
 
   // Said as it happens (for assistive technology): going in, and back.
   useEffect(() => {

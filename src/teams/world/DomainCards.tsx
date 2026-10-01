@@ -33,7 +33,7 @@ import { FOCUS_PUSH } from '../camera';
 import { cardPick } from '../controller';
 import { cardAngle, cardCenter, cardY, O, spineAxis, type Composition } from '../layout';
 import { stepSpring } from '../pointer';
-import { teamsFrame } from '../state';
+import { teamsFrame, teamsWorldActive } from '../state';
 import { drawCardFace } from './cardFace';
 
 function roundedRect(w: number, h: number, r: number) {
@@ -74,7 +74,12 @@ function mount(mesh: Mesh | null, a: Vector3, b: Vector3) {
   mesh.quaternion.setFromUnitVectors(up, direction.normalize());
 }
 
-function DomainCard({ d, i, comp, env }: { d: TeamDomain; i: number; comp: Composition; env: Texture | null }) {
+interface CardGeometry {
+  slab: ExtrudeGeometry;
+  arm: CylinderGeometry;
+}
+
+function DomainCard({ d, i, comp, env, geo }: { d: TeamDomain; i: number; comp: Composition; env: Texture | null; geo: CardGeometry }) {
   const group = useRef<Group>(null);
   const armA = useRef<Mesh>(null);
   const armB = useRef<Mesh>(null);
@@ -83,21 +88,10 @@ function DomainCard({ d, i, comp, env }: { d: TeamDomain; i: number; comp: Compo
   const held = useRef({ x: 0, y: 0 });
   /** The plate on its mount: tilt about x and y, and how far it's pressed in — each a spring. */
   const phys = useRef({ tx: { v: 0, dv: 0 }, ty: { v: 0, dv: 0 }, dz: { v: 0, dv: 0 }, touch: { v: 0, dv: 0 } });
+  const prepared = useRef(false);
+  const wasActive = useRef(false);
   const quality = useExperience((s) => s.quality);
   const scale = QUALITY[quality].textureScale;
-
-  const geo = useDisposable(() => {
-    const slab = new ExtrudeGeometry(roundedRect(comp.cardW, comp.cardH, comp.corner), {
-      depth: comp.cardDepth,
-      bevelEnabled: true,
-      bevelThickness: 0.022,
-      bevelSize: 0.02,
-      bevelSegments: 4,
-      curveSegments: 10,
-    });
-    slab.translate(0, 0, -comp.cardDepth / 2);
-    return { slab, arm: new CylinderGeometry(0.03, 0.055, 1, 10) };
-  }, [comp.cardW, comp.cardH, comp.corner, comp.cardDepth]);
 
   const tex = useDisposable(() => {
     const w = Math.round((comp.portrait ? 900 : 1280) * Math.max(0.6, scale));
@@ -239,6 +233,22 @@ totalDiffuse = mix(totalDiffuse, uInk * uInkLight, inkA);`,
   useFrame(({ clock, camera }, dt) => {
     const g = group.current;
     if (!g) return;
+    const active = teamsWorldActive();
+    if (!active && prepared.current) {
+      cardPick[i].live = false;
+      if (wasActive.current) {
+        // Hidden plates have returned to rest before their next reveal. Keep
+        // the resources, but not a stale press or spring from the last visit.
+        const P = phys.current;
+        P.tx.v = P.tx.dv = P.ty.v = P.ty.dv = P.dz.v = P.dz.dv = P.touch.v = P.touch.dv = 0;
+        held.current.x = held.current.y = 0;
+      }
+      wasActive.current = false;
+      return;
+    }
+    // One initial pose is still prepared for TeamsWorld's shader warm-up.
+    prepared.current = true;
+    wasActive.current = active;
     const f = teamsFrame;
     const reduced = useExperience.getState().reducedMotion;
     const appear = appearAt(i, f.reveal);
@@ -343,7 +353,7 @@ totalDiffuse = mix(totalDiffuse, uInk * uInkLight, inkA);`,
     pick.hw = comp.cardW / 2;
     pick.hh = comp.cardH / 2;
     pick.radius = comp.corner;
-    pick.live = g.visible && appear > 0.9 && f.focus < 0.02;
+    pick.live = active && g.visible && appear > 0.9 && f.focus < 0.02;
   });
 
   return (
@@ -360,6 +370,20 @@ totalDiffuse = mix(totalDiffuse, uInk * uInkLight, inkA);`,
 }
 
 export function DomainCards({ comp, env }: { comp: Composition; env: Texture | null }) {
+  // Every plate is cut from the same geometry. Face print, material and
+  // articulated transforms remain individual; this parent owns disposal.
+  const geo = useDisposable<CardGeometry>(() => {
+    const slab = new ExtrudeGeometry(roundedRect(comp.cardW, comp.cardH, comp.corner), {
+      depth: comp.cardDepth,
+      bevelEnabled: true,
+      bevelThickness: 0.022,
+      bevelSize: 0.02,
+      bevelSegments: 4,
+      curveSegments: 10,
+    });
+    slab.translate(0, 0, -comp.cardDepth / 2);
+    return { slab, arm: new CylinderGeometry(0.03, 0.055, 1, 10) };
+  }, [comp.cardW, comp.cardH, comp.corner, comp.cardDepth]);
   useEffect(
     () => () => {
       for (const p of cardPick) p.live = false;
@@ -367,9 +391,9 @@ export function DomainCards({ comp, env }: { comp: Composition; env: Texture | n
     [],
   );
   return (
-    <group name="domain-cards">
+    <group name="domain-cards" dispose={null}>
       {TEAM_DOMAINS.map((d, i) => (
-        <DomainCard key={`${d.slug}-${comp.portrait}`} d={d} i={i} comp={comp} env={env} />
+        <DomainCard key={`${d.slug}-${comp.portrait}`} d={d} i={i} comp={comp} env={env} geo={geo} />
       ))}
     </group>
   );
