@@ -16,6 +16,8 @@ const N = EVENTS.length;
 export const eventsFrame = {
   /** Actual rendered camera, recorded by the existing rig after all pose layers. */
   camera: { pose: emptyPose(), aspect: 1, ready: false },
+  /** Door-entry instruction only: armed outside, consumed inside, reset on leaving Events. */
+  entryHint: { armed: false, shown: false },
   /** Explicit selection's scroll-authored path, starting at the rendered viewpoint. */
   entry: null as null | { from: number; to: number; pixel: number; pose: CameraPose; aspect: number; rejoin: boolean },
   /** The bay under the pointer, the keyboard's focus or a finger, at the whole matrix (-1: none). */

@@ -161,8 +161,9 @@
       "source": {
         "file": "Renuka.png",
         "match": "prefix",
-        "sha256": "80aa41cb6d1f0f7de30f83d784d0e7cd2f54cfe9bc705f7bdc38c218a7ed2cc0"
+        "sha256": "9b80a3818c71ae7ea1485c4bb045c469f916cb8e142edc611c2e20c9b2d98db9"
       },
+      "revision": "9b80a3818c71",
       "face": {
         "cx": 0.4756,
         "cy": 0.3857,
@@ -195,10 +196,11 @@
       "width": 820,
       "height": 754,
       "source": {
-        "file": "Suhashri.png",
-        "match": "spelling",
-        "sha256": "892a6aca7de2fd2503f7cd3fdb9dc084df3447a906ac81c1118751f694056233"
+        "file": "Suhasri.png",
+        "match": "prefix",
+        "sha256": "dec5861c5609bf1904a76664839ec135390bd9d48d090d611a42c4bec3c00fd5"
       },
+      "revision": "dec5861c5609",
       "face": {
         "cx": 0.4807,
         "cy": 0.4105,
@@ -215,8 +217,9 @@
       "source": {
         "file": "Swayam.png",
         "match": "prefix",
-        "sha256": "fae005db2160592ced352ccfbba083fdcb1b6cdb902badf2bcdc009dac478f4c"
+        "sha256": "f1c728f49c7a6d432e6453787a7d633d4d673b4deb2fdbb0b5e164d5c15893c2"
       },
+      "revision": "f1c728f49c7a",
       "face": {
         "cx": 0.476,
         "cy": 0.3142,
@@ -269,8 +272,9 @@
       "source": {
         "file": "janis.png",
         "match": "prefix",
-        "sha256": "728519976350aaccf03d8b4e67350c0013a4fab0492279352a0d423e230d4e20"
+        "sha256": "914e274a897efdaa40482c0ba6ab5cefef4e34aded0eb7412ab3046c8ddf7aa3"
       },
+      "revision": "914e274a897e",
       "face": {
         "cx": 0.4877,
         "cy": 0.3656,

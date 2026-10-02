@@ -349,6 +349,9 @@ export function roomProgress(i: number, t = 0.02) {
 
 /** Nothing chosen, nothing lit (a jump elsewhere, the loop). */
 export function resetEvents() {
+  // Explicit navigation abandons the door entrance, including reduced-motion cuts.
+  // Returning from a room uses endVisit instead, and never re-arms the instruction.
+  eventsFrame.entryHint.armed = false;
   roomPlay = eventsFrame.view.play = 0;
   clockFor = -1;
   playbackDirection = 1;

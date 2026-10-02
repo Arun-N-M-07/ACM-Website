@@ -1,8 +1,8 @@
 'use client';
 /**
  * The Events' interface: the page over the hall (EventsHall), moved by
- * eventsFrame once a frame — nothing here keeps time of its own but a hover's
- * own entrance.
+ * eventsFrame once a frame — only a hover's entrance and the door's brief
+ * instructional veil have presentation timing of their own.
  *
  *   the whole matrix  a hit area over each bay, where the world puts it. The
  *                     pointer on one (or the keyboard's focus) lights it: the
@@ -32,8 +32,14 @@ import { DOSSIERS, type DossierFlow } from '@/content/dossiers';
 import { EVENTS, type EventRecord } from '@/content/events';
 import { GALLERY } from '@/content/gallery';
 import { isAvailable } from '@/content/media';
+import { SEGMENTS } from '@/config/timeline';
+import { progressAtIntroTime } from '@/intro/controller';
+import { T } from '@/intro/timeline';
+import { GATE, LOBBY, PASSAGE } from '@/intro/world/lobbyLayout';
 import { experience, useExperience } from '@/store/experience';
 import { anchorAt, onProjected, stage, toNdc } from '@/systems/anchors/anchors';
+import { fx } from '@/systems/camera/effects';
+import { progress } from '@/systems/scroll/progress';
 import { cancelScrollMotion } from '@/systems/scroll/ScrollTimeline';
 import { backToFullView, canVisitEvent, visitCrew, visitEvent, visitNextEvent } from './controller';
 import { eventsFrame, eventsState, useEvents } from './state';
@@ -41,6 +47,10 @@ import { eventsFrame, eventsState, useEvents } from './state';
 const N = EVENTS.length;
 const pad2 = (n: number) => String(n).padStart(2, '0');
 const TOTAL = pad2(N);
+const DOOR_START = progressAtIntroTime(T.door);
+const DOOR_CROSSING = progressAtIntroTime(T.doorway);
+/** Clear the inner face of the doorway by its own wall thickness, not a viewport offset. */
+const HINT_INSIDE_Z = PASSAGE.z0 - LOBBY.wall;
 /** A record's registration links: the ones it calls so (never one it doesn't have). */
 const isRegistration = (label: string) => /regist/i.test(label);
 const clamp01 = (x: number) => (x < 0 ? 0 : x > 1 ? 1 : x);
@@ -336,6 +346,7 @@ export function EventsUI() {
 
   const root = useRef<HTMLDivElement>(null);
   const hub = useRef<HTMLElement>(null);
+  const hint = useRef<HTMLDivElement>(null);
   const bays = useRef<(HTMLButtonElement | null)[]>([]);
   const label = useRef<HTMLDivElement>(null);
   const labelSize = useRef({ w: 0, h: 0 });
@@ -370,6 +381,33 @@ export function EventsUI() {
         put(el, '--decide', v.decide.toFixed(3));
         put(el, '--covered', smooth(0.9, 1, v.unfold).toFixed(3));
         put(el, 'data-tall', stage.w / Math.max(1, stage.h) < 0.95 ? 'true' : 'false');
+
+        // One instruction per physical door entrance. Wall/room returns do not re-arm it.
+        // Read the camera AFTER portrait/reduced-motion composition, not an assumed beat pose.
+        const instruction = F.entryHint;
+        const outside = !on || progress.value < DOOR_START || progress.value >= SEGMENTS.portal.start;
+        if (outside) {
+          instruction.shown = false;
+          if (!on || progress.value >= SEGMENTS.portal.start) instruction.armed = false;
+          else if (!overlay && !progress.pending && fx.fade < 0.01 && progress.target < DOOR_START && F.camera.pose.z >= GATE.z) instruction.armed = true;
+        }
+        // Chapter/deep-link cuts into the wall are not entrances through the door.
+        if (progress.cut || progress.pending) instruction.armed = false;
+        // An early room selection already demonstrates the interaction; never teach it on return.
+        if (eventsState().visiting) { instruction.armed = false; instruction.shown = true; }
+        const available = on && !overlay && F.camera.ready && !eventsState().visiting && !progress.pending && fx.fade < 0.01;
+        if (available && !instruction.shown && progress.value < DOOR_CROSSING && progress.target < DOOR_CROSSING && F.camera.pose.z >= GATE.z) instruction.armed = true;
+        if (hint.current) {
+          if (outside || !available || progress.cut) {
+            put(hint.current, 'data-on', 'false');
+            put(hint.current, 'aria-hidden', 'true');
+          } else if (instruction.armed && !instruction.shown && F.camera.pose.z <= HINT_INSIDE_Z) {
+            instruction.shown = true;
+            instruction.armed = false;
+            put(hint.current, 'data-on', 'true');
+            put(hint.current, 'aria-hidden', 'false');
+          }
+        }
 
         // The whole matrix: its bays' hit areas where the world puts them.
         const h = hub.current;
@@ -678,6 +716,16 @@ export function EventsUI() {
           </button>
         </div>
       </section>
+
+      <div ref={hint} className="evx-room-hint" data-on="false" aria-hidden="true" role="status" aria-live="polite" aria-atomic="true"
+        onAnimationEnd={(e) => {
+          if (e.target !== e.currentTarget) return;
+          // Presentation completion retires only this veil; it never navigates.
+          put(e.currentTarget, 'data-on', 'false');
+          put(e.currentTarget, 'aria-hidden', 'true');
+        }}>
+        <p>{touch ? 'Tap a room to explore more' : 'Hover over the rooms to explore more'}</p>
+      </div>
 
       <section ref={record} className="evx-record" aria-labelledby="evx-title" data-on="false" aria-hidden="true" inert>
         <div ref={page} className="evx-page evx-sheet">

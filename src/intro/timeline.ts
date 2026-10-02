@@ -145,12 +145,13 @@ export const INTRO_START = T.mist;
 export const INTRO_END = T.end;
 export const INTRO_SPAN = INTRO_END - INTRO_START;
 
-/** Scroll density only: 6% less travel before Ascent; the building reveal keeps its full spacing. */
+/** 18% less scroll than the existing early cadence; the mist lead-in and Ascent onward stay unchanged. */
+const EARLY_SCROLL_SCALE = 0.82;
 const EARLY_SCROLL = [
   [INTRO_START, T.prologue, 1],
-  [T.prologue, T.clearing, 0.94],
-  [T.clearing, T.heroEnd, 1],
-  [T.heroEnd, T.rise, 0.94],
+  [T.prologue, T.clearing, 0.94 * EARLY_SCROLL_SCALE],
+  [T.clearing, T.heroEnd, EARLY_SCROLL_SCALE],
+  [T.heroEnd, T.rise, 0.94 * EARLY_SCROLL_SCALE],
   [T.rise, INTRO_END, 1],
 ] as const;
 

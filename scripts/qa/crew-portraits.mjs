@@ -35,7 +35,7 @@ const EXPECTED = [
   ['Anieshwar.png', 'Anieshwar Saravanan', 'WEB AND APP DEVELOPMENT'],
   ['Prithvi.png', 'Prithvi', 'WEB AND APP DEVELOPMENT'],
   ['Renuka.png', 'Renuka Devi A C', 'COMPETITIVE PROGRAMMING AND TECHNICAL DEVELOPMENT'],
-  ['Suhashri.png', 'Suhasri S', 'COMPETITIVE PROGRAMMING AND TECHNICAL DEVELOPMENT'],
+  ['Suhasri.png', 'Suhasri S', 'COMPETITIVE PROGRAMMING AND TECHNICAL DEVELOPMENT'],
   ['Ananyalakshmi.png', 'Ananyalakshmi V K', 'EVENTS AND FUNCTIONING'],
   ['Harini.png', 'Harini J S', 'EVENTS AND FUNCTIONING'],
   ['Swayam.png', 'Swayamprabha Narayanan', 'CONTENTS AND DESIGN'],

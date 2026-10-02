@@ -13,6 +13,9 @@ const hash = p => createHash('sha256').update(readFileSync(p)).digest('hex');
 for (const [name, photo] of Object.entries(mapping)) {
   assert.equal(hash(`acm photos/${photo.source.file}`), photo.source.sha256, `${name}: verified identity`);
   assert.equal(hash(`public/media/crew/originals/${photo.source.file}`), photo.source.sha256, `${name}: unchanged original`);
+  const response = await fetch(`${base}/media/crew/originals/${encodeURIComponent(photo.source.file)}${photo.revision ? `?v=${photo.revision}` : ''}`);
+  assert.equal(response.status, 200, `${name}: original served`);
+  assert.equal(createHash('sha256').update(Buffer.from(await response.arrayBuffer())).digest('hex'), photo.source.sha256, `${name}: served bytes match root photograph`);
 }
 const browser = await puppeteer.launch({ executablePath: process.env.CHROME ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: true, args: ['--use-angle=metal', '--enable-gpu', '--ignore-gpu-blocklist'] });
 const errors = [], passed = [], observations = [];
@@ -70,8 +73,16 @@ try {
       if ([1440,390,844].includes(w)) await page.screenshot({path:`${out}/${w}x${h}-${id}.png`});
     }
     for (const img of await page.$$('.chapter-publication img')) {
-      await img.scrollIntoView();
-      await page.waitForFunction(i => i.complete && i.naturalWidth > 0, {timeout:30000}, img);
+      // Scroll the physical cell, not the 1.8x transformed print that extends outside it.
+      const cell = await img.evaluateHandle(i => i.closest('.crew-photo-wall button') ?? i);
+      await cell.asElement().scrollIntoView();
+      await cell.dispose();
+      try {
+        await page.waitForFunction(i => i.complete && i.naturalWidth > 0, {timeout:30000}, img);
+      } catch (error) {
+        console.error('Image did not become visible/loaded', await img.evaluate(i => ({alt:i.alt,src:i.currentSrc,rect:i.getBoundingClientRect().toJSON(),viewport:[innerWidth,innerHeight],scroll:scrollY,loaded:i.complete,width:i.naturalWidth})));
+        throw error;
+      }
     }
     const document = await page.$eval('.chapter-publication', e => ({
       text:e.textContent.replace(/\s+/g,' ').trim(), links:[...e.querySelectorAll('a')].map(a=>a.getAttribute('href')),
@@ -113,7 +124,18 @@ try {
     assert.equal(new Set(data.photos.map(p=>p.src)).size,15); assert.deepEqual(data.photos.map(p=>p.alt),data.names);
     assert.equal(data.columns,w<=360?1:w<=640||(touch&&w<=1000&&h<=500)?2:w<=1000?3:4,'Four desktop columns, three tablet, one/two phone');
     assert.equal(data.links,0); assert.equal(/2023\d{6}/.test(data.text),false);
-    for(const photo of data.photos) assert.equal(decodeURIComponent(photo.src),`/media/crew/originals/${mapping[photo.alt].source.file}`);
+    for(const photo of data.photos) {
+      const expected=mapping[photo.alt];
+      assert.equal(decodeURIComponent(photo.src),`/media/crew/originals/${expected.source.file}${expected.revision ? `?v=${expected.revision}` : ''}`);
+    }
+    if(w===1440) {
+      for(const id of ['renuka-devi-a-c','suhasri-s','swayamprabha-narayanan','janis-miracline-a']) {
+        const portrait=await page.$(`.crew-photo-wall [data-person="${id}"]`);
+        await portrait.scrollIntoView(); await portrait.focus();
+        assert.deepEqual(await active(page),[id,id],'Edited portrait and index remain linked');
+        await page.screenshot({path:`${out}/edited-${id}.png`});
+      }
+    }
     assert.ok(data.titles[0].endsWith('CORE')); assert.ok(data.titles[1].endsWith('WEB AND APP DEVELOPMENT')); assert.ok(data.titles[5].endsWith('HR AND LOGISTICS'));
     assert.equal(new Set(data.anchors).size,7,'Existing domain deep links remain available');
     const name = await page.$('.crew-index [data-person="prithvi"]'); await name.scrollIntoView();

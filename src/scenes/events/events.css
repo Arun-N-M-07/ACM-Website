@@ -73,6 +73,63 @@
   outline-offset: 6px;
 }
 
+/* A brief editorial instruction just inside the Events door. CSS owns
+   presentation only: no scroll clock, navigation delay or input interception. */
+.evx-room-hint {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  padding: max(24px, env(safe-area-inset-top, 0px)) max(24px, env(safe-area-inset-right, 0px)) max(24px, env(safe-area-inset-bottom, 0px)) max(24px, env(safe-area-inset-left, 0px));
+  visibility: hidden;
+  pointer-events: none;
+}
+.evx-room-hint::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.48);
+  opacity: 0;
+}
+.evx-room-hint p {
+  position: relative;
+  max-width: 30ch;
+  margin: 0;
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: clamp(22px, 2.4vw, 40px);
+  line-height: 1.18;
+  letter-spacing: -0.025em;
+  text-align: center;
+  text-wrap: balance;
+  color: var(--bone);
+  opacity: 0;
+}
+.evx-room-hint[data-on='true'] { visibility: visible; }
+.evx-room-hint[data-on='true']::before { animation: evx-hint-veil 3s ease-in-out both; }
+.evx-room-hint[data-on='true'] p { animation: evx-hint-text 3s ease-in-out both; }
+@keyframes evx-hint-veil {
+  0%, 100% { opacity: 0; }
+  10%, 85% { opacity: 1; }
+}
+@keyframes evx-hint-text {
+  0%, 5%, 100% { opacity: 0; }
+  15%, 82% { opacity: 1; }
+}
+/* Static, readable instruction then immediate retirement. The site's global
+   micro-duration rule must not erase its reading time; there is no motion here. */
+.evx[data-reduced='true'] .evx-room-hint[data-on='true']::before,
+.evx[data-reduced='true'] .evx-room-hint[data-on='true'] p {
+  animation-name: evx-hint-still;
+  animation-timing-function: step-end;
+  animation-duration: 2s !important;
+}
+@keyframes evx-hint-still {
+  0%, 99% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
 /* A lit bay's label: the way in, in brackets, on a small dark ground — going with the pointer inside
    that room's own opening (placed every frame: EventsUI) over its hatching (EventsHall). Changes at
    once from one room to the next. */

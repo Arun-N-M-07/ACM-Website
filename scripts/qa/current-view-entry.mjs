@@ -125,10 +125,12 @@ try {
     await page.keyboard.press('Escape'); await wait(700);
     assert.equal((await snap(page)).visiting, false);
     await page.click('.wordmark'); await page.waitForSelector('.index');
-    await Promise.all([page.waitForNavigation({ waitUntil: 'domcontentloaded' }), page.click('a[href="/archive"]')]);
-    assert.ok(page.url().endsWith('/archive')); assert.ok((await page.$eval('h1', (h) => h.textContent)).includes('ACM'));
-    await page.screenshot({ path: `${out}/${device}-archive.png` });
-    results.push(`${device}: logo, local scroll pacing, resize/orientation, reduced motion, printed-edition link`);
+    assert.equal(await page.$('.index a[href="/archive"]'), null, 'Redundant printed-edition link is removed');
+    await page.click('.index-more button');
+    await page.waitForFunction(() => document.documentElement.dataset.archive === 'open');
+    assert.ok((await page.$eval('#archive .chapter-title', h => h.textContent)).includes('ACM'));
+    await page.screenshot({ path: `${out}/${device}-text-version.png` });
+    results.push(`${device}: logo, local scroll pacing, resize/orientation, reduced motion, Text Version retained without redundant link`);
     await page.close();
   }
   assert.deepEqual(errors, [], 'No runtime errors or failed asset/route requests');
