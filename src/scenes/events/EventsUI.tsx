@@ -26,9 +26,12 @@
  * (content/dossiers.ts).
  */
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import { essenceOf } from '@/components/experience/Dossier';
 import { DOSSIERS, type DossierFlow } from '@/content/dossiers';
 import { EVENTS, type EventRecord } from '@/content/events';
+import { GALLERY } from '@/content/gallery';
+import { isAvailable } from '@/content/media';
 import { experience, useExperience } from '@/store/experience';
 import { anchorAt, onProjected, stage, toNdc } from '@/systems/anchors/anchors';
 import { cancelScrollMotion } from '@/systems/scroll/ScrollTimeline';
@@ -122,6 +125,10 @@ function Record({ index }: { index: number }) {
   const more = e.links.filter((l) => !isRegistration(l.label));
   const next = index + 1 < N ? EVENTS[index + 1] : null;
   const kinds = [e.kind, e.cadence, ...(e.flagship ? ['Flagship'] : [])];
+  // Only gallery captions that explicitly identify this event are eligible. Never attribute
+  // a general workshop photograph to a room merely because it would fill a column.
+  const caption = e.slug === 'codher' ? 'CodHer Hackathon' : e.slug === 'prodigy' ? 'Prodigy Event' : null;
+  const photo = e.image && isAvailable(e.image.src) ? e.image : GALLERY.find((g) => caption && g.media.caption === caption)?.media;
   return (
     <>
       <header className="evx-intro">
@@ -132,6 +139,7 @@ function Record({ index }: { index: number }) {
           </button>
         </div>
         <div className="evx-name">
+          <span className="evx-number" aria-hidden="true">{pad2(index + 1)}</span>
           <h2 className="evx-title" id="evx-title" tabIndex={-1}>
             {e.title}
           </h2>
@@ -156,12 +164,16 @@ function Record({ index }: { index: number }) {
         </p>
       </section>
 
-      {record ? (
-        <section className="evx-split evx-about" data-reveal aria-labelledby={`evx-about-${index}`}>
+      {record || photo ? (
+        <section className={`evx-split evx-about ${photo ? 'evx-media-row' : ''}`} data-reveal aria-labelledby={`evx-about-${index}`}>
           <h3 className="evx-cap evx-side" id={`evx-about-${index}`}>
             About
           </h3>
-          <p className="evx-text evx-said">{record}</p>
+          {photo && <figure className="evx-photograph">
+            <Image src={photo.src} alt={photo.alt} width={1200} height={1200} sizes="(max-width: 640px) 94vw, (max-width: 1000px) 55vw, 33vw" quality={90} loading="lazy" />
+            {photo.caption && <figcaption>{photo.caption}</figcaption>}
+          </figure>}
+          <p className="evx-text evx-said">{record || e.description}</p>
         </section>
       ) : null}
 

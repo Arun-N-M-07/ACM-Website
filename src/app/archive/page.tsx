@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function ArchivePage() {
   return (
-    <main className="archive-page">
+    <main className="archive-page chapter-edition">
       <p className="archive-back">
         <a className="text-link" href="/">
           ← Enter the 3D journey

@@ -6,6 +6,7 @@ import './globals.css';
 import '@/teams/ui/teams.css';
 import '@/intro/ui/intro.css';
 import '@/scenes/events/events.css';
+import '@/components/editorial/editorial.css';
 
 /**
  * The site's shared typeface: Geist, a variable font (weight 100–900).

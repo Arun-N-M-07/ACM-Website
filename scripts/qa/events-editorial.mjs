@@ -72,10 +72,10 @@ async function layouts() {
       await p.evaluate(() => document.fonts.ready);
       const s = await snap(p), label = `${w}x${h} ${titles[i]}`;
       check(s.text === titles[i] && !s.overflow && !s.localOverflow.length, `${label}: complete title/content fit without horizontal overflow`, s.localOverflow);
-      check(s.label.y - s.sheet.y >= 15 && s.label.y - s.sheet.y < 18 && s.title.y - s.sheet.y < 85, `${label}: label and title start immediately at the sheet edge`, { label: s.label, title: s.title, sheet: s.sheet });
-      check(s.font.family.includes('Geist') && s.font.weight === '600' && Math.abs(s.font.line / s.font.size - 0.9) < 0.005 && Math.abs(s.font.spacing / s.font.size + 0.04) < 0.002, `${label}: scoped editorial font/weight/leading/tracking`, s.font);
+      check(s.label.y - s.sheet.y >= 15 && s.label.y - s.sheet.y < 18 && s.title.y - s.sheet.y < 165, `${label}: integrated number and title begin at the sheet edge`, { label: s.label, title: s.title, sheet: s.sheet });
+      check(s.font.family.includes('Geist') && s.font.weight === '600' && Math.abs(s.font.line / s.font.size - 0.9) < 0.005 && Math.abs(s.font.spacing / s.font.size + 0.055) < 0.002, `${label}: scoped editorial font/weight/leading/tracking`, s.font);
       check(s.font.color === 'rgb(196, 196, 196)' && s.globalFont.includes('Geist'), `${label}: neutral editorial type; shared Geist typography`, { local: s.font.color, global: s.globalFont });
-      check(s.parts.every((x) => x.margin <= 57), `${label}: sections use compact content rhythm, not viewport spacers`, s.parts);
+      check(s.parts.every((x) => x.margin <= 77), `${label}: sections use content rhythm, not viewport spacers`, s.parts);
       if ([0, 6, 7].includes(i) && [1440, 390, 320].includes(w)) await p.screenshot({ path: `${out}/${w}x${h}-${i + 1}-editorial.png` });
     }
   }

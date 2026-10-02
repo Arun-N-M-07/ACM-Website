@@ -46,7 +46,7 @@ export function ArchiveLayerControls() {
 
   return (
     <div className="archive-controls">
-      <span className="kicker">Text version</span>
+      <span className="kicker">ACM-CEG · The chapter</span>
       <button ref={ref} className="btn archive-close" onClick={close}>
         Back to the journey ✕
       </button>
