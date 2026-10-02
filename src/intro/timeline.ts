@@ -145,21 +145,27 @@ export const INTRO_START = T.mist;
 export const INTRO_END = T.end;
 export const INTRO_SPAN = INTRO_END - INTRO_START;
 
-/** 18% less scroll than the existing early cadence; the mist lead-in and Ascent onward stay unchanged. */
+/** Preserve the previous early-only 18% reduction within the opening's authored cadence. */
 const EARLY_SCROLL_SCALE = 0.82;
-const EARLY_SCROLL = [
+/** ~20% less scroll from the film's first frame through shaft entry, not a playback-rate change. */
+const OPENING_SCROLL_SCALE = 0.8;
+const INTRO_SCROLL = [
   [INTRO_START, T.prologue, 1],
-  [T.prologue, T.clearing, 0.94 * EARLY_SCROLL_SCALE],
-  [T.clearing, T.heroEnd, EARLY_SCROLL_SCALE],
-  [T.heroEnd, T.rise, 0.94 * EARLY_SCROLL_SCALE],
-  [T.rise, INTRO_END, 1],
+  [T.prologue, T.clearing, 0.94 * EARLY_SCROLL_SCALE * OPENING_SCROLL_SCALE],
+  [T.clearing, T.heroEnd, EARLY_SCROLL_SCALE * OPENING_SCROLL_SCALE],
+  [T.heroEnd, T.rise, 0.94 * EARLY_SCROLL_SCALE * OPENING_SCROLL_SCALE],
+  [T.rise, T.wellOpen, OPENING_SCROLL_SCALE],
+  // Restore the unchanged underground cadence continuously as the glass opens and we cross it.
+  [T.wellOpen, T.shaft, OPENING_SCROLL_SCALE, 1],
+  [T.shaft, INTRO_END, 1],
 ] as const;
 
 /** Scroll distance (vh) at an authored beat. Camera, light and animation keys stay unchanged. */
 export function introScrollAt(beat: number) {
   let vh = 0;
-  for (const [from, to, density] of EARLY_SCROLL) {
-    vh += Math.max(0, Math.min(to, beat) - from) * INTRO_VH_PER_BEAT * density;
+  for (const [from, to, density, endDensity = density] of INTRO_SCROLL) {
+    const t = Math.max(0, Math.min(to, beat) - from);
+    vh += INTRO_VH_PER_BEAT * (density * t + (endDensity - density) * t * t / (2 * (to - from)));
     if (beat <= to) break;
   }
   return vh;
@@ -168,9 +174,14 @@ export function introScrollAt(beat: number) {
 /** Exact inverse of introScrollAt: the same mapping for forward, reverse and navigation jumps. */
 export function introBeatAt(vh: number) {
   let consumed = 0;
-  for (const [from, to, density] of EARLY_SCROLL) {
-    const span = (to - from) * INTRO_VH_PER_BEAT * density;
-    if (vh <= consumed + span) return from + Math.max(0, vh - consumed) / (INTRO_VH_PER_BEAT * density);
+  for (const [from, to, density, endDensity = density] of INTRO_SCROLL) {
+    const span = (to - from) * INTRO_VH_PER_BEAT * (density + endDensity) / 2;
+    if (vh <= consumed + span) {
+      const distance = Math.max(0, vh - consumed) / INTRO_VH_PER_BEAT;
+      // Stable quadratic inverse, also exact when the range's density is constant.
+      const slope = (endDensity - density) / (to - from);
+      return from + 2 * distance / (density + Math.sqrt(density * density + 2 * slope * distance));
+    }
     consumed += span;
   }
   return INTRO_END;

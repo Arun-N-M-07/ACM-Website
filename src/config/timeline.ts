@@ -65,7 +65,7 @@ const TEAMS_VH = 720;
 const RETURN_VH = 300;
 
 const SEGMENT_WEIGHTS: { id: SegmentId; vh: number }[] = [
-  // The opening's authored density; only the early beats have shorter scroll distances.
+  // The opening's localized scroll density; later segments retain their own vh distances.
   ...INTRO_CHAPTERS.map((c) => ({ id: c.id as SegmentId, vh: introScrollAt(c.to) - introScrollAt(c.from) })),
   { id: 'events', vh: eventsVh },
   { id: 'portal', vh: PORTAL_VH },
