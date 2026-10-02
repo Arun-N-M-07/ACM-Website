@@ -22,6 +22,7 @@ export const eventsDebug = {
     return {
       selected: st.selected,
       visiting: st.visiting,
+      entry: F.entry ? { ...F.entry, pose: { ...F.entry.pose } } : null,
       hover: F.hover,
       lit: [...F.lit].map((x) => +x.toFixed(3)),
       view: { index: v.index, reveal: r(v.reveal), hub: r(v.hub), enter: r(v.enter), room: r(v.room), play: r(v.play), page: Math.round(v.page), unfold: r(v.unfold), read: r(v.read), decide: r(v.decide), split: r(v.split), inside: r(v.inside) },

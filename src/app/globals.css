@@ -534,11 +534,16 @@ html[data-mist='deep'] .intro-layer {
   align-items: center;
   gap: 10px;
 }
-.wordmark i {
-  width: 7px;
-  height: 7px;
-  background: var(--ceg);
-  display: inline-block;
+.wordmark-logo {
+  display: block;
+  width: 108px;
+  height: auto;
+}
+.wordmark {
+  flex-shrink: 0;
+}
+@media (max-width: 760px), (orientation: landscape) and (max-height: 520px) {
+  .wordmark-logo { width: 80px; }
 }
 .chapter-indicator {
   margin: 0;
@@ -1849,9 +1854,17 @@ html[data-fallback='true'] .archive-controls {
 .archive .faculty {
   grid-template-columns: 1fr;
 }
+.archive .faculty li > div {
+  min-width: 0;
+}
+.archive .faculty strong {
+  font-size: clamp(24px, 2.5vw, 36px);
+  line-height: 1.12;
+  letter-spacing: var(--t-sub);
+}
 .archive .portrait {
-  width: 64px;
-  height: 64px;
+  width: clamp(128px, 12vw, 180px);
+  height: auto;
   flex: none;
   object-fit: cover;
 }
@@ -2082,6 +2095,15 @@ html[data-fallback='true'] .archive-controls {
   .archive .gallery {
     grid-template-columns: 1fr 1fr;
     gap: 10px;
+  }
+  .archive figcaption {
+    flex-wrap: wrap;
+  }
+  .archive .faculty .portrait {
+    width: clamp(96px, 28vw, 128px);
+  }
+  .archive .faculty strong {
+    font-size: clamp(22px, 6vw, 28px);
   }
   .archive .stats {
     grid-template-columns: 1fr;

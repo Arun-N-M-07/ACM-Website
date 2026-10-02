@@ -4,6 +4,7 @@
  * any event room, any of the six domains; open the text version; contact.
  */
 import { useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { CHAPTERS } from '@/config/timeline';
 import { EVENT_ROOMS } from '@/config/world';
 import { CHAPTER } from '@/content/chapter';
@@ -127,9 +128,9 @@ export function IndexMenu() {
               </button>
             </li>
             <li>
-              <a className="text-link" href="/archive">
+              <Link className="text-link" href="/archive" prefetch={false}>
                 Open the printed edition ↗
-              </a>
+              </Link>
             </li>
             <li className="credit">
               Campus map data ©{' '}

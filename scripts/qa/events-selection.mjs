@@ -25,7 +25,11 @@ async function run(w, h, touch) {
   };
   const point = (i, edge = false) => p.evaluate(({ i, edge }) => {
     const r = document.querySelectorAll('.evx-bay')[i].getBoundingClientRect();
-    const x = edge ? r.left + 2 : r.left + r.width / 2, y = edge ? r.top + 2 : r.top + r.height / 2;
+    // The actual aperture is a perspective polygon; the bounding rectangle's corner can be on
+    // the architectural frame. Hold just inside its projected top-left corner instead.
+    const a = window.__acm.events.bay(i);
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    const x = edge ? a.x0 * 0.98 + cx * 0.02 : cx, y = edge ? a.y0 * 0.98 + cy * 0.02 : cy;
     return { x, y, hit: document.elementFromPoint(x, y)?.className };
   }, { i, edge });
   const trace = async () => p.evaluate(() => {

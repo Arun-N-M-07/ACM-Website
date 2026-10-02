@@ -3,6 +3,7 @@
  * HTML document. Rendered on the server (crawlable), used as the /archive page,
  * the in-experience "text version", and the fallback when WebGL is unavailable.
  */
+import Image from 'next/image';
 import { ALUMNI } from '@/content/alumni';
 import { CHAPTER } from '@/content/chapter';
 import { EVENTS } from '@/content/events';
@@ -14,10 +15,14 @@ import { PRODIGY_PROGRAMME } from '@/content/prodigy';
 import { FACULTY } from '@/content/team';
 import { TEAM_DOMAINS } from '@/content/teams';
 
-function Photo({ media, className, label }: { media?: MediaAsset; className?: string; label?: string }) {
+function Photo({ media, className, label, size = [1200, 900] }: { media?: MediaAsset; className?: string; label?: string; size?: readonly [number, number] }) {
   if (media && isAvailable(media.src)) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img className={className} src={media.src} alt={media.alt} loading="lazy" decoding="async" />;
+    const portrait = className === 'portrait';
+    return <Image className={className} src={media.src} alt={media.alt}
+      width={size[0]} height={size[1]}
+      style={{ height: 'auto', aspectRatio: portrait ? `${size[0]} / ${size[1]}` : undefined }}
+      sizes={portrait ? '(max-width: 760px) 128px, 180px' : '(max-width: 900px) 50vw, 25vw'}
+      quality={90} loading="lazy" decoding="async" />;
   }
   return (
     <div className={`${className ?? ''} photo-slot`} role="img" aria-label={media?.alt ?? label ?? 'Photograph'}>
@@ -174,7 +179,7 @@ export function ArchiveDocument({ headingLevel = 1 }: { headingLevel?: 1 | 2 }) 
         <ul className="people faculty">
           {FACULTY.map((f) => (
             <li key={f.id}>
-              <Photo media={f.photo} className="portrait" label={f.name} />
+              <Photo media={f.photo} className="portrait" label={f.name} size={f.photoSize} />
               <div>
                 <strong>{f.name}</strong>
                 <span className="role">{f.role}</span>

@@ -611,12 +611,16 @@ function MatrixAnchors() {
       const col = columnOf(r.col);
       const a = new Vector3();
       const c = new Vector3();
+      const d = new Vector3();
+      const e = new Vector3();
       const at = (out: Vector3, x: number, y: number) => {
         const { side, sink } = splitOffsets(eventsFrame.view.split);
         return out.set(x + col * side, FLOOR_Y + y - (col === 0 ? sink : 0), M.face);
       };
       off.push(trackAnchor(`events:bay:${r.index}:a`, () => at(a, b.x0, b.y1)));
       off.push(trackAnchor(`events:bay:${r.index}:b`, () => at(c, b.x1, b.y0)));
+      off.push(trackAnchor(`events:bay:${r.index}:c`, () => at(d, b.x1, b.y1)));
+      off.push(trackAnchor(`events:bay:${r.index}:d`, () => at(e, b.x0, b.y0)));
     }
     const foot = new Vector3(0, FLOOR_Y + 0.02, M.face + 0.6);
     const head = new Vector3(0, FLOOR_Y + M.height, M.face);

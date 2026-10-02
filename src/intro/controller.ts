@@ -3,24 +3,24 @@
  *
  * There is no playhead: the opening's five chapters are the first segments of
  * the journey's scroll track, and every frame the camera rig hands the damped
- * scroll progress here. The beat is progress, rescaled (linearly) onto the
+ * scroll progress here. The beat is progress, mapped by its scroll density onto the
  * beat sheet — so the camera, the light, the fragments, the fire, the name,
  * the cloud, the well, the door are all where the visitor's scroll puts them,
  * and nowhere else. Stop scrolling and everything stops; scroll back and
  * everything plays backwards.
  */
-import { INTRO_PROGRESS_END, SEGMENTS } from '@/config/timeline';
+import { INTRO_PROGRESS_END, SCROLL_LENGTH_VH, SEGMENTS } from '@/config/timeline';
 import { experience } from '@/store/experience';
 import { progress } from '@/systems/scroll/progress';
 import { jumpToProgress } from '@/systems/scroll/ScrollTimeline';
 import { intro, introFrame } from './state';
-import { INTRO_END, INTRO_SPAN, INTRO_START, introChapterAt, T } from './timeline';
+import { introBeatAt, introScrollAt, introChapterAt, T } from './timeline';
 import { STORY_LINES } from './story/fragments';
 
 /** The beat at scroll progress p (the film runs from INTRO_START — the prologue's beats are negative — to INTRO_END). */
-export const introTimeAt = (p: number) => INTRO_START + Math.min(1, Math.max(0, p / INTRO_PROGRESS_END)) * INTRO_SPAN;
+export const introTimeAt = (p: number) => introBeatAt(Math.max(0, p) * SCROLL_LENGTH_VH);
 /** The scroll progress at beat t. */
-export const progressAtIntroTime = (t: number) => ((Math.min(INTRO_END, Math.max(INTRO_START, t)) - INTRO_START) / INTRO_SPAN) * INTRO_PROGRESS_END;
+export const progressAtIntroTime = (t: number) => introScrollAt(t) / SCROLL_LENGTH_VH;
 
 /** Idle time (s) before the quiet scroll cue shows: at the very start, and later on. */
 const HINT_AT_START = 2.4;

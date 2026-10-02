@@ -8,7 +8,7 @@ import { gsap } from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import Lenis from 'lenis';
 import { useEffect, useRef } from 'react';
-import { EVENTS_TRACK, SCROLL_LENGTH_VH, SEGMENTS } from '@/config/timeline';
+import { EVENTS_TRACK, PORTAL_GATE, SCROLL_LENGTH_VH } from '@/config/timeline';
 import { progressAtIntroTime } from '@/intro/controller';
 import { T } from '@/intro/timeline';
 import { useExperience } from '@/store/experience';
@@ -167,9 +167,11 @@ export function ScrollTimeline() {
               // seam made equal forward/back input land at different positions.
               // Page scroll is quantized to CSS pixels. Include the opening's first pixel rather
               // than occasionally applying the Intro's shaped gain to that first gesture.
-              const inEvents = progress.target >= progressAtIntroTime(T.door) - 1 / Math.max(1, scrollSpan()) && progress.target <= SEGMENTS.events.end;
-              if (lenis) lenis.options.lerp = inEvents && eventsState().visiting && progress.target >= EVENTS_TRACK.unfold.start ? 1 : 0.085;
-              const g = inEvents ? 1 / WHEEL_MULTIPLIER : wheelGain(data.deltaX, data.deltaY);
+              // The portal passage is the SAME physical hall. Returning to Intro's velocity
+              // compression at the matrix seam made one gesture abruptly slow down mid-walk.
+              const inHall = progress.target >= progressAtIntroTime(T.door) - 1 / Math.max(1, scrollSpan()) && progress.target <= PORTAL_GATE;
+              if (lenis) lenis.options.lerp = inHall && eventsState().visiting && progress.target >= EVENTS_TRACK.unfold.start ? 1 : 0.085;
+              const g = inHall ? 1 / WHEEL_MULTIPLIER : wheelGain(data.deltaX, data.deltaY);
               data.deltaX *= g;
               data.deltaY *= g;
             }

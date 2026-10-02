@@ -132,7 +132,8 @@ async function run(w, h, touch) {
       const stopped = await settled(p);
       await wait(700); const held = await snap(p);
       check(stopped.y === held.y && stopped.view.enter === held.view.enter, `${name}: reverse input interrupts click entry; no resumed flight`, { stopped, held });
-      await p.evaluate(() => window.__acm.scroll(window.__acm.events.at('room', 0.65), 1));
+      // Resume to the selected path's actual terminal pose, not the former extra-push interval.
+      await p.evaluate(() => window.__acm.scroll(window.__acm.events.snapshot().entry?.to ?? window.__acm.events.at('room', 1), 1));
     }
     await settled(p);
     const inside = await snap(p);

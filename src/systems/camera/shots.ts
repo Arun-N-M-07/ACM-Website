@@ -11,7 +11,7 @@ import { progressAtIntroTime } from '@/intro/controller';
 import { STILLS } from '@/intro/timeline';
 import { RECORD_STILL, recordWall } from '@/scenes/events/controller';
 import { eventsState } from '@/scenes/events/state';
-import { eventsCamera, HUB_REST, hubPose, type EventsShot } from '@/scenes/events/track';
+import { eventEntryActive, eventsCamera, HUB_REST, hubPose, type EventsShot } from '@/scenes/events/track';
 import { teamsStops } from '@/teams/layout';
 import { copyPose, easeInOutSine, emptyPose, sampleTrack, smoothstep, type CameraPose, type PoseKey } from './pose';
 
@@ -27,11 +27,13 @@ const eventsShot: EventsShot = { composed: 0, scale: 1 };
 // it (from PORTAL_DWELL on, the camera holds there: the hold zone).
 const _hub = emptyPose();
 const _near = emptyPose();
+const _opened = emptyPose();
+const NEAR_AT = PORTAL_SPLIT * 0.85;
 const APPROACH_AT = PORTAL_SPLIT + (PORTAL_DWELL - PORTAL_SPLIT) * 0.5;
 const portalKeys: PoseKey[] = [
   { t: 0, pose: _hub },
   // While the columns part: a step towards the opening, down a little.
-  { t: PORTAL_SPLIT * 0.85, pose: _near, ease: easeInOutSine },
+  { t: NEAR_AT, pose: _near, ease: easeInOutSine },
   { t: APPROACH_AT, pose: S.portalApproach, ease: easeInOutSine },
   { t: PORTAL_DWELL, pose: S.portalStand, ease: easeInOutSine },
   { t: 1, pose: S.portalStand },
@@ -40,17 +42,40 @@ const portalKeys: PoseKey[] = [
 /** Up across [a, b] and back down across [c, d]. */
 const swell = (x: number, a: number, b: number, c: number, d: number) => smoothstep(a, b, x) * (1 - smoothstep(c, d, x));
 
+/**
+ * After the matrix opens, traverse the SAME pose track without braking at its intermediate key.
+ * One Hermite distance curve preserves the opening's velocity and brakes only at the portal.
+ * Invert each old sine span to sample its original positions, orientation and lens along the path.
+ */
+function portalTravelAt(u: number) {
+  if (u <= PORTAL_SPLIT || u >= PORTAL_DWELL) return u;
+  sampleTrack(portalKeys, PORTAL_SPLIT, _opened);
+  const span = APPROACH_AT - NEAR_AT;
+  const startSpeed = (_near.z - S.portalApproach.z) * Math.PI / (2 * span) * Math.sin(Math.PI * (PORTAL_SPLIT - NEAR_AT) / span);
+  const r = (u - PORTAL_SPLIT) / (PORTAL_DWELL - PORTAL_SPLIT);
+  const slope = startSpeed * (PORTAL_DWELL - PORTAL_SPLIT) / (_opened.z - S.portalStand.z);
+  const distance = r * r * (3 - 2 * r) + slope * r * (1 - r) * (1 - r);
+  const z = _opened.z + (S.portalStand.z - _opened.z) * distance;
+  const before = z >= S.portalApproach.z;
+  const from = before ? _near.z : S.portalApproach.z;
+  const to = before ? S.portalApproach.z : S.portalStand.z;
+  const local = Math.min(1, Math.max(0, (z - from) / (to - from)));
+  const t = Math.acos(1 - 2 * local) / Math.PI;
+  return before ? NEAR_AT + span * t : APPROACH_AT + (PORTAL_DWELL - APPROACH_AT) * t;
+}
+
 function evaluatePortal(u: number, aspect: number, out: CameraPose) {
   hubPose(aspect, _hub);
   copyPose(_hub, _near);
   _near.z -= Math.min(3.5, (_hub.z - S.portalApproach.z) * 0.2);
   _near.y -= 0.6;
-  sampleTrack(portalKeys, u, out);
+  const travel = portalTravelAt(u);
+  sampleTrack(portalKeys, travel, out);
   // The columns coming home — the outer ones into the wall, the middle one into the floor: the
   // smallest settling of the picture as each does (EventsHall: splitOffsets).
   const k = u / PORTAL_SPLIT;
   out.y -= 0.018 * swell(k, 0.55, 0.61, 0.61, 0.7) + 0.026 * swell(k, 0.93, 0.99, 0.99, 1.08);
-  cinematic.composed = 1 - smoothstep(PORTAL_SPLIT * 0.85, APPROACH_AT, u);
+  cinematic.composed = 1 - smoothstep(NEAR_AT, APPROACH_AT, travel);
   cinematic.scale = 1;
   return out;
 }
@@ -61,6 +86,12 @@ export function evaluateCinematic(p: number, out: CameraPose, aspect = 16 / 9): 
   const u = segmentProgress(p, seg);
   cinematic.composed = 0;
   cinematic.scale = 1;
+  if (eventEntryActive(p)) {
+    eventsCamera(p, eventsState().selected, aspect, out, eventsShot);
+    cinematic.composed = eventsShot.composed;
+    cinematic.scale = eventsShot.scale;
+    return out;
+  }
   switch (seg) {
     case 'events':
       eventsCamera(p, eventsState().selected, aspect, out, eventsShot);

@@ -3,7 +3,7 @@
  *
  * The opening is the first stretch of the journey's scroll track
  * (config/timeline.ts): the visitor's scroll is the only clock. Every beat
- * below is a position on that stretch, in "beats" — one beat is
+ * below is a position on that stretch, in "beats" — one beat normally takes
  * INTRO_VH_PER_BEAT viewport-heights of scrolling, about one notch of a mouse
  * wheel — so the whole film is a pure function of scroll progress: stop
  * scrolling and it stops, scroll back and it plays backwards, at the
@@ -144,6 +144,36 @@ export const T = {
 export const INTRO_START = T.mist;
 export const INTRO_END = T.end;
 export const INTRO_SPAN = INTRO_END - INTRO_START;
+
+/** Scroll density only: 6% less travel before Ascent; the building reveal keeps its full spacing. */
+const EARLY_SCROLL = [
+  [INTRO_START, T.prologue, 1],
+  [T.prologue, T.clearing, 0.94],
+  [T.clearing, T.heroEnd, 1],
+  [T.heroEnd, T.rise, 0.94],
+  [T.rise, INTRO_END, 1],
+] as const;
+
+/** Scroll distance (vh) at an authored beat. Camera, light and animation keys stay unchanged. */
+export function introScrollAt(beat: number) {
+  let vh = 0;
+  for (const [from, to, density] of EARLY_SCROLL) {
+    vh += Math.max(0, Math.min(to, beat) - from) * INTRO_VH_PER_BEAT * density;
+    if (beat <= to) break;
+  }
+  return vh;
+}
+
+/** Exact inverse of introScrollAt: the same mapping for forward, reverse and navigation jumps. */
+export function introBeatAt(vh: number) {
+  let consumed = 0;
+  for (const [from, to, density] of EARLY_SCROLL) {
+    const span = (to - from) * INTRO_VH_PER_BEAT * density;
+    if (vh <= consumed + span) return from + Math.max(0, vh - consumed) / (INTRO_VH_PER_BEAT * density);
+    consumed += span;
+  }
+  return INTRO_END;
+}
 
 export type IntroChapterId = 'arrival' | 'story' | 'ceg' | 'ascent' | 'descent';
 

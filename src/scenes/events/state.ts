@@ -9,10 +9,15 @@
  */
 import { create } from 'zustand';
 import { EVENTS } from '@/content/events';
+import { emptyPose, type CameraPose } from '@/systems/camera/pose';
 
 const N = EVENTS.length;
 
 export const eventsFrame = {
+  /** Actual rendered camera, recorded by the existing rig after all pose layers. */
+  camera: { pose: emptyPose(), aspect: 1, ready: false },
+  /** Explicit selection's scroll-authored path, starting at the rendered viewpoint. */
+  entry: null as null | { from: number; to: number; pixel: number; pose: CameraPose; aspect: number; rejoin: boolean },
   /** The bay under the pointer, the keyboard's focus or a finger, at the whole matrix (-1: none). */
   hover: -1,
   /** Each bay's answer to it (0..1, eased): its light, the veil over the others, the tracing. */
@@ -40,7 +45,7 @@ export const eventsFrame = {
     /** Into the chosen room: scroll position along the authored approach, not a playback clock. */
     enter: 0,
     /**
-     * The scroll's step inside the room (0..1). Only this navigation value moves the camera.
+     * The established room interval (0..1). Its camera holds one terminal composition.
      */
     room: 0,
     /** Installation playback (0..1), stepped at its own fixed rate; never drives camera/page/scroll. */

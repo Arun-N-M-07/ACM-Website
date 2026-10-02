@@ -9,7 +9,7 @@
  *   enter     towards the selected bay, at the scroll's position, then
  *             chosen bay, then straight in through its frame — one curve,
  *             never a stop half-way, with the gallery's lens held throughout
- *   room      inside: the scroll's slow step further in; the installation has its own clock
+ *   room      holds the terminal entrance view; the installation has its own clock
  *   unfold…   held there while the room gives way to its record
  *   rejoin    the whole matrix again
  *
@@ -25,6 +25,7 @@ import { introCameraAt } from '@/intro/camera';
 import { INTRO_VH_PER_BEAT, T } from '@/intro/timeline';
 import { EVENT_ROOMS, EVENTS_HALL, EYE_HEIGHT, FLOOR_Y, MATRIX, type RoomLayout } from '@/config/world';
 import { clamp01, copyPose, easeInOutSine, emptyPose, lerpPose, lookPose, smoothstep, type CameraPose } from '@/systems/camera/pose';
+import { eventsFrame } from './state';
 
 const tanHalf = (fov: number) => Math.tan((fov * Math.PI) / 360);
 
@@ -107,25 +108,17 @@ function roomPoint(r: RoomLayout, x: number, y: number, z: number): [number, num
   return [r.center[0] + x * r.scale, r.center[1] + y * r.scale, r.center[2] + z * r.scale];
 }
 
-/** How far a reading steps into the room (m, as built); the lens stays fixed. */
-const PUSH_IN = 1.5;
-
 /**
- * In room r, at its threshold looking in at the back wall — as its installation was built to be
- * seen — `push` of the way through the slow step further in.
+ * One terminal composition at the room threshold. The installation can continue playing while
+ * the camera stays here, including the entire room/read interval.
  */
-export function roomPose(r: RoomLayout, push: number, aspect: number, out: CameraPose) {
+export function roomPose(r: RoomLayout, aspect: number, out: CameraPose) {
   const flag = !!r.event.flagship;
   const eye = EYE_HEIGHT + (flag ? 0.2 : 0);
-  const k = easeInOutSine(clamp01(push));
   // The room is small because its whole geometry is scaled, not because the camera is outside it.
   // Portrait coverage belongs to the lens. An extra two-metre "back" kept phones outside the bay
   // even after the old controller declared them inside and hid the shelf.
-  // Portrait views enter the same room but stop nearer its threshold: moving
-  // as deep as desktop cropped the wall title. This is a physical viewpoint
-  // adaptation, not a new zoom or a scaled/repositioned room.
-  const pushDistance = aspect < 0.9 ? 0.65 : PUSH_IN;
-  const from = roomPoint(r, 0, eye, r.depth / 2 + 0.4 - pushDistance * k);
+  const from = roomPoint(r, 0, eye, r.depth / 2 + 0.4);
   const to = roomPoint(r, 0, EYE_HEIGHT + (flag ? 0.45 : -0.05), -r.depth / 2);
   return copyPose(lookPose(from, to, galleryLens(aspect)), out);
 }
@@ -154,8 +147,21 @@ const part = (p: number, r: { start: number; end: number }) => clamp01((p - r.st
 
 /** Navigation only: no frame time, velocity, installation playback or accumulated state. */
 export function eventsNavigation(p: number, index: number) {
+  const entry = eventsFrame.entry;
+  if (index >= 0 && entry && (entry.rejoin || p < K.rejoin.start)) {
+    // Native scroll positions are whole CSS pixels. Arrival is the same state on either side of
+    // that rounding boundary; the room clock must not wait forever for a fractional pixel.
+    const enter = Math.abs(p - entry.to) <= entry.pixel ? 1 : clamp01((p - entry.from) / (entry.to - entry.from));
+    return { enter, room: enter === 1 ? 1 : 0 };
+  }
   if (index < 0 || p < K.enter.start || p >= K.rejoin.start) return { enter: 0, room: 0 };
   return { enter: part(p, K.enter), room: part(p, K.room) };
+}
+
+/** A room chosen while the open door is still part of the Intro uses the same Events shot. */
+export function eventEntryActive(p: number) {
+  const entry = eventsFrame.entry;
+  return !!entry && (entry.rejoin || (p >= entry.from && p < K.rejoin.start));
 }
 
 /**
@@ -199,18 +205,21 @@ export function eventsCamera(p: number, index: number, aspect: number, out: Came
   // installation's playback clock never changes the camera (controller.ts).
   const navigation = eventsNavigation(p, index);
   const e = navigation.enter;
-  if (index < 0 || e <= 0) return copyPose(base, out);
+  if (index < 0) return copyPose(base, out);
+  if (e <= 0) return copyPose(eventEntryActive(p) ? eventsFrame.entry!.pose : base, out);
   shot.composed = 1;
   const r = EVENT_ROOMS[index];
-  const step = navigation.room;
   if (e < 1) {
     // Towards the bay and in through its frame: one curve (hub → the bay, as control → the threshold).
     const t = easeInOutSine(e);
-    curve(base, bayPose(r, aspect, _c), roomPose(r, step, aspect, _b), t, out);
+    const entry = eventsFrame.entry;
+    const source = entry ? copyPose(entry.pose, _a) : base;
+    if (entry) source.fov *= galleryLens(aspect) / galleryLens(entry.aspect);
+    curve(source, bayPose(r, aspect, _c), roomPose(r, aspect, _b), t, out);
     shot.scale = 1 + (r.scale - 1) * smoothstep(0.5, 0.95, t);
     return out;
   }
-  // Inside: the slow step in while the installation plays, then held while the record unfolds.
+  // Inside: held while the installation plays and the record unfolds.
   shot.scale = r.scale;
-  return roomPose(r, step, aspect, out);
+  return roomPose(r, aspect, out);
 }

@@ -362,7 +362,7 @@ export function EventsUI() {
         // The whole matrix: its bays' hit areas where the world puts them.
         const h = hub.current;
         if (h) {
-          const live = on && !overlay && v.hub > 0.9 && canVisitEvent();
+          const live = on && !overlay && v.hub > 0 && canVisitEvent();
           put(h, 'data-live', live ? 'true' : 'false');
           put(h, 'inert', live ? 'false' : 'true');
           put(h, 'visibility', on && v.hub > 0.01 ? 'visible' : 'hidden');
@@ -374,10 +374,26 @@ export function EventsUI() {
               const b = bays.current[i];
               const a = anchorAt(`events:bay:${i}:a`);
               const c = anchorAt(`events:bay:${i}:b`);
-              if (!b || !a || !c) continue;
-              put(b, 'transform', `translate3d(${a.x.toFixed(1)}px, ${a.y.toFixed(1)}px, 0)`);
-              put(b, 'width', `${Math.max(0, c.x - a.x).toFixed(1)}px`);
-              put(b, 'height', `${Math.max(0, c.y - a.y).toFixed(1)}px`);
+              const d = anchorAt(`events:bay:${i}:c`);
+              const e = anchorAt(`events:bay:${i}:d`);
+              if (!b || !a || !c || !d || !e) continue;
+              const corners = [a, d, c, e];
+              const x = Math.min(...corners.map((p) => p.x)), y = Math.min(...corners.map((p) => p.y));
+              const width = Math.max(...corners.map((p) => p.x)) - x;
+              const height = Math.max(...corners.map((p) => p.y)) - y;
+              put(b, 'visibility', corners.some((p) => p.visible) && width > 0 && height > 0 ? 'visible' : 'hidden');
+              put(b, 'transform', `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`);
+              put(b, 'width', `${width.toFixed(1)}px`);
+              put(b, 'height', `${height.toFixed(1)}px`);
+              // Perspective makes the opening a quadrilateral. Clip to its four real projected
+              // corners so the hit region never bleeds into a frame or neighbouring room.
+              put(b, 'clip-path', `polygon(${corners.map((p) => `${((p.x - x) / width * 100).toFixed(2)}% ${((p.y - y) / height * 100).toFixed(2)}%`).join(',')})`);
+            }
+            // One hit test after updating all nine polygons, including a wall moving beneath a
+            // stationary mouse. Keyboard focus keeps control until the mouse moves again.
+            if (live && F.pointer.active && !touch && !press.current) {
+              const hit = bays.current.indexOf(document.elementFromPoint(F.pointer.px, F.pointer.py) as HTMLButtonElement);
+              if (F.hover !== hit) { F.hover = hit; setFocusBay(hit); }
             }
           }
           // The label: the lit room's name and its way in, with the pointer — a little below and right of
@@ -602,7 +618,7 @@ export function EventsUI() {
                   cancelScrollMotion();
                 }}
                 onPointerCancel={() => void (press.current = null)}
-                onKeyDown={() => { pressedWith.current = 'key'; press.current = null; }}
+                onKeyDown={() => { pressedWith.current = 'key'; press.current = null; eventsFrame.pointer.active = false; }}
                 // (Lit by a mouse moving over it — not by the browser's own enter when the page changes
                 // under a pointer left still, as a touch screen's is.)
                 onPointerMove={(p) => {

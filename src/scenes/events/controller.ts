@@ -26,8 +26,9 @@
  * no timers, no animation-completion navigation, no loop of its own.
  */
 import { EVENTS } from '@/content/events';
-import { EVENTS_TRACK as K, INTRO_PROGRESS_END, PORTAL_DWELL, PORTAL_GATE, PORTAL_SPLIT, SEGMENTS, eventsAt, segmentAt, segmentProgress } from '@/config/timeline';
-import { INTRO_SPAN, INTRO_START, T } from '@/intro/timeline';
+import { EVENTS_TRACK as K, PORTAL_DWELL, PORTAL_GATE, PORTAL_SPLIT, SEGMENTS, eventsAt, segmentAt, segmentProgress } from '@/config/timeline';
+import { T } from '@/intro/timeline';
+import { progressAtIntroTime } from '@/intro/controller';
 import { introFrame } from '@/intro/state';
 import { EVENT_ROOMS } from '@/config/world';
 import { experience } from '@/store/experience';
@@ -53,7 +54,7 @@ const PORTAL_STAND = SEGMENTS.portal.start + (SEGMENTS.portal.end - SEGMENTS.por
 const PACE = { crew: 5.8 };
 
 /** The matrix's light, and its rooms, coming up: from the door half open, to half-way across the hall. */
-const REVEAL_FROM = INTRO_PROGRESS_END * ((T.door + 3.5 - INTRO_START) / INTRO_SPAN);
+const REVEAL_FROM = progressAtIntroTime(T.door + 3.5);
 const REVEAL_TO = eventsAt('arrival', 0.5);
 
 /** The picture is the whole matrix, still, at progress p (the hub, or the rejoin). */
@@ -86,10 +87,11 @@ export function recordWall() {
 /** The walls the Events put on the scroll (outside the Crew's world: travel.applyScrollLock keeps it there). */
 function applyWall() {
   if (teamsFrame.inside) return;
-  progress.lock.max = eventsState().visiting ? recordWall() : PORTAL_GATE;
+  progress.lock.max = eventsState().visiting ? Math.max(recordWall(), eventsFrame.entry?.rejoin ? eventsFrame.entry.from : 0) : PORTAL_GATE;
 }
 
 function endVisit() {
+  eventsFrame.entry = null;
   const st = eventsState();
   if (st.visiting || st.selected >= 0) st.set({ visiting: false, selected: -1 });
   applyWall();
@@ -110,6 +112,15 @@ export function stepEventsTrack(dt = 0) {
   const t = progress.target;
   const prev = lastTarget;
   lastTarget = t;
+  const entry = eventsFrame.entry;
+  // A selection from the later copy of the matrix travels back along the SAME scroll track.
+  // At the terminal pose it joins the normal branch, without moving scroll or camera.
+  if (entry?.rejoin && t <= entry.to + entry.pixel) {
+    entry.rejoin = false;
+    entry.from = K.enter.start;
+    playbackAt = t;
+    playbackDirection = 1;
+  }
   applyWall();
   stepClocks(dt);
   if (teamsFrame.inside || experience().phase !== 'cinematic' || progress.pending) return;
@@ -117,7 +128,9 @@ export function stepEventsTrack(dt = 0) {
   // visit is over.
   // Selection at the hub is allowed to wait indefinitely. End a visit only when the visitor has
   // actually scrolled back across the seam, not merely because selection began there.
-  if (st.visiting && prev !== null && prev >= HUB_SEAM && t < HUB_SEAM - 1e-5) return endVisit();
+  if (st.visiting && entry?.rejoin && prev !== null && prev < entry.from - entry.pixel && t >= entry.from - entry.pixel) return endVisit();
+  const exitAt = eventsFrame.entry?.from ?? HUB_SEAM;
+  if (st.visiting && !eventsFrame.entry?.rejoin && prev !== null && prev >= exitAt && t < exitAt - 1e-5) return endVisit();
   if (st.visiting || !(t > HUB_SEAM && t < REJOIN_SEAM)) return;
   // No event chosen, and the scroll between the seams: carry it across, the way it came — a step of
   // the scroll's own (however fast, far less than the room part is long). Anything else put it there
@@ -146,10 +159,19 @@ function stepClocks(dt: number) {
   }
   const on = experience().phase === 'cinematic' && !teamsFrame.inside;
   const navigation = eventsNavigation(progress.target, st.selected);
-  const delta = progress.target - playbackAt;
-  if (Math.abs(delta) > 1e-8) playbackDirection = delta > 0 ? 1 : -1;
-  playbackAt = progress.target;
+  const delta = (progress.target - playbackAt) * (eventsFrame.entry?.rejoin ? -1 : 1);
+  // Retain subpixel movement until it adds up to an actual scroll pixel. Lenis's fractional
+  // settling at a reverse-side arrival must not flip the installation backwards after entry.
+  if (Math.abs(delta) > 1 / Math.max(1, scrollSpan())) {
+    playbackDirection = delta > 0 ? 1 : -1;
+    playbackAt = progress.target;
+  }
   const inside = on && st.visiting && navigation.enter === 1;
+  // A reverse-side entry changes back to the normal track at the terminal pose. Its last native
+  // pixel can still settle backwards there; that is arrival, not a request to unplay the room.
+  // Actual reverse navigation leaves this pose (enter < 1), or reverses the editorial above it.
+  const entry = eventsFrame.entry;
+  if (inside && entry && Math.abs(progress.target - entry.to) <= entry.pixel) playbackDirection = 1;
   const now = experience().reducedMotion;
   if (now) roomPlay = inside ? 1 : 0;
   else if (inside && playbackDirection > 0) roomPlay = Math.min(1, roomPlay + dt / ROOM_PLAY_S);
@@ -175,22 +197,29 @@ const reduced = () => experience().reducedMotion;
  */
 function requestRoomTravel(to: number, onComplete?: () => void, entering = false) {
   const from = progress.target;
+  if (entering) {
+    scrollToProgress(to, 3.2, { easing: easeInOutSine });
+    return;
+  }
   const low = Math.min(from, to), high = Math.max(from, to);
-  const boundaries = [low, ...[K.arrival.end, K.enter.start, K.enter.end, K.room.end].filter((p) => p > low && p < high), high];
+  const entry = eventsFrame.entry;
+  const boundaries = [low, ...[entry?.from ?? K.enter.start, entry?.to ?? K.enter.end, K.room.end].filter((p) => p > low && p < high).sort((a, b) => a - b), high];
   const points = to < from ? boundaries.reverse() : boundaries;
   const legs = points.slice(1).map((end, i) => {
     const start = points[i];
     const mid = (start + end) / 2;
-    // Explicit entry has no time budget for the identical-pose browsing interval. Its scroll
-    // position can cross that interval instantaneously without cutting the physical camera path.
-    const secondsPerProgress = mid < K.arrival.end
+    // A captured approach uses its full physical path. Legacy/deep-link entry still skips only
+    // the identical-pose hub interval, never any camera travel.
+    const secondsPerProgress = entry && mid >= entry.from && mid <= entry.to
+      ? 2.8 / (entry.to - entry.from)
+      : mid < K.arrival.end
       ? 1.8 / (K.arrival.end - K.arrival.start)
       : mid < K.enter.start
         ? 0
         : mid < K.enter.end
-          ? (entering ? 3.2 : 2.2) / (K.enter.end - K.enter.start)
+          ? 2.2 / (K.enter.end - K.enter.start)
           : mid < K.room.end
-            ? (entering ? 0.8 : 0.6) / (K.room.end - K.room.start)
+            ? 0.6 / (K.room.end - K.room.start)
             : scrollSpan() / 1000; // editorial retreat: 1000 CSS px/s, not a content-length multiplier
     return { start, end, seconds: Math.abs(end - start) * secondsPerProgress };
   });
@@ -220,13 +249,13 @@ function requestRoomTravel(to: number, onComplete?: () => void, entering = false
 /** Only the matrix accepts selection, never an old hit region over an already-entered room. */
 export function canVisitEvent() {
   const st = eventsState();
-  const p = progress.target;
   const ex = experience();
   const pixel = 1 / Math.max(1, scrollSpan());
-  const doorway = INTRO_PROGRESS_END * ((T.doorway - INTRO_START) / INTRO_SPAN);
-  const matrix = (p >= doorway && p <= K.enter.start + pixel) || (p >= K.rejoin.start && p <= K.rejoin.end);
+  const shown = progress.value;
+  const doorway = progressAtIntroTime(T.doorway);
+  const matrix = (shown >= doorway && shown <= K.enter.start + pixel) || (shown >= K.rejoin.start && shown <= K.rejoin.end);
   return matrix && ex.phase === 'cinematic' && !ex.menuOpen && !ex.dossier && !ex.textVersionOpen && !teamsFrame.inside &&
-    !(st.visiting && p >= K.enter.start - pixel && p < K.rejoin.start);
+    !st.visiting;
 }
 
 /** Click/tap explicitly requests entry on the same scroll path; any input interrupts it. */
@@ -234,18 +263,23 @@ export function visitEvent(i: number) {
   if (i < 0 || i >= N || !canVisitEvent()) return;
   const st = eventsState();
   cancelScrollMotion();
+  const rendered = eventsFrame.camera;
+  eventsFrame.entry = reduced() || !rendered.ready ? null : {
+    from: progress.value,
+    to: K.room.end - 1 / Math.max(1, scrollSpan()),
+    pixel: 1 / Math.max(1, scrollSpan()),
+    pose: { ...rendered.pose },
+    aspect: rendered.aspect,
+    rejoin: progress.value >= K.rejoin.start,
+  };
   st.set({ selected: i, visiting: true });
   applyWall();
   eventsFrame.hover = -1;
   if (reduced()) jumpToProgress(ROOM_STILL);
   else {
-    // The hub is a stationary stretch, not part of the approach. Skip only
-    // that identical-pose stretch on an explicit selection so a tap responds
-    // immediately instead of spending its first half-second on invisible travel.
-    if (atHub(progress.target)) shiftProgress(K.enter.start - progress.target);
     // Stop one CSS pixel before the editorial boundary. Browser scroll rounding must not put a
     // selection into its record; the next real scroll is what brings that foreground layer up.
-    requestRoomTravel(K.room.end - 1 / Math.max(1, scrollSpan()), undefined, true);
+    requestRoomTravel(eventsFrame.entry?.to ?? K.room.end - 1 / Math.max(1, scrollSpan()), undefined, true);
   }
 }
 
@@ -258,7 +292,11 @@ function outToHub(then: (() => void) | null) {
     jumpToProgress(HUB_REST);
     endVisit();
     then?.();
-  } else requestRoomTravel(K.enter.start, () => {
+  } else if (eventsFrame.entry) requestRoomTravel(eventsFrame.entry.from, () => {
+    endVisit();
+    then?.();
+  });
+  else requestRoomTravel(K.enter.start, () => {
     // Only the stationary hub interval is skipped, after the physical return has completed.
     shiftProgress(HUB_REST - progress.target);
     endVisit();
@@ -303,6 +341,7 @@ export function visitCrew() {
 
 /** Event i's room, from the index or a link: cut to it behind the jump's fade, its installation begun. */
 export function roomProgress(i: number, t = 0.02) {
+  eventsFrame.entry = null;
   eventsState().set({ selected: Math.max(0, Math.min(N - 1, i)), visiting: true });
   applyWall();
   return eventsAt('room', t);
@@ -354,7 +393,7 @@ export function updateEvents(dt: number, shot: CameraPose, apply: boolean, reduc
   const length = Math.max(R.height, screen);
   const from = K.unfold.start;
   const pr = p;
-  v.page = st.visiting && pr > from && pr < K.rejoin.start ? clamp01((pr - from) / Math.max(1e-9, recordWall() - from)) * length : 0;
+  v.page = st.visiting && !eventsFrame.entry?.rejoin && pr > from && pr < K.rejoin.start ? clamp01((pr - from) / Math.max(1e-9, recordWall() - from)) * length : 0;
   v.unfold = clamp01(v.page / screen);
   v.read = length > screen ? clamp01((v.page - screen) / (length - screen)) : v.page >= screen ? 1 : 0;
   v.decide = v.page > 0 ? clamp01(1 - (length - v.page) / (screen * 0.5)) : 0;
@@ -390,6 +429,9 @@ export function updateEvents(dt: number, shot: CameraPose, apply: boolean, reduc
   }
 
   if (!apply) return;
+  // The captured source already includes pointer parallax. Applying the matrix lean again here
+  // made the click's first frame jump and left two pose contributions fighting during entry.
+  if (eventsFrame.entry) return;
   // At the whole matrix, the camera leans a little with the pointer.
   const settled = smoothstep(eventsAt('arrival', 0.9), K.arrival.end, p);
   // The UI can retire immediately on selection, but the physical pointer lean must release

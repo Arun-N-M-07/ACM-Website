@@ -5,13 +5,13 @@
  * The journey opens with the cinematic (src/intro): its five chapters are the
  * first segments of this same track, so the film is scrubbed by the
  * visitor's scroll like everything after it — its beat sheet
- * (intro/timeline.ts) maps linearly onto them.
+ * (intro/timeline.ts) maps its authored scroll distances onto them.
  *
  * Tune pacing by editing the `vh` weights (how many viewport-heights of
  * scrolling a segment takes). Everything else — chapter ranges, the camera,
  * scene streaming, overlay copy — derives from these numbers.
  */
-import { INTRO_CHAPTERS, INTRO_VH_PER_BEAT, type IntroChapterId } from '@/intro/timeline';
+import { INTRO_CHAPTERS, introScrollAt, type IntroChapterId } from '@/intro/timeline';
 
 export type SegmentId = IntroChapterId | 'events' | 'portal' | 'teams' | 'return';
 
@@ -22,8 +22,8 @@ export type SegmentId = IntroChapterId | 'events' | 'portal' | 'teams' | 'return
  *   hub       the whole matrix: an event is chosen here (Visit), or the scroll
  *             goes on — to the Crew
  *   the room  one stretch of track for whichever event was chosen: into its
- *             bay and its room (enter), a short way on inside it (room — the
- *             scroll's slow step in; the room's installation plays on its own
+ *             bay and its room (enter), held at its entrance (room — the
+ *             room's installation plays on its own
  *             clock once the camera is there, never at the scroll's pace:
  *             scenes/events/controller), then its record: a page the
  *             scroll moves px for px, its edge rising over the room for a screen
@@ -49,7 +49,7 @@ const eventsVh = Object.values(EVENTS_VH).reduce((a, b) => a + b, 0);
  * floor (PORTAL_SPLIT) — the walk down the passage to stand before it, then a dwell where scrolling
  * is walled until the visitor touches and holds.
  */
-const PORTAL_VH = 210;
+const PORTAL_VH = 210 * 0.94;
 /**
  * The Teams world: one continuous orbit of the spine — an establishing view,
  * the six domain cards, and the pull-back that closes the journey.
@@ -65,8 +65,8 @@ const TEAMS_VH = 720;
 const RETURN_VH = 300;
 
 const SEGMENT_WEIGHTS: { id: SegmentId; vh: number }[] = [
-  // The opening: each chapter's beats, at a fixed scroll length per beat.
-  ...INTRO_CHAPTERS.map((c) => ({ id: c.id as SegmentId, vh: (c.to - c.from) * INTRO_VH_PER_BEAT })),
+  // The opening's authored density; only the early beats have shorter scroll distances.
+  ...INTRO_CHAPTERS.map((c) => ({ id: c.id as SegmentId, vh: introScrollAt(c.to) - introScrollAt(c.from) })),
   { id: 'events', vh: eventsVh },
   { id: 'portal', vh: PORTAL_VH },
   { id: 'teams', vh: TEAMS_VH },
@@ -157,8 +157,7 @@ export interface ChapterDef {
 
 /** Progress at an opening beat (the film's first chapter starts before beat 0: the prologue). */
 const introAt = (beat: number) => {
-  const first = INTRO_CHAPTERS[0].from;
-  return ((beat - first) / (INTRO_CHAPTERS[INTRO_CHAPTERS.length - 1].to - first)) * INTRO_PROGRESS_END;
+  return introScrollAt(beat) / SCROLL_LENGTH_VH;
 };
 
 export const CHAPTERS: ChapterDef[] = [

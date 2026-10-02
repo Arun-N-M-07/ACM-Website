@@ -1,6 +1,7 @@
 {
   "files": [
     "/audio/the-batman.mp3",
+    "/brand/acm_logo.png",
     "/media/crew/ananyalakshmi-v-k.webp",
     "/media/crew/anieshwar-saravanan.webp",
     "/media/crew/harini-j-s.webp",
@@ -15,6 +16,24 @@
     "/media/crew/suhasri-s.webp",
     "/media/crew/swayamprabha-narayanan.webp",
     "/media/crew/varshhaa.webp",
-    "/media/crew/visvam-srinivasan.webp"
+    "/media/crew/visvam-srinivasan.webp",
+    "/media/explore/gallery/1.jpg",
+    "/media/explore/gallery/10.jpg",
+    "/media/explore/gallery/11.jpg",
+    "/media/explore/gallery/12.jpg",
+    "/media/explore/gallery/13.jpg",
+    "/media/explore/gallery/14.jpg",
+    "/media/explore/gallery/15.jpg",
+    "/media/explore/gallery/16.jpg",
+    "/media/explore/gallery/2.jpg",
+    "/media/explore/gallery/3.jpg",
+    "/media/explore/gallery/4.jpg",
+    "/media/explore/gallery/5.jpg",
+    "/media/explore/gallery/6.jpg",
+    "/media/explore/gallery/7.jpg",
+    "/media/explore/gallery/8.jpg",
+    "/media/team/Faculty/ANNIE_MAM.png",
+    "/media/team/Faculty/BAMA_MAM.png",
+    "/media/team/Faculty/RP_Mam.jpg"
   ]
 }

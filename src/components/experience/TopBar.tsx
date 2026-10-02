@@ -9,6 +9,7 @@ import { useExperience } from '@/store/experience';
 import { MUSIC } from '@/config/music';
 import { isAvailable } from '@/content/media';
 import { music } from '@/systems/audio/music';
+import Image from 'next/image';
 
 export function TopBar() {
   const chapter = useExperience((s) => s.chapter);
@@ -25,9 +26,7 @@ export function TopBar() {
   return (
     <header className="topbar">
       <button className="wordmark" onClick={() => set({ menuOpen: true })} aria-label="ACM-CEG — open the index">
-        <span>ACM</span>
-        <i aria-hidden="true" />
-        <span>CEG</span>
+        <Image className="wordmark-logo" src="/brand/acm_logo.png" alt="ACM-CEG Student Chapter" width={108} height={54} sizes="(max-width: 760px) 80px, 108px" />
       </button>
       <p className="chapter-indicator" aria-live="polite">
         <span className="num">{current?.number}</span>

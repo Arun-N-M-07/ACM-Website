@@ -19,9 +19,10 @@ import { useEffect, useRef } from 'react';
 import type { PerspectiveCamera } from 'three';
 import { CAMERA_RESPONSE } from '@/config/camera';
 import { chapterForSegment, INTRO_PROGRESS_END, segmentAt } from '@/config/timeline';
-import { INTRO_MAX_BEATS_PER_SECOND, INTRO_SPAN, T } from '@/intro/timeline';
+import { INTRO_MAX_BEATS_PER_SECOND, T } from '@/intro/timeline';
 import { evaluateIntroShot } from '@/intro/camera';
-import { progressAtIntroTime, syncIntro } from '@/intro/controller';
+import { introTimeAt, progressAtIntroTime, syncIntro } from '@/intro/controller';
+import { eventEntryActive } from '@/scenes/events/track';
 import { introFrame } from '@/intro/state';
 import { experience } from '@/store/experience';
 import { world } from '@/scenes/shared/blend';
@@ -34,9 +35,6 @@ import { eventsFrame } from '@/scenes/events/state';
 import { fx } from './effects';
 import { copyPose, emptyPose, smoothstep } from './pose';
 import { cinematic, evaluateCinematic, nearestStop } from './shots';
-
-/** The opening's fastest follow rate, in progress units per second. */
-const INTRO_MAX_RATE = (INTRO_MAX_BEATS_PER_SECOND / INTRO_SPAN) * INTRO_PROGRESS_END;
 
 export function CameraRig() {
   const camera = useThree((s) => s.camera) as PerspectiveCamera;
@@ -118,9 +116,10 @@ export function CameraRig() {
         if (progress.snapFade) fx.fade = 1;
         progress.snapFade = true;
       }
-      // Events has one smooth input owner already (Lenis/native touch). Following it a second time
-      // made the camera trail the editorial and keep travelling after the actual scroll stopped.
-      const directEvents = segmentAt(progress.target) === 'events' && !progress.pending;
+      // Events and its continuous portal passage already have one smooth input owner (Lenis/native
+      // touch). A second follow at the portal seam added a tail and a different response mid-walk.
+      const scrollSegment = segmentAt(progress.target);
+      const directEvents = (scrollSegment === 'events' || scrollSegment === 'portal' || eventEntryActive(progress.target)) && !progress.pending;
       // Release the Intro's extra follow gradually BEFORE the doorway, not halfway across the
       // hall: accumulated camera lag must not release at the Events seam. The same Lenis input
       // smoothing then owns the entire walk to the Events shelf.
@@ -130,9 +129,10 @@ export function CameraRig() {
       let step = (progress.target - progress.value) * k;
       // Within the opening the camera follows the scroll no faster than a
       // cinematic maximum, so even a hard fling reads as a move.
-      if (progress.value < INTRO_PROGRESS_END && progress.target < INTRO_PROGRESS_END && doorway < 0.999) {
-        const cap = INTRO_MAX_RATE * dt / Math.max(0.01, 1 - doorway);
-        step = Math.max(-cap, Math.min(cap, step));
+      if (progress.value < INTRO_PROGRESS_END && progress.target < INTRO_PROGRESS_END && doorway < 0.999 && !eventEntryActive(progress.target)) {
+        const beat = introTimeAt(progress.value);
+        const cap = INTRO_MAX_BEATS_PER_SECOND * dt / Math.max(0.01, 1 - doorway);
+        step = Math.max(progressAtIntroTime(beat - cap) - progress.value, Math.min(progressAtIntroTime(beat + cap) - progress.value, step));
       }
       progress.value += step;
       if (Math.abs(progress.target - progress.value) < 1e-6) progress.value = progress.target;
@@ -145,7 +145,7 @@ export function CameraRig() {
 
     // 2 ─ discrete state
     syncIntro(progress.value);
-    const inIntro = introFrame.active;
+    const inIntro = introFrame.active && !eventEntryActive(progress.value);
     const seg = segmentAt(progress.value);
     if (seg !== st.segment) st.set({ segment: seg, chapter: chapterForSegment(seg) });
     const shown = eventsFrame.view;
@@ -173,7 +173,7 @@ export function CameraRig() {
     copyPose(shot.current, p);
     // (The intro camera carries its own breath.)
     driftIn.current = inIntro ? 0 : Math.min(1, driftIn.current + dt / 1.5);
-    if (!st.reducedMotion && st.phase !== 'travel' && !inIntro && seg !== 'events') {
+    if (!st.reducedMotion && st.phase !== 'travel' && !inIntro && seg !== 'events' && !eventsFrame.entry) {
       const d = (teamsFrame.inside ? 0.35 : 1) * driftIn.current * driftIn.current;
       p.yaw += Math.sin(time * 0.31) * CAMERA_RESPONSE.driftAngle * d;
       p.pitch += Math.sin(time * 0.23 + 1.3) * CAMERA_RESPONSE.driftAngle * 0.7 * d;
@@ -216,6 +216,10 @@ export function CameraRig() {
       if (!vo || !vo.enabled || vo.fullWidth !== size.width || vo.fullHeight !== size.height || Math.abs(vo.offsetY - y) > 0.05) camera.setViewOffset(size.width, size.height, 0, y, size.width, size.height);
     } else if (vo && vo.enabled) camera.clearViewOffset();
     camera.updateMatrixWorld();
+    copyPose(p, eventsFrame.camera.pose);
+    eventsFrame.camera.pose.fov = camera.fov;
+    eventsFrame.camera.aspect = camera.aspect;
+    eventsFrame.camera.ready = true;
 
     // Camera speed for audio / effects.
     const lp = lastPos.current;
